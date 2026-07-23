@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { getDemoRepository } from '../data/demoRepository'
 import { OverviewPage } from '../features/overview/OverviewPage'
+import { WorkspacePage } from '../features/workspace/WorkspacePage'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -21,7 +22,7 @@ export function AppRoutes() {
       <Route element={<AppShell />}>
         <Route index element={<Navigate replace to="/overview" />} />
         <Route path="/overview" element={<OverviewPage repository={repository} />} />
-        <Route path="/workspace" element={<PlaceholderPage title="工作区" />} />
+        <Route path="/workspace" element={<WorkspacePage repository={repository} />} />
         <Route path="/stages" element={<PlaceholderPage title="版本阶段" />} />
         <Route path="/release" element={<PlaceholderPage title="发布审核" />} />
         <Route path="/history" element={<PlaceholderPage title="历史记录" />} />
