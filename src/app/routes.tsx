@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
+import { getDemoRepository } from '../data/demoRepository'
+import { OverviewPage } from '../features/overview/OverviewPage'
 
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -12,11 +14,13 @@ function PlaceholderPage({ title }: { title: string }) {
 }
 
 export function AppRoutes() {
+  const repository = getDemoRepository()
+
   return (
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Navigate replace to="/overview" />} />
-        <Route path="/overview" element={<PlaceholderPage title="项目概览" />} />
+        <Route path="/overview" element={<OverviewPage repository={repository} />} />
         <Route path="/workspace" element={<PlaceholderPage title="工作区" />} />
         <Route path="/stages" element={<PlaceholderPage title="版本阶段" />} />
         <Route path="/release" element={<PlaceholderPage title="发布审核" />} />
