@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { getDemoRepository } from '../data/demoRepository'
 import { OverviewPage } from '../features/overview/OverviewPage'
+import { ReleasePage } from '../features/release/ReleasePage'
+import { StagesPage } from '../features/stages/StagesPage'
 import { WorkspacePage } from '../features/workspace/WorkspacePage'
 
 function PlaceholderPage({ title }: { title: string }) {
@@ -23,8 +25,8 @@ export function AppRoutes() {
         <Route index element={<Navigate replace to="/overview" />} />
         <Route path="/overview" element={<OverviewPage repository={repository} />} />
         <Route path="/workspace" element={<WorkspacePage repository={repository} />} />
-        <Route path="/stages" element={<PlaceholderPage title="版本阶段" />} />
-        <Route path="/release" element={<PlaceholderPage title="发布审核" />} />
+        <Route path="/stages" element={<StagesPage repository={repository} />} />
+        <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={<PlaceholderPage title="历史记录" />} />
       </Route>
     </Routes>

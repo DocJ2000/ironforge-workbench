@@ -1,0 +1,208 @@
+.stage-explainer {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 15px;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  border: 1px solid #bddfe5;
+}
+
+.stage-explainer strong {
+  font-size: 12px;
+}
+
+.stage-explainer p {
+  margin: 4px 0 0;
+  color: #456871;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.branch-map,
+.branch-list-section {
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+}
+
+.branch-list-section {
+  margin-top: 16px;
+}
+
+.branch-flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr) 34px minmax(0, 1fr);
+  align-items: center;
+}
+
+.branch-flow__arrow {
+  justify-self: center;
+  color: var(--subtle);
+}
+
+.branch-node {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-height: 96px;
+  padding: 15px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--charcoal);
+}
+
+.branch-node--frozen {
+  border-top-color: var(--cyan);
+}
+
+.branch-node--current {
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  background: var(--accent-soft);
+  border-color: #e8a89c;
+  border-top-color: var(--accent);
+}
+
+.branch-node__icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--charcoal);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.branch-node--frozen .branch-node__icon {
+  color: var(--cyan);
+}
+
+.branch-node--current .branch-node__icon {
+  color: var(--accent);
+}
+
+.branch-node span,
+.branch-node strong,
+.branch-node code {
+  display: block;
+}
+
+.branch-node > div > span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.branch-node strong {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.branch-node code {
+  color: var(--cyan);
+  font-size: 9px;
+}
+
+.branch-list {
+  border: 1px solid var(--line);
+}
+
+.branch-list__header,
+.branch-list__row {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.9fr) minmax(280px, 1.4fr) 120px 110px 36px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 13px;
+}
+
+.branch-list__header {
+  min-height: 35px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--line);
+}
+
+.branch-list__row {
+  min-height: 68px;
+  border-bottom: 1px solid var(--line);
+}
+
+.branch-list__row:last-child {
+  border-bottom: 0;
+}
+
+.branch-list__row > span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.branch-identity {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.branch-identity > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  border-radius: 5px;
+}
+
+.branch-identity strong,
+.branch-identity code,
+.branch-commit code,
+.branch-commit span {
+  display: block;
+}
+
+.branch-identity strong {
+  font-size: 11px;
+}
+
+.branch-identity code,
+.branch-commit code {
+  margin-top: 3px;
+  color: var(--cyan);
+  font-size: 9px;
+}
+
+.branch-commit span {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1000px) {
+  .branch-flow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .branch-flow__arrow {
+    transform: rotate(90deg);
+  }
+
+  .branch-list {
+    overflow-x: auto;
+  }
+
+  .branch-list__header,
+  .branch-list__row {
+    min-width: 850px;
+  }
+}
