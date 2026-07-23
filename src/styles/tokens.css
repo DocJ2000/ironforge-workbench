@@ -1,0 +1,32 @@
+:root {
+  font-family:
+    Inter, "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  color: #1d232a;
+  background: #edf0f2;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --ink: #1d232a;
+  --muted: #66717c;
+  --subtle: #8a949e;
+  --line: #d9dee2;
+  --line-strong: #c5ccd2;
+  --surface: #ffffff;
+  --surface-soft: #f6f7f8;
+  --surface-raised: #fbfcfc;
+  --charcoal: #20262c;
+  --charcoal-soft: #2b333a;
+  --accent: #d7462f;
+  --accent-soft: #fff2ef;
+  --cyan: #167d93;
+  --cyan-soft: #edf8fa;
+  --green: #237a57;
+  --green-soft: #edf8f2;
+  --amber: #a96513;
+  --amber-soft: #fff7e8;
+  --danger: #b53636;
+  --danger-soft: #fff0f0;
+  --radius: 6px;
+  --sidebar-width: 252px;
+  --shadow-soft: 0 1px 2px rgba(21, 28, 34, 0.06);
+}
