@@ -6,7 +6,10 @@ import {
   Menu,
   PackageCheck,
   PanelLeftClose,
+  PanelLeftOpen,
+  X,
 } from 'lucide-react'
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { RepositorySwitcher } from './RepositorySwitcher'
 
@@ -19,9 +22,15 @@ const navigation = [
 ]
 
 export function AppShell() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell${sidebarCollapsed ? ' app-shell--collapsed' : ''}`}>
+      <aside
+        aria-label="项目导航"
+        className={`sidebar${mobileNavOpen ? ' sidebar--mobile-open' : ''}`}
+      >
         <div className="brand">
           <div className="brand__mark" aria-hidden="true">
             IF
@@ -30,8 +39,22 @@ export function AppShell() {
             <strong>Ironforge</strong>
             <span>工程师工作台</span>
           </div>
-          <button className="icon-button sidebar__collapse" title="收起侧栏" type="button">
-            <PanelLeftClose size={18} />
+          <button
+            aria-label={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
+            className="icon-button sidebar__collapse"
+            onClick={() => setSidebarCollapsed((current) => !current)}
+            title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
+            type="button"
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+          <button
+            aria-label="关闭导航"
+            className="icon-button sidebar__mobile-close"
+            onClick={() => setMobileNavOpen(false)}
+            type="button"
+          >
+            <X size={19} />
           </button>
         </div>
 
@@ -39,7 +62,7 @@ export function AppShell() {
 
         <nav aria-label="主要导航" className="primary-nav">
           {navigation.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to}>
+            <NavLink key={to} onClick={() => setMobileNavOpen(false)} title={label} to={to}>
               <Icon aria-hidden="true" size={19} />
               <span>{label}</span>
             </NavLink>
@@ -57,8 +80,22 @@ export function AppShell() {
         </div>
       </aside>
 
+      {mobileNavOpen ? (
+        <button
+          aria-label="关闭导航"
+          className="mobile-nav-backdrop"
+          onClick={() => setMobileNavOpen(false)}
+          type="button"
+        />
+      ) : null}
+
       <header className="mobile-header">
-        <button className="icon-button" aria-label="打开导航" type="button">
+        <button
+          className="icon-button"
+          aria-label="打开导航"
+          onClick={() => setMobileNavOpen(true)}
+          type="button"
+        >
           <Menu size={20} />
         </button>
         <strong>Ironforge</strong>

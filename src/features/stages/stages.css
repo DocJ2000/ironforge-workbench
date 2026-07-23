@@ -22,6 +22,8 @@
 
 .branch-map,
 .branch-list-section {
+  min-width: 0;
+  overflow: hidden;
   padding: 20px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -198,6 +200,8 @@
   }
 
   .branch-list {
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
   }
 

@@ -22,6 +22,7 @@
 
 .workspace-layout {
   display: grid;
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr) 310px;
   align-items: start;
   gap: 16px;
@@ -29,6 +30,7 @@
 
 .workspace-files,
 .commit-panel {
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-soft);
@@ -377,6 +379,7 @@
   }
 
   .change-table {
+    max-width: 100%;
     overflow-x: auto;
   }
 
