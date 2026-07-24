@@ -6,6 +6,8 @@ interface CommitPanelProps {
   selectedCount: number
   disabled: boolean
   onMessageChange: (value: string) => void
+  onSubmit: () => void
+  busy?: boolean
 }
 
 export function CommitPanel({
@@ -14,6 +16,8 @@ export function CommitPanel({
   selectedCount,
   disabled,
   onMessageChange,
+  onSubmit,
+  busy = false,
 }: CommitPanelProps) {
   return (
     <aside className="commit-panel">
@@ -56,9 +60,14 @@ export function CommitPanel({
         </p>
       </div>
 
-      <button className="button button--primary commit-panel__submit" disabled={disabled} type="button">
+      <button
+        className="button button--primary commit-panel__submit"
+        disabled={disabled || busy}
+        onClick={onSubmit}
+        type="button"
+      >
         <Save aria-hidden="true" size={17} />
-        保存设计版本
+        {busy ? '正在检查' : '保存设计版本'}
       </button>
     </aside>
   )

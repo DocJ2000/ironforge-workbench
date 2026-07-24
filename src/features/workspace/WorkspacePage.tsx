@@ -1,21 +1,38 @@
 import { AlertTriangle, Filter, RefreshCw, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { StatusBadge } from '../../components/StatusBadge'
+import {
+  repositoryCommitApi,
+  type CommitApi,
+  type CommitPreview,
+  type CommitRequest,
+} from '../../data/commitClient'
 import type { RepositorySnapshot } from '../../domain/repository'
 import { ChangeTable } from './ChangeTable'
+import { CommitConfirmationDialog } from './CommitConfirmationDialog'
 import { CommitPanel } from './CommitPanel'
 import './workspace.css'
 
 interface WorkspacePageProps {
   repository: RepositorySnapshot
+  commitApi?: CommitApi
+  onRepositoryRefresh?: () => Promise<void>
 }
 
-export function WorkspacePage({ repository }: WorkspacePageProps) {
+export function WorkspacePage({
+  repository,
+  commitApi = repositoryCommitApi,
+  onRepositoryRefresh,
+}: WorkspacePageProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmedDeletionIds, setConfirmedDeletionIds] = useState<Set<string>>(
     new Set(),
   )
   const [commitMessage, setCommitMessage] = useState('')
+  const [preview, setPreview] = useState<CommitPreview | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const deletedCadIds = useMemo(
     () =>
@@ -52,6 +69,50 @@ export function WorkspacePage({ repository }: WorkspacePageProps) {
     })
   }
 
+  function commitRequest(): CommitRequest {
+    const changesById = new Map(repository.changes.map((change) => [change.id, change]))
+    return {
+      message: commitMessage,
+      paths: [...selectedIds]
+        .map((id) => changesById.get(id)?.path)
+        .filter((path): path is string => Boolean(path)),
+      confirmedDeletions: [...confirmedDeletionIds]
+        .map((id) => changesById.get(id)?.path)
+        .filter((path): path is string => Boolean(path)),
+    }
+  }
+
+  async function handlePreview() {
+    setBusy(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      setPreview(await commitApi.preview(commitRequest()))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '无法生成 Commit 预览')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleCommit() {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await commitApi.commit(commitRequest())
+      setPreview(null)
+      setSelectedIds(new Set())
+      setConfirmedDeletionIds(new Set())
+      setCommitMessage('')
+      setSuccess(`已保存为 ${result.commit}`)
+      await onRepositoryRefresh?.()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '本地 Commit 失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="page page--workspace">
       <header className="page-header">
@@ -78,6 +139,11 @@ export function WorkspacePage({ repository }: WorkspacePageProps) {
           {deletedCadIds.size} 个文件
         </StatusBadge>
       </aside>
+
+      {error ? <div className="workspace-feedback workspace-feedback--error">{error}</div> : null}
+      {success ? (
+        <div className="workspace-feedback workspace-feedback--success">{success}</div>
+      ) : null}
 
       <div className="workspace-layout">
         <section className="workspace-files">
@@ -110,10 +176,21 @@ export function WorkspacePage({ repository }: WorkspacePageProps) {
           branch={repository.branch}
           commitMessage={commitMessage}
           disabled={commitDisabled}
+          busy={busy}
           onMessageChange={setCommitMessage}
+          onSubmit={() => void handlePreview()}
           selectedCount={selectedIds.size}
         />
       </div>
+
+      {preview ? (
+        <CommitConfirmationDialog
+          busy={busy}
+          onCancel={() => setPreview(null)}
+          onConfirm={() => void handleCommit()}
+          preview={preview}
+        />
+      ) : null}
     </div>
   )
 }

@@ -24,7 +24,15 @@ export function AppRoutes() {
             />
           }
         />
-        <Route path="/workspace" element={<WorkspacePage repository={repository} />} />
+        <Route
+          path="/workspace"
+          element={
+            <WorkspacePage
+              onRepositoryRefresh={refresh}
+              repository={repository}
+            />
+          }
+        />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={<HistoryPage repository={repository} />} />
