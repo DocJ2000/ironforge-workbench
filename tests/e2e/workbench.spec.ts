@@ -75,9 +75,9 @@ test('overview displays the live local repository snapshot', async ({ page }, te
       deliveryPackages: expect.any(Array),
     },
   })
-  expect(payload.repository.deliveryPackages).toHaveLength(13)
+  expect(payload.repository.deliveryPackages).toHaveLength(20)
   await expect(page.getByText('本地仓库实时数据')).toBeVisible()
-  await expect(page.getByText('13 个交付包')).toBeVisible()
+  await expect(page.getByText('20 个交付包')).toBeVisible()
 })
 
 test('desktop sidebar hides the mobile close control', async ({ page }, testInfo) => {
