@@ -189,6 +189,33 @@ code {
   border-color: #68747e;
 }
 
+.repository-source {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 18px 4px;
+  color: #aeb8c1;
+  font-size: 9px;
+}
+
+.repository-source > span {
+  width: 7px;
+  height: 7px;
+  background: #7f8a93;
+  border-radius: 50%;
+}
+
+.repository-source--live > span {
+  background: #67c49a;
+  box-shadow: 0 0 0 3px rgba(103, 196, 154, 0.12);
+}
+
+.app-shell--collapsed .repository-source {
+  justify-content: center;
+  margin-inline: 0;
+  font-size: 0;
+}
+
 .repository-switcher__icon {
   display: grid;
   place-items: center;

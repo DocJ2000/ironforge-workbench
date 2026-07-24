@@ -18,6 +18,8 @@ import './overview.css'
 
 interface OverviewPageProps {
   repository: RepositorySnapshot
+  refreshing?: boolean
+  onRefresh?: () => void
 }
 
 const publishLabels: Record<
@@ -30,7 +32,11 @@ const publishLabels: Record<
   success: { label: '发布成功', tone: 'success' },
 }
 
-export function OverviewPage({ repository }: OverviewPageProps) {
+export function OverviewPage({
+  repository,
+  refreshing = false,
+  onRefresh,
+}: OverviewPageProps) {
   const sync = summarizeRepository(repository)
   const publish = publishLabels[repository.publishJob.status]
   const deletedCadCount = repository.changes.filter(
@@ -46,9 +52,14 @@ export function OverviewPage({ repository }: OverviewPageProps) {
           <p className="page-header__path">{repository.path}</p>
         </div>
         <div className="page-header__actions">
-          <button className="button button--secondary" type="button">
+          <button
+            className="button button--secondary"
+            disabled={refreshing}
+            onClick={onRefresh}
+            type="button"
+          >
             <RefreshCw aria-hidden="true" size={17} />
-            刷新状态
+            {refreshing ? '正在刷新' : '刷新状态'}
           </button>
           <button className="button button--primary" type="button">
             <CloudDownload aria-hidden="true" size={17} />

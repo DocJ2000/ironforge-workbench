@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { useRepository } from '../data/repositoryContext'
 import { RepositorySwitcher } from './RepositorySwitcher'
 
 const navigation = [
@@ -24,6 +25,7 @@ const navigation = [
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const { error, repository, source } = useRepository()
 
   return (
     <div className={`app-shell${sidebarCollapsed ? ' app-shell--collapsed' : ''}`}>
@@ -58,7 +60,14 @@ export function AppShell() {
           </button>
         </div>
 
-        <RepositorySwitcher />
+        <RepositorySwitcher repository={repository} />
+        <div
+          className={`repository-source repository-source--${source}`}
+          title={error ?? '正在读取本地 Git 仓库'}
+        >
+          <span aria-hidden="true" />
+          {source === 'live' ? '本地仓库实时数据' : '演示数据'}
+        </div>
 
         <nav aria-label="主要导航" className="primary-nav">
           {navigation.map(({ to, label, icon: Icon }) => (
