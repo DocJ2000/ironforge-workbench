@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { readdir, readFile, stat } from 'node:fs/promises'
-import { basename, extname, join, relative, resolve } from 'node:path'
+import { basename, extname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import type {
   BranchSummary,
@@ -8,7 +8,7 @@ import type {
   DeliveryPackage,
   RepositorySnapshot,
   WorkingTreeChange,
-} from '../src/domain/repository'
+} from '../src/domain/repository.js'
 
 const execFileAsync = promisify(execFile)
 const cadExtensions = new Set([
