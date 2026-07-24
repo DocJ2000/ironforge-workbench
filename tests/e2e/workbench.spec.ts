@@ -10,7 +10,11 @@ const routes = [
 
 for (const route of routes) {
   test(`${route.path} renders without horizontal overflow`, async ({ page }, testInfo) => {
+    const repositoryResponse = page.waitForResponse(
+      (response) => response.url().endsWith('/api/repository'),
+    )
     await page.goto(route.path)
+    await expect((await repositoryResponse).status()).toBe(200)
 
     await expect(page.getByRole('heading', { level: 1, name: route.heading })).toBeVisible()
     const overflow = await page.evaluate(() => ({
@@ -54,6 +58,34 @@ for (const route of routes) {
     }
   })
 }
+
+test('overview displays the live local repository snapshot', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop')
+  const repositoryResponse = page.waitForResponse(
+    (response) => response.url().endsWith('/api/repository'),
+  )
+
+  await page.goto('/overview')
+  const payload = await (await repositoryResponse).json()
+
+  expect(payload).toMatchObject({
+    source: 'live',
+    repository: {
+      branch: 'dev/T2',
+      deliveryPackages: expect.any(Array),
+    },
+  })
+  expect(payload.repository.deliveryPackages).toHaveLength(13)
+  await expect(page.getByText('本地仓库实时数据')).toBeVisible()
+  await expect(page.getByText('13 个交付包')).toBeVisible()
+})
+
+test('desktop sidebar hides the mobile close control', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop')
+  await page.goto('/overview')
+
+  await expect(page.getByRole('button', { name: '关闭导航' })).toBeHidden()
+})
 
 test('mobile navigation opens and changes page', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile')

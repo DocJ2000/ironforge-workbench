@@ -65,7 +65,7 @@ code {
   border-right: 1px solid #11171c;
 }
 
-.sidebar__mobile-close {
+.icon-button.sidebar__mobile-close {
   display: none;
 }
 
@@ -372,7 +372,7 @@ code {
     display: none;
   }
 
-  .sidebar__mobile-close {
+  .icon-button.sidebar__mobile-close {
     display: inline-grid;
   }
 

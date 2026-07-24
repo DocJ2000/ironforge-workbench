@@ -12,4 +12,18 @@ describe('OverviewPage', () => {
     expect(screen.getAllByText('提交审核')[0]).toBeVisible()
     expect(screen.getAllByText('Merge Request')[0]).toBeVisible()
   })
+
+  it('uses the real working-tree change count in its recommendation', () => {
+    const repository = getDemoRepository()
+    const view = render(
+      <OverviewPage
+        repository={{
+          ...repository,
+          changes: [...repository.changes, ...repository.changes.slice(0, 2)],
+        }}
+      />,
+    )
+
+    expect(view.getByText(/检查 7 个本地修改/)).toBeVisible()
+  })
 })
