@@ -1,15 +1,21 @@
 {
   "name": "ironforge-workbench",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "TinyPhoton engineering delivery workbench for GitLab and Ironforge",
+  "author": "TinyPhoton",
   "type": "module",
+  "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest",
     "test:e2e": "playwright test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:desktop": "npm run build && tsc -p tsconfig.electron.json",
+    "desktop": "npm run build:desktop && electron .",
+    "package:win": "npm run build:desktop && electron-builder --win nsis"
   },
   "dependencies": {
     "lucide-react": "^1.26.0",
@@ -25,10 +31,35 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "electron": "43.2.0",
+    "electron-builder": "26.15.3",
     "jsdom": "^29.1.1",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
+  },
+  "build": {
+    "appId": "com.tinyphoton.ironforge.workbench",
+    "productName": "Ironforge Workbench",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "Ironforge-Workbench-${version}-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    }
   }
 }
