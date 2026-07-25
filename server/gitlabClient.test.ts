@@ -97,6 +97,29 @@ describe('GitLabClient', () => {
     })
   })
 
+  it('uploads a PDF for use in Markdown without setting JSON headers', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({
+        markdown: '[评审资料.pdf](/uploads/example/评审资料.pdf)',
+      }),
+    )
+    const client = createGitLabClient(config, fetcher)
+
+    const result = await client.uploadMarkdownFile(
+      'rockteam/dragon/optics/lens-mechanics',
+      {
+        name: '评审资料.pdf',
+        type: 'application/pdf',
+        bytes: new Uint8Array([1, 2, 3]),
+      },
+    )
+
+    expect(result.markdown).toContain('评审资料.pdf')
+    expect(fetcher.mock.calls[0][0]).toContain('/uploads')
+    expect(fetcher.mock.calls[0][1].body).toBeInstanceOf(FormData)
+    expect(fetcher.mock.calls[0][1].headers).not.toHaveProperty('Content-Type')
+  })
+
   it('returns a clear credential error without exposing the token', async () => {
     const fetcher = vi.fn().mockResolvedValue(jsonResponse({}, 401))
     const client = createGitLabClient(config, fetcher)

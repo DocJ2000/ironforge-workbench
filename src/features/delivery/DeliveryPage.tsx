@@ -200,6 +200,8 @@ export function DeliveryPage({
         title: syncComment.trim(),
         description: `同步注释：${syncComment.trim()}`,
         reviewerIds: [...selectedReviewerIds],
+        feishuLinks: [],
+        attachmentMarkdown: [],
       })
       setResult({ iid: mergeRequest.iid, url: mergeRequest.webUrl })
       setMergeRequestStatus('waiting')

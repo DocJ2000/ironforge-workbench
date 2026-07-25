@@ -38,6 +38,12 @@ export interface MergeRequestState {
   webUrl: string
 }
 
+export interface MarkdownUpload {
+  name: string
+  type: string
+  bytes: Uint8Array
+}
+
 function projectUrl(baseUrl: string, projectPath: string) {
   return `${baseUrl}/api/v4/projects/${encodeURIComponent(projectPath)}`
 }
@@ -147,6 +153,24 @@ export function createGitLabClient(
         web_url: string
       }
       return { iid: result.iid, webUrl: result.web_url }
+    },
+
+    async uploadMarkdownFile(
+      projectPath: string,
+      upload: MarkdownUpload,
+    ): Promise<{ markdown: string }> {
+      const body = new FormData()
+      body.append(
+        'file',
+        new Blob([upload.bytes], { type: upload.type }),
+        upload.name,
+      )
+      const response = await request(
+        `${projectUrl('', projectPath)}/uploads`,
+        { method: 'POST', body },
+      )
+      const result = (await response.json()) as { markdown: string }
+      return { markdown: result.markdown }
     },
 
     async getMergeRequest(

@@ -184,6 +184,8 @@ describe('createRepositoryMiddleware', () => {
         title: '同步 BOM 交付包',
         description: '同步注释：同步 BOM 交付包',
         reviewerIds: [42],
+        feishuLinks: [],
+        attachmentMarkdown: [],
       },
     }
     const syncResponse = responseDouble()
@@ -230,5 +232,44 @@ describe('createRepositoryMiddleware', () => {
 
     expect(createBranch).toHaveBeenCalledWith(body.input)
     expect(JSON.parse(result.body())).toEqual({ branch: 'dev/T3' })
+  })
+
+  it('uploads one PDF through a separate multipart endpoint', async () => {
+    const uploadAttachment = vi.fn().mockResolvedValue({
+      markdown: '[资料.pdf](/uploads/example/资料.pdf)',
+    })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn(),
+      uploadAttachment,
+    })
+    const boundary = 'ironforge-test-boundary'
+    const payload = Buffer.from(
+      `--${boundary}\r\n` +
+        'Content-Disposition: form-data; name="file"; filename="资料.pdf"\r\n' +
+        'Content-Type: application/pdf\r\n\r\n' +
+        'PDF\r\n' +
+        `--${boundary}--\r\n`,
+    )
+    const request = Readable.from([payload]) as IncomingMessage
+    request.method = 'POST'
+    request.url = '/api/gitlab/uploads'
+    request.headers = {
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+      'content-length': String(payload.length),
+    }
+    const result = responseDouble()
+
+    await middleware(request, result.response, vi.fn())
+
+    expect(uploadAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: '资料.pdf',
+        type: 'application/pdf',
+      }),
+    )
+    expect(JSON.parse(result.body())).toEqual({
+      markdown: '[资料.pdf](/uploads/example/资料.pdf)',
+    })
   })
 })

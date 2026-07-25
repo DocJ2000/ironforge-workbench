@@ -45,6 +45,7 @@ export interface DeliveryApi {
     name: string
     startPoint: string
   }) => Promise<{ branch: string }>
+  uploadAttachment: (file: File) => Promise<{ markdown: string }>
 }
 
 export const deliveryApi: DeliveryApi = {
@@ -74,4 +75,21 @@ export const deliveryApi: DeliveryApi = {
       method: 'POST',
       body: JSON.stringify({ input, confirmed: true }),
     }),
+  uploadAttachment: async (file) => {
+    const body = new FormData()
+    body.append('file', file)
+    const response = await fetch('/api/gitlab/uploads', {
+      method: 'POST',
+      body,
+      headers: { Accept: 'application/json' },
+    })
+    const payload = (await response.json()) as {
+      markdown?: string
+      error?: string
+    }
+    if (!response.ok || !payload.markdown) {
+      throw new Error(payload.error ?? '附件上传失败')
+    }
+    return { markdown: payload.markdown }
+  },
 }

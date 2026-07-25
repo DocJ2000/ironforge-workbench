@@ -86,6 +86,8 @@ describe('deliveryApi', () => {
       title: '同步图纸',
       description: '',
       reviewerIds: [42],
+      feishuLinks: [],
+      attachmentMarkdown: [],
     })
 
     expect(fetcher.mock.calls[0][0]).toBe('/api/gitlab/sync')
@@ -116,5 +118,28 @@ describe('deliveryApi', () => {
         }),
       }),
     )
+  })
+
+  it('uploads an attachment as multipart form data', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          markdown: '[资料.pdf](/uploads/example/资料.pdf)',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    vi.stubGlobal('fetch', fetcher)
+    const file = new File(['PDF'], '资料.pdf', {
+      type: 'application/pdf',
+    })
+
+    await deliveryApi.uploadAttachment(file)
+
+    expect(fetcher.mock.calls[0][0]).toBe('/api/gitlab/uploads')
+    expect(fetcher.mock.calls[0][1].body).toBeInstanceOf(FormData)
+    expect(fetcher.mock.calls[0][1].headers).toEqual({
+      Accept: 'application/json',
+    })
   })
 })

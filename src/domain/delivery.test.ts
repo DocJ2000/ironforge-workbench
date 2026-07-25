@@ -87,6 +87,8 @@ describe('split GitLab actions', () => {
         title: '提交 BOM 交付包',
         description: '',
         reviewerIds: [],
+        feishuLinks: [],
+        attachmentMarkdown: [],
       }),
     ).toEqual(['至少选择一位审核人'])
   })
@@ -102,5 +104,19 @@ describe('split GitLab actions', () => {
         tag: { name: 'T2-v1', message: '' },
       }),
     ).toContain('请填写 Tag 说明')
+  })
+
+  it('rejects non-Feishu links in the Feishu document list', () => {
+    expect(
+      validateMergeRequestDraft({
+        sourceBranch: 'dev/T2',
+        targetBranch: 'main',
+        title: '提交 BOM 交付包',
+        description: '',
+        reviewerIds: [42],
+        feishuLinks: ['https://example.com/not-feishu'],
+        attachmentMarkdown: [],
+      }),
+    ).toContain('请填写有效的飞书云文档链接')
   })
 })

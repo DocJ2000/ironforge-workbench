@@ -64,6 +64,9 @@ function createApi(): DeliveryApi {
     createBranch: vi.fn().mockImplementation(async ({ name }) => ({
       branch: name,
     })),
+    uploadAttachment: vi.fn().mockResolvedValue({
+      markdown: '[资料.pdf](/uploads/example/资料.pdf)',
+    }),
   } as unknown as DeliveryApi
 }
 

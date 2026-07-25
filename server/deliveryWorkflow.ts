@@ -172,12 +172,13 @@ export async function createDeliveryMergeRequest(
   assertValid(validateMergeRequestDraft(draft))
 
   const repository = await dependencies.scanRepository(repositoryPath)
+  const description = composeMergeRequestDescription(draft)
   const mergeRequest = await dependencies.createMergeRequest({
     projectPath: repository.gitlabPath,
     sourceBranch: draft.sourceBranch,
     targetBranch: draft.targetBranch,
     title: draft.title,
-    description: draft.description,
+    description,
     reviewerIds: draft.reviewerIds,
   })
 
@@ -185,4 +186,17 @@ export async function createDeliveryMergeRequest(
     iid: mergeRequest.iid,
     webUrl: mergeRequest.webUrl,
   }
+}
+
+export function composeMergeRequestDescription(draft: MergeRequestDraft) {
+  const sections = [draft.description.trim()]
+  if (draft.feishuLinks.length) {
+    sections.push(
+      `## 飞书文档\n${draft.feishuLinks.map((link) => `- ${link}`).join('\n')}`,
+    )
+  }
+  if (draft.attachmentMarkdown.length) {
+    sections.push(`## 附件\n${draft.attachmentMarkdown.join('\n')}`)
+  }
+  return sections.filter(Boolean).join('\n\n')
 }

@@ -6,6 +6,7 @@ import type {
 } from '../src/domain/delivery'
 import {
   createDeliveryMergeRequest,
+  composeMergeRequestDescription,
   previewDelivery,
   syncGitLab,
   type DeliveryWorkflowDependencies,
@@ -25,6 +26,8 @@ const mergeRequestDraft: MergeRequestDraft = {
   title: '提交所有的 BOM 交付包',
   description: '同步注释：提交所有的 BOM 交付包',
   reviewerIds: [42],
+  feishuLinks: [],
+  attachmentMarkdown: [],
 }
 
 const legacyDraft: DeliveryDraft = {
@@ -221,5 +224,23 @@ describe('createDeliveryMergeRequest', () => {
       iid: 3,
       webUrl: 'https://gitlfs.lab.tp/project/-/merge_requests/3',
     })
+  })
+})
+
+describe('composeMergeRequestDescription', () => {
+  it('adds Feishu links and GitLab upload Markdown as separate sections', () => {
+    const description = composeMergeRequestDescription({
+      ...mergeRequestDraft,
+      description: '## 改动说明\n更新结构图纸',
+      feishuLinks: ['https://tinyphoton.feishu.cn/docx/example'],
+      attachmentMarkdown: [
+        '[评审资料.pdf](/uploads/example/评审资料.pdf)',
+      ],
+    })
+
+    expect(description).toContain('## 飞书文档')
+    expect(description).toContain('https://tinyphoton.feishu.cn/docx/example')
+    expect(description).toContain('## 附件')
+    expect(description).toContain('评审资料.pdf')
   })
 })

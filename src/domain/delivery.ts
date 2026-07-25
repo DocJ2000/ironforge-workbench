@@ -63,6 +63,8 @@ export interface MergeRequestDraft {
   title: string
   description: string
   reviewerIds: number[]
+  feishuLinks: string[]
+  attachmentMarkdown: string[]
 }
 
 export interface MergeRequestResult {
@@ -116,5 +118,16 @@ export function validateMergeRequestDraft(draft: MergeRequestDraft) {
   if (!draft.targetBranch.trim()) errors.push('请选择目标分支')
   if (!draft.title.trim()) errors.push('请填写 MR 标题')
   if (!draft.reviewerIds.length) errors.push('至少选择一位审核人')
+  if (
+    draft.feishuLinks.some((link) => {
+      try {
+        return new URL(link).hostname !== 'tinyphoton.feishu.cn'
+      } catch {
+        return true
+      }
+    })
+  ) {
+    errors.push('请填写有效的飞书云文档链接')
+  }
   return errors
 }
