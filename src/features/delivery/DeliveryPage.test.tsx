@@ -61,6 +61,9 @@ function createApi(): DeliveryApi {
       iid: 3,
       webUrl: 'https://gitlfs.lab.tp/mr/3',
     }),
+    createBranch: vi.fn().mockImplementation(async ({ name }) => ({
+      branch: name,
+    })),
   } as unknown as DeliveryApi
 }
 
@@ -126,6 +129,25 @@ describe('DeliveryPage', () => {
         screen.getByRole('dialog', { name: '确认同步到 GitLab' }),
       ).getByText('dev/T1'),
     ).toBeVisible()
+  })
+
+  it('creates and selects a new local branch before synchronization', async () => {
+    const api = createApi()
+    render(<DeliveryPage api={api} repository={getDemoRepository()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '创建新分支' }))
+    fireEvent.change(screen.getByLabelText('新分支名称'), {
+      target: { value: 'dev/T3' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '创建并选中' }))
+
+    await waitFor(() =>
+      expect(api.createBranch).toHaveBeenCalledWith({
+        name: 'dev/T3',
+        startPoint: 'dev/T2',
+      }),
+    )
+    expect(screen.getByLabelText('同步分支')).toHaveValue('dev/T3')
   })
 
   it('selects packages and opens their file list', async () => {

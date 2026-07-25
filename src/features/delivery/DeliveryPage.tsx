@@ -5,6 +5,7 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
+  Plus,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -18,6 +19,7 @@ import type {
 } from '../../domain/delivery'
 import type { RepositorySnapshot } from '../../domain/repository'
 import { ChangeSummary } from './ChangeSummary'
+import { CreateBranchDialog } from './CreateBranchDialog'
 import { GitLabSyncDialog } from './GitLabSyncDialog'
 import { PackageSelector } from './PackageSelector'
 import { ReviewerSelector } from './ReviewerSelector'
@@ -46,6 +48,12 @@ export function DeliveryPage({
     new Set(),
   )
   const [selectedBranch, setSelectedBranch] = useState(repository.branch)
+  const [availableBranches, setAvailableBranches] = useState(
+    repository.branches.map((branch) => branch.name),
+  )
+  const [showCreateBranch, setShowCreateBranch] = useState(false)
+  const [newBranchName, setNewBranchName] = useState('')
+  const [newBranchStart, setNewBranchStart] = useState(repository.branch)
   const [selectedReviewerIds, setSelectedReviewerIds] = useState<Set<number>>(
     new Set(),
   )
@@ -139,6 +147,29 @@ export function DeliveryPage({
       await onRefresh?.()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'GitLab 同步失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleCreateBranch() {
+    setBusy(true)
+    setError(null)
+    try {
+      const created = await api.createBranch({
+        name: newBranchName.trim(),
+        startPoint: newBranchStart,
+      })
+      setAvailableBranches((current) => [
+        ...current.filter((branch) => branch !== created.branch),
+        created.branch,
+      ])
+      setSelectedBranch(created.branch)
+      setNewBranchName('')
+      setShowCreateBranch(false)
+      await onRefresh?.()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '创建分支失败')
     } finally {
       setBusy(false)
     }
@@ -251,21 +282,35 @@ export function DeliveryPage({
                 <p>选择本次 Commit 和 Push 所在的分支。</p>
               </div>
             </div>
-            <label className="branch-select">
-              <span>同步分支</span>
-              <select
-                aria-label="同步分支"
-                onChange={(event) => setSelectedBranch(event.target.value)}
-                value={selectedBranch}
+            <div className="branch-control">
+              <label className="branch-select">
+                <span>同步分支</span>
+                <select
+                  aria-label="同步分支"
+                  onChange={(event) => setSelectedBranch(event.target.value)}
+                  value={selectedBranch}
+                >
+                  {availableBranches.map((branch) => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                      {branch === repository.branch ? '（当前）' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                aria-label="创建新分支"
+                className="delivery-icon-button delivery-icon-button--bordered branch-create-button"
+                onClick={() => {
+                  setNewBranchStart(selectedBranch)
+                  setShowCreateBranch(true)
+                }}
+                title="创建新分支"
+                type="button"
               >
-                {repository.branches.map((branch) => (
-                  <option key={branch.name} value={branch.name}>
-                    {branch.name}
-                    {branch.current ? '（当前）' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <Plus aria-hidden="true" size={18} />
+              </button>
+            </div>
           </div>
 
           <div className="delivery-subsection">
@@ -412,6 +457,18 @@ export function DeliveryPage({
           onCancel={() => setShowSyncDialog(false)}
           onCommentChange={setSyncComment}
           onConfirm={() => void handleSync()}
+        />
+      ) : null}
+      {showCreateBranch ? (
+        <CreateBranchDialog
+          branchName={newBranchName}
+          branches={availableBranches}
+          busy={busy}
+          onBranchNameChange={setNewBranchName}
+          onCancel={() => setShowCreateBranch(false)}
+          onConfirm={() => void handleCreateBranch()}
+          onStartPointChange={setNewBranchStart}
+          startPoint={newBranchStart}
         />
       ) : null}
     </div>

@@ -208,4 +208,27 @@ describe('createRepositoryMiddleware', () => {
     })
     expect(JSON.parse(mrResponse.body())).toMatchObject({ iid: 7 })
   })
+
+  it('creates a local branch through a confirmed endpoint', async () => {
+    const createBranch = vi.fn().mockResolvedValue({ branch: 'dev/T3' })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn(),
+      createBranch,
+    })
+    const body = {
+      confirmed: true,
+      input: { name: 'dev/T3', startPoint: 'dev/T2' },
+    }
+    const result = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/gitlab/branches', body),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(createBranch).toHaveBeenCalledWith(body.input)
+    expect(JSON.parse(result.body())).toEqual({ branch: 'dev/T3' })
+  })
 })

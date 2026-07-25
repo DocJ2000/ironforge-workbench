@@ -91,4 +91,30 @@ describe('deliveryApi', () => {
     expect(fetcher.mock.calls[0][0]).toBe('/api/gitlab/sync')
     expect(fetcher.mock.calls[1][0]).toBe('/api/gitlab/merge-requests')
   })
+
+  it('creates a branch through its own confirmed endpoint', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ branch: 'dev/T3' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetcher)
+
+    await deliveryApi.createBranch({
+      name: 'dev/T3',
+      startPoint: 'dev/T2',
+    })
+
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/gitlab/branches',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          input: { name: 'dev/T3', startPoint: 'dev/T2' },
+          confirmed: true,
+        }),
+      }),
+    )
+  })
 })

@@ -15,6 +15,8 @@ import {
 } from './deliveryWorkflow.js'
 import {
   checkoutRepositoryBranch,
+  createRepositoryBranch,
+  type CreateBranchInput,
   pushRepositoryBranch,
 } from './gitBranchOperations.js'
 import {
@@ -43,6 +45,7 @@ type GitLabSyncExecutor = (
 type MergeRequestExecutor = (
   request: { draft: MergeRequestDraft; confirmed: boolean },
 ) => Promise<unknown>
+type BranchCreator = (input: CreateBranchInput) => Promise<unknown>
 
 interface RepositoryMiddlewareOptions {
   repositoryPath: string
@@ -51,6 +54,7 @@ interface RepositoryMiddlewareOptions {
   commit?: CommitExecutor
   sync?: GitLabSyncExecutor
   createMergeRequest?: MergeRequestExecutor
+  createBranch?: BranchCreator
 }
 
 function sendJson(response: ServerResponse, statusCode: number, value: unknown) {
@@ -88,6 +92,7 @@ export function createRepositoryMiddleware({
   commit = commitRepositoryChanges,
   sync,
   createMergeRequest,
+  createBranch,
 }: RepositoryMiddlewareOptions) {
   const workflowDependencies = () => {
     const gitLab = createGitLabClient(loadGitLabConfig())
@@ -115,6 +120,12 @@ export function createRepositoryMiddleware({
         operation,
         workflowDependencies(),
       ))
+  const executeCreateBranch =
+    createBranch ??
+    ((input) =>
+      createRepositoryBranch(repositoryPath, input).then(() => ({
+        branch: input.name.trim(),
+      })))
 
   return async (
     request: IncomingMessage,
@@ -128,6 +139,7 @@ export function createRepositoryMiddleware({
     const isCommitRequest = path === '/api/commit'
     const isSyncRequest = path === '/api/gitlab/sync'
     const isMergeRequest = path === '/api/gitlab/merge-requests'
+    const isBranchRequest = path === '/api/gitlab/branches'
 
     if (
       !isRepositoryRequest &&
@@ -135,7 +147,8 @@ export function createRepositoryMiddleware({
       !isPreviewRequest &&
       !isCommitRequest &&
       !isSyncRequest &&
-      !isMergeRequest
+      !isMergeRequest &&
+      !isBranchRequest
     ) {
       next()
       return
@@ -145,6 +158,28 @@ export function createRepositoryMiddleware({
       isRepositoryRequest || isDeliveryRequest ? 'GET' : 'POST'
     if (request.method !== expectedMethod) {
       sendJson(response, 405, { error: 'Method not allowed' })
+      return
+    }
+
+    if (isBranchRequest) {
+      let body: { input: CreateBranchInput; confirmed: boolean }
+      try {
+        body = await readJson(request)
+      } catch {
+        sendJson(response, 400, { error: 'Invalid JSON request' })
+        return
+      }
+      if (!body.confirmed) {
+        sendJson(response, 400, { error: '请先确认创建分支' })
+        return
+      }
+      try {
+        sendJson(response, 200, await executeCreateBranch(body.input))
+      } catch (error) {
+        sendJson(response, 400, {
+          error: error instanceof Error ? error.message : 'Branch creation failed',
+        })
+      }
       return
     }
 

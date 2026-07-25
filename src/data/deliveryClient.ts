@@ -41,6 +41,10 @@ export interface DeliveryApi {
   createMergeRequest: (
     draft: MergeRequestDraft,
   ) => Promise<MergeRequestResult>
+  createBranch: (input: {
+    name: string
+    startPoint: string
+  }) => Promise<{ branch: string }>
 }
 
 export const deliveryApi: DeliveryApi = {
@@ -64,5 +68,10 @@ export const deliveryApi: DeliveryApi = {
     requestJson('/api/gitlab/merge-requests', {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
+    }),
+  createBranch: (input) =>
+    requestJson('/api/gitlab/branches', {
+      method: 'POST',
+      body: JSON.stringify({ input, confirmed: true }),
     }),
 }
