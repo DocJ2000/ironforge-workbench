@@ -13,7 +13,10 @@
 - GitLab synchronization includes all valid changes under `source`, `reference`, `output`, plus root project files such as `charge.json`.
 - Ironforge publishes only selected non-empty output packages represented in `charge.json`.
 - At least one GitLab reviewer is required before MR creation.
-- GitLab MR approval must complete before Ironforge publication becomes available.
+- “同步到 GitLab” and “发布到 Ironforge” are separate buttons with separate required comment dialogs.
+- The GitLab sync comment becomes the Commit message and is recorded in the MR description.
+- The Ironforge publish comment is recorded with the publication and never reuses the GitLab comment implicitly.
+- GitLab MR approval must complete before the Ironforge publication button becomes available.
 - Every `git commit`, `git push`, MR creation/reopen, and MR merge requires explicit user confirmation immediately before execution.
 - `.superpowers`, logs, caches, editor files, and tool temporary directories must never be committed.
 - Credentials remain in the local backend process or OS-managed storage and are never returned to the React client.
@@ -37,7 +40,8 @@
 - `src/features/delivery/ChangeSummary.tsx`: read-only change detail drawer.
 - `src/features/delivery/PackageSelector.tsx`: selectable package list and file drawer.
 - `src/features/delivery/ReviewerSelector.tsx`: searchable real member list.
-- `src/features/delivery/DeliveryConfirmationDialog.tsx`: final remote-action confirmation.
+- `src/features/delivery/GitLabSyncDialog.tsx`: required GitLab sync comment and final Commit/push/MR confirmation.
+- `src/features/delivery/IronforgePublishDialog.tsx`: required publication comment and selected-package confirmation.
 - `src/features/delivery/delivery.css`: responsive layout and stable control dimensions.
 - `src/app/routes.tsx`: make the delivery page the primary route.
 - `src/components/AppShell.tsx`: reduce navigation to the single primary workflow and secondary history access.
@@ -54,7 +58,7 @@
 - Modify: `src/domain/repository.ts`
 
 **Interfaces:**
-- Produces: `OutputPackageCandidate`, `GitLabReviewer`, `DeliveryDraft`, `DeliveryPreview`, `DeliveryExecutionResult`.
+- Produces: `OutputPackageCandidate`, `GitLabReviewer`, `DeliveryDraft`, `DeliveryPreview`, `DeliveryExecutionResult`, `IronforgePublishDraft`.
 - Produces: `validateDeliveryDraft(draft: DeliveryDraft): string[]`.
 - Consumes: existing `WorkingTreeChange` and `DeliveryPackage` types.
 
@@ -146,6 +150,12 @@ export interface DeliveryExecutionResult {
   branch: string
   mergeRequestIid: number
   mergeRequestUrl: string
+}
+
+export interface IronforgePublishDraft {
+  mergeRequestIid: number
+  packageIds: string[]
+  comment: string
 }
 
 export function validateDeliveryDraft(draft: DeliveryDraft) {
@@ -375,7 +385,7 @@ git commit -m "feat: orchestrate confirmed delivery requests"
 
 **Interfaces:**
 - Consumes: `DeliveryApi` from `src/data/deliveryClient.ts`.
-- Produces: `/workspace` as the default one-page workflow.
+- Produces: `/workspace` as the default one-page workflow with separate GitLab and Ironforge actions.
 - Preserves: `/history` as a secondary read-only route.
 
 - [ ] **Step 1: Write failing page behavior tests**
@@ -385,13 +395,13 @@ it('opens read-only change details and requires a reviewer', async () => {
   render(<DeliveryPage api={fakeApi} repository={repository} />)
   await user.click(screen.getByRole('button', { name: '32 个文件' }))
   expect(screen.getByRole('dialog', { name: '本次同步文件' })).toBeVisible()
-  expect(screen.getByRole('button', { name: '创建 MR 并提交审核' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '同步到 GitLab' })).toBeDisabled()
   await user.click(screen.getByRole('checkbox', { name: '选择审核人 胡庆磊' }))
-  expect(screen.getByRole('button', { name: '创建 MR 并提交审核' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: '同步到 GitLab' })).toBeEnabled()
 })
 ```
 
-Add tests for package selection, package file details, charge diff details, ignored-file details, reviewer search, and the final confirmation dialog.
+Add tests for package selection, package file details, charge diff details, ignored-file details, reviewer search, the required GitLab sync comment dialog, and the required Ironforge publish comment dialog.
 
 - [ ] **Step 2: Run page tests**
 
@@ -401,11 +411,11 @@ Expected: FAIL because the page does not exist.
 
 - [ ] **Step 3: Implement focused components**
 
-Use button elements for clickable status chips, checkboxes for packages and reviewers, Lucide icons for refresh/search/close/file/status actions, and one accessible right-side drawer for all detail views. Keep file selection read-only.
+Use button elements for clickable status chips, checkboxes for packages and reviewers, Lucide icons for refresh/search/close/file/status actions, and one accessible right-side drawer for all detail views. Keep file selection read-only. Render “同步到 GitLab” in step 1 and “发布到 Ironforge” in step 2; never combine them into one action.
 
 - [ ] **Step 4: Implement the page state machine**
 
-Use explicit states `loading | ready | previewing | awaiting_confirmation | executing | waiting_review | failed`. Derive button availability from `validateDeliveryDraft`, never from CSS alone. Show the completed step, failure point, and retry scope after partial failures.
+Use explicit states `loading | ready | gitlab_confirming | gitlab_syncing | waiting_review | ironforge_confirming | ironforge_publishing | complete | failed`. Derive button availability from domain validation, never from CSS alone. Both dialogs reject blank comments. Show the completed step, failure point, and retry scope after partial failures.
 
 - [ ] **Step 5: Simplify routes and navigation**
 
@@ -598,7 +608,7 @@ In packaged mode, construct the path from `process.resourcesPath` and verify bot
 
 - [ ] **Step 4: Add failing Electron IPC security tests**
 
-Verify that the preload exposes only scan, preview, execute, reviewer, and MR-status methods; `nodeIntegration` is false; `contextIsolation` is true; arbitrary command execution and filesystem paths outside the selected repository are not exposed.
+Verify that the preload exposes only scan, preview, GitLab sync, reviewer, MR-status, and Ironforge publish methods; `nodeIntegration` is false; `contextIsolation` is true; arbitrary command execution and filesystem paths outside the selected repository are not exposed.
 
 - [ ] **Step 5: Implement Electron main, preload, and IPC adapters**
 
