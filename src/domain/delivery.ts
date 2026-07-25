@@ -55,6 +55,17 @@ export interface DeliveryExecutionResult {
   mergeRequestUrl: string
 }
 
+export interface IronforgePublishDraft {
+  mergeRequestIid: number
+  packageIds: string[]
+  comment: string
+}
+
+export interface IronforgePublishResult {
+  jobId: string
+  packageCount: number
+}
+
 export function validateDeliveryDraft(draft: DeliveryDraft) {
   const errors: string[] = []
 

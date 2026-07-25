@@ -55,4 +55,34 @@ describe('deliveryApi', () => {
 
     await expect(deliveryApi.preview(draft)).rejects.toThrow('请先选择审核人')
   })
+
+  it('sends a separate Ironforge publication comment', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ jobId: 'job-1', packageCount: 2 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetcher)
+
+    await deliveryApi.publish({
+      mergeRequestIid: 3,
+      packageIds: ['package-a', 'package-b'],
+      comment: '发布采购交付包',
+    })
+
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/ironforge/publish',
+      expect.objectContaining({
+        body: JSON.stringify({
+          draft: {
+            mergeRequestIid: 3,
+            packageIds: ['package-a', 'package-b'],
+            comment: '发布采购交付包',
+          },
+          confirmed: true,
+        }),
+      }),
+    )
+  })
 })

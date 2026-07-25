@@ -3,12 +3,15 @@ import type {
   DeliveryExecutionResult,
   DeliveryPreview,
   GitLabReviewer,
+  IronforgePublishDraft,
+  IronforgePublishResult,
   OutputPackageCandidate,
 } from '../domain/delivery'
 
 export interface DeliveryOverview {
   packages: OutputPackageCandidate[]
   reviewers: GitLabReviewer[]
+  reviewerError?: string
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -32,6 +35,7 @@ export interface DeliveryApi {
   overview: () => Promise<DeliveryOverview>
   preview: (draft: DeliveryDraft) => Promise<DeliveryPreview>
   execute: (draft: DeliveryDraft) => Promise<DeliveryExecutionResult>
+  publish: (draft: IronforgePublishDraft) => Promise<IronforgePublishResult>
 }
 
 export const deliveryApi: DeliveryApi = {
@@ -43,6 +47,11 @@ export const deliveryApi: DeliveryApi = {
     }),
   execute: (draft) =>
     requestJson('/api/delivery/execute', {
+      method: 'POST',
+      body: JSON.stringify({ draft, confirmed: true }),
+    }),
+  publish: (draft) =>
+    requestJson('/api/ironforge/publish', {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
     }),

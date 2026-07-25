@@ -6,6 +6,9 @@ import {
   previewRepositoryCommit,
   type RepositoryCommitRequest,
 } from './repositoryCommit.js'
+import { createGitLabClient } from './gitlabClient.js'
+import { loadGitLabConfig } from './gitlabConfig.js'
+import { scanOutputPackages } from './outputPackages.js'
 import { scanRepository } from './repositoryScanner.js'
 
 type NextFunction = (error?: unknown) => void
@@ -33,6 +36,18 @@ function sendJson(response: ServerResponse, statusCode: number, value: unknown) 
   response.end(JSON.stringify(value))
 }
 
+export function gitLabProjectPath(remote: string) {
+  const scpPath = remote.match(/^[^@]+@[^:]+:(.+?)(?:\.git)?$/)?.[1]
+  if (scpPath) return scpPath
+
+  try {
+    const url = new URL(remote)
+    return url.pathname.replace(/^\/|\/$/g, '').replace(/\.git$/, '')
+  } catch {
+    return remote.replace(/\.git$/, '')
+  }
+}
+
 async function readJson(request: IncomingMessage): Promise<RepositoryCommitRequest> {
   let body = ''
   for await (const chunk of request) {
@@ -55,15 +70,22 @@ export function createRepositoryMiddleware({
   ) => {
     const path = request.url?.split('?')[0]
     const isRepositoryRequest = path === '/api/repository'
+    const isDeliveryRequest = path === '/api/delivery'
     const isPreviewRequest = path === '/api/commit/preview'
     const isCommitRequest = path === '/api/commit'
 
-    if (!isRepositoryRequest && !isPreviewRequest && !isCommitRequest) {
+    if (
+      !isRepositoryRequest &&
+      !isDeliveryRequest &&
+      !isPreviewRequest &&
+      !isCommitRequest
+    ) {
       next()
       return
     }
 
-    const expectedMethod = isRepositoryRequest ? 'GET' : 'POST'
+    const expectedMethod =
+      isRepositoryRequest || isDeliveryRequest ? 'GET' : 'POST'
     if (request.method !== expectedMethod) {
       sendJson(response, 405, { error: 'Method not allowed' })
       return
@@ -87,6 +109,34 @@ export function createRepositoryMiddleware({
         sendJson(response, 400, {
           error: error instanceof Error ? error.message : 'Commit operation failed',
         })
+      }
+      return
+    }
+
+    if (isDeliveryRequest) {
+      try {
+        const [repository, packages] = await Promise.all([
+          scan(repositoryPath),
+          scanOutputPackages(repositoryPath),
+        ])
+        try {
+          const gitLab = createGitLabClient(loadGitLabConfig())
+          const reviewers = await gitLab.listReviewers(
+            gitLabProjectPath(repository.gitlabPath),
+          )
+          sendJson(response, 200, { packages, reviewers })
+        } catch (error) {
+          sendJson(response, 200, {
+            packages,
+            reviewers: [],
+            reviewerError:
+              error instanceof Error
+                ? error.message
+                : '无法读取 GitLab 审核人',
+          })
+        }
+      } catch {
+        sendJson(response, 500, { error: '无法读取交付概览' })
       }
       return
     }

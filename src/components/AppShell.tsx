@@ -1,8 +1,5 @@
 import {
-  Boxes,
-  GitBranch,
   History,
-  LayoutDashboard,
   Menu,
   PackageCheck,
   PanelLeftClose,
@@ -15,10 +12,7 @@ import { useRepository } from '../data/repositoryContext'
 import { RepositorySwitcher } from './RepositorySwitcher'
 
 const navigation = [
-  { to: '/overview', label: '项目概览', icon: LayoutDashboard },
-  { to: '/workspace', label: '工作区', icon: Boxes },
-  { to: '/stages', label: '版本阶段', icon: GitBranch },
-  { to: '/release', label: '发布审核', icon: PackageCheck },
+  { to: '/workspace', label: '交付', icon: PackageCheck },
   { to: '/history', label: '历史记录', icon: History },
 ]
 
@@ -48,7 +42,11 @@ export function AppShell() {
             title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
             type="button"
           >
-            {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            {sidebarCollapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
           </button>
           <button
             aria-label="关闭导航"
@@ -71,7 +69,12 @@ export function AppShell() {
 
         <nav aria-label="主要导航" className="primary-nav">
           {navigation.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} onClick={() => setMobileNavOpen(false)} title={label} to={to}>
+            <NavLink
+              key={to}
+              onClick={() => setMobileNavOpen(false)}
+              title={label}
+              to={to}
+            >
               <Icon aria-hidden="true" size={19} />
               <span>{label}</span>
             </NavLink>
@@ -83,8 +86,8 @@ export function AppShell() {
             蒋
           </div>
           <div>
-            <strong>蒋枨</strong>
-            <span>工程师 · GitLab 已连接</span>
+            <strong>蒋成</strong>
+            <span>工程师 · GitLab</span>
           </div>
         </div>
       </aside>
@@ -100,15 +103,15 @@ export function AppShell() {
 
       <header className="mobile-header">
         <button
-          className="icon-button"
           aria-label="打开导航"
+          className="icon-button"
           onClick={() => setMobileNavOpen(true)}
           type="button"
         >
           <Menu size={20} />
         </button>
         <strong>Ironforge</strong>
-        <span className="mobile-header__stage">dev/T2</span>
+        <span className="mobile-header__stage">{repository.branch}</span>
       </header>
 
       <main className="main-content">

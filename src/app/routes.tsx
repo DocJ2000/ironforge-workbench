@@ -1,11 +1,11 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { useRepository } from '../data/repositoryContext'
+import { DeliveryPage } from '../features/delivery/DeliveryPage'
 import { HistoryPage } from '../features/history/HistoryPage'
 import { OverviewPage } from '../features/overview/OverviewPage'
 import { ReleasePage } from '../features/release/ReleasePage'
 import { StagesPage } from '../features/stages/StagesPage'
-import { WorkspacePage } from '../features/workspace/WorkspacePage'
 
 export function AppRoutes() {
   const { repository, loading, refresh } = useRepository()
@@ -13,7 +13,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<Navigate replace to="/overview" />} />
+        <Route index element={<Navigate replace to="/workspace" />} />
         <Route
           path="/overview"
           element={
@@ -27,8 +27,8 @@ export function AppRoutes() {
         <Route
           path="/workspace"
           element={
-            <WorkspacePage
-              onRepositoryRefresh={refresh}
+            <DeliveryPage
+              onRefresh={refresh}
               repository={repository}
             />
           }
