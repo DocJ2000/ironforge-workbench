@@ -150,4 +150,62 @@ describe('createRepositoryMiddleware', () => {
     expect(result.response.statusCode).toBe(400)
     expect(JSON.parse(result.body())).toEqual({ error: 'Invalid JSON request' })
   })
+
+  it('keeps GitLab sync and MR creation as separate operations', async () => {
+    const sync = vi.fn().mockResolvedValue({
+      branch: 'dev/T2',
+      commit: 'abc1234',
+    })
+    const createMergeRequest = vi.fn().mockResolvedValue({
+      iid: 7,
+      webUrl: 'https://gitlfs.lab.tp/project/-/merge_requests/7',
+    })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn(),
+      sync,
+      createMergeRequest,
+    })
+    const syncBody = {
+      confirmed: true,
+      draft: {
+        message: '同步 BOM 交付包',
+        changePaths: ['output/part.pdf'],
+        confirmedDeletions: [],
+        selectedPackageIds: ['output/mechanical'],
+        branch: 'dev/T2',
+      },
+    }
+    const mrBody = {
+      confirmed: true,
+      draft: {
+        sourceBranch: 'dev/T2',
+        targetBranch: 'main',
+        title: '同步 BOM 交付包',
+        description: '同步注释：同步 BOM 交付包',
+        reviewerIds: [42],
+      },
+    }
+    const syncResponse = responseDouble()
+    const mrResponse = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/gitlab/sync', syncBody),
+      syncResponse.response,
+      vi.fn(),
+    )
+    await middleware(
+      jsonRequest('/api/gitlab/merge-requests', mrBody),
+      mrResponse.response,
+      vi.fn(),
+    )
+
+    expect(sync).toHaveBeenCalledWith(syncBody)
+    expect(createMergeRequest).toHaveBeenCalledWith(mrBody)
+    expect(JSON.parse(syncResponse.body())).toEqual({
+      branch: 'dev/T2',
+      commit: 'abc1234',
+    })
+    expect(JSON.parse(mrResponse.body())).toMatchObject({ iid: 7 })
+  })
 })

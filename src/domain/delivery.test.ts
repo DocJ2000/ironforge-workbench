@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { validateDeliveryDraft } from './delivery'
+import {
+  validateDeliveryDraft,
+  validateGitLabSyncDraft,
+  validateMergeRequestDraft,
+} from './delivery'
 
 describe('validateDeliveryDraft', () => {
   it('requires changes, a commit message, an MR title, and a reviewer', () => {
@@ -47,5 +51,43 @@ describe('validateDeliveryDraft', () => {
         mrTitle: '更新结构设计',
       }),
     ).toContain('请选择目标分支')
+  })
+})
+
+describe('split GitLab actions', () => {
+  it('allows synchronization without a reviewer', () => {
+    expect(
+      validateGitLabSyncDraft({
+        message: '同步机械图纸',
+        changePaths: ['output/mechanical/五金件/导轴.pdf'],
+        confirmedDeletions: [],
+        selectedPackageIds: ['output/mechanical/五金件'],
+        branch: 'dev/T2',
+      }),
+    ).toEqual([])
+  })
+
+  it('requires a branch before synchronization', () => {
+    expect(
+      validateGitLabSyncDraft({
+        message: '同步机械图纸',
+        changePaths: ['charge.json'],
+        confirmedDeletions: [],
+        selectedPackageIds: [],
+        branch: '',
+      }),
+    ).toContain('请选择同步分支')
+  })
+
+  it('requires a reviewer only when creating an MR', () => {
+    expect(
+      validateMergeRequestDraft({
+        sourceBranch: 'dev/T2',
+        targetBranch: 'main',
+        title: '提交 BOM 交付包',
+        description: '',
+        reviewerIds: [],
+      }),
+    ).toEqual(['至少选择一位审核人'])
   })
 })

@@ -39,6 +39,32 @@ export interface DeliveryDraft {
   mrTitle: string
 }
 
+export interface GitLabSyncDraft {
+  message: string
+  changePaths: string[]
+  confirmedDeletions: string[]
+  selectedPackageIds: string[]
+  branch: string
+}
+
+export interface GitLabSyncResult {
+  commit: string
+  branch: string
+}
+
+export interface MergeRequestDraft {
+  sourceBranch: string
+  targetBranch: string
+  title: string
+  description: string
+  reviewerIds: number[]
+}
+
+export interface MergeRequestResult {
+  iid: number
+  webUrl: string
+}
+
 export interface DeliveryPreview {
   branch: string
   draft: DeliveryDraft
@@ -75,5 +101,22 @@ export function validateDeliveryDraft(draft: DeliveryDraft) {
   if (!draft.reviewerIds.length) errors.push('至少选择一位审核人')
   if (!draft.targetBranch.trim()) errors.push('请选择目标分支')
 
+  return errors
+}
+
+export function validateGitLabSyncDraft(draft: GitLabSyncDraft) {
+  const errors: string[] = []
+  if (!draft.changePaths.length) errors.push('没有需要同步的文件')
+  if (!draft.message.trim()) errors.push('请填写同步注释')
+  if (!draft.branch.trim()) errors.push('请选择同步分支')
+  return errors
+}
+
+export function validateMergeRequestDraft(draft: MergeRequestDraft) {
+  const errors: string[] = []
+  if (!draft.sourceBranch.trim()) errors.push('请选择来源分支')
+  if (!draft.targetBranch.trim()) errors.push('请选择目标分支')
+  if (!draft.title.trim()) errors.push('请填写 MR 标题')
+  if (!draft.reviewerIds.length) errors.push('至少选择一位审核人')
   return errors
 }

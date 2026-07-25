@@ -1,6 +1,22 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 import type { RepositorySnapshot } from '../src/domain/repository.js'
+import type {
+  GitLabSyncDraft,
+  MergeRequestDraft,
+} from '../src/domain/delivery.js'
+import {
+  previewCharge,
+  writeChargeAtomically,
+} from './chargeGenerator.js'
+import {
+  createDeliveryMergeRequest,
+  syncGitLab,
+} from './deliveryWorkflow.js'
+import {
+  checkoutRepositoryBranch,
+  pushRepositoryBranch,
+} from './gitBranchOperations.js'
 import {
   commitRepositoryChanges,
   previewRepositoryCommit,
@@ -21,12 +37,20 @@ type CommitExecutor = (
   repositoryPath: string,
   request: RepositoryCommitRequest,
 ) => Promise<unknown>
+type GitLabSyncExecutor = (
+  request: { draft: GitLabSyncDraft; confirmed: boolean },
+) => Promise<unknown>
+type MergeRequestExecutor = (
+  request: { draft: MergeRequestDraft; confirmed: boolean },
+) => Promise<unknown>
 
 interface RepositoryMiddlewareOptions {
   repositoryPath: string
   scan?: RepositoryScanner
   preview?: CommitPreviewer
   commit?: CommitExecutor
+  sync?: GitLabSyncExecutor
+  createMergeRequest?: MergeRequestExecutor
 }
 
 function sendJson(response: ServerResponse, statusCode: number, value: unknown) {
@@ -48,13 +72,13 @@ export function gitLabProjectPath(remote: string) {
   }
 }
 
-async function readJson(request: IncomingMessage): Promise<RepositoryCommitRequest> {
+async function readJson<T>(request: IncomingMessage): Promise<T> {
   let body = ''
   for await (const chunk of request) {
     body += chunk.toString()
     if (body.length > 64 * 1024) throw new Error('Request body too large')
   }
-  return JSON.parse(body) as RepositoryCommitRequest
+  return JSON.parse(body) as T
 }
 
 export function createRepositoryMiddleware({
@@ -62,7 +86,36 @@ export function createRepositoryMiddleware({
   scan = scanRepository,
   preview = previewRepositoryCommit,
   commit = commitRepositoryChanges,
+  sync,
+  createMergeRequest,
 }: RepositoryMiddlewareOptions) {
+  const workflowDependencies = () => {
+    const gitLab = createGitLabClient(loadGitLabConfig())
+    return {
+      scanRepository,
+      scanPackages: scanOutputPackages,
+      previewCharge,
+      writeCharge: writeChargeAtomically,
+      previewCommit: previewRepositoryCommit,
+      commit: commitRepositoryChanges,
+      checkout: checkoutRepositoryBranch,
+      push: pushRepositoryBranch,
+      createMergeRequest: gitLab.createMergeRequest.bind(gitLab),
+    }
+  }
+  const executeSync =
+    sync ??
+    ((operation) =>
+      syncGitLab(repositoryPath, operation, workflowDependencies()))
+  const executeMergeRequest =
+    createMergeRequest ??
+    ((operation) =>
+      createDeliveryMergeRequest(
+        repositoryPath,
+        operation,
+        workflowDependencies(),
+      ))
+
   return async (
     request: IncomingMessage,
     response: ServerResponse,
@@ -73,12 +126,16 @@ export function createRepositoryMiddleware({
     const isDeliveryRequest = path === '/api/delivery'
     const isPreviewRequest = path === '/api/commit/preview'
     const isCommitRequest = path === '/api/commit'
+    const isSyncRequest = path === '/api/gitlab/sync'
+    const isMergeRequest = path === '/api/gitlab/merge-requests'
 
     if (
       !isRepositoryRequest &&
       !isDeliveryRequest &&
       !isPreviewRequest &&
-      !isCommitRequest
+      !isCommitRequest &&
+      !isSyncRequest &&
+      !isMergeRequest
     ) {
       next()
       return
@@ -91,10 +148,39 @@ export function createRepositoryMiddleware({
       return
     }
 
+    if (isSyncRequest || isMergeRequest) {
+      let body:
+        | { draft: GitLabSyncDraft; confirmed: boolean }
+        | { draft: MergeRequestDraft; confirmed: boolean }
+      try {
+        body = await readJson(request)
+      } catch {
+        sendJson(response, 400, { error: 'Invalid JSON request' })
+        return
+      }
+
+      try {
+        const result = isSyncRequest
+          ? await executeSync(
+              body as { draft: GitLabSyncDraft; confirmed: boolean },
+            )
+          : await executeMergeRequest(
+              body as { draft: MergeRequestDraft; confirmed: boolean },
+            )
+        sendJson(response, 200, result)
+      } catch (error) {
+        sendJson(response, 400, {
+          error:
+            error instanceof Error ? error.message : 'GitLab operation failed',
+        })
+      }
+      return
+    }
+
     if (isPreviewRequest || isCommitRequest) {
       let body: RepositoryCommitRequest
       try {
-        body = await readJson(request)
+        body = await readJson<RepositoryCommitRequest>(request)
       } catch {
         sendJson(response, 400, { error: 'Invalid JSON request' })
         return

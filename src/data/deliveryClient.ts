@@ -2,9 +2,13 @@ import type {
   DeliveryDraft,
   DeliveryExecutionResult,
   DeliveryPreview,
+  GitLabSyncDraft,
+  GitLabSyncResult,
   GitLabReviewer,
   IronforgePublishDraft,
   IronforgePublishResult,
+  MergeRequestDraft,
+  MergeRequestResult,
   OutputPackageCandidate,
 } from '../domain/delivery'
 
@@ -35,6 +39,10 @@ export interface DeliveryApi {
   overview: () => Promise<DeliveryOverview>
   preview: (draft: DeliveryDraft) => Promise<DeliveryPreview>
   execute: (draft: DeliveryDraft) => Promise<DeliveryExecutionResult>
+  syncGitLab: (draft: GitLabSyncDraft) => Promise<GitLabSyncResult>
+  createMergeRequest: (
+    draft: MergeRequestDraft,
+  ) => Promise<MergeRequestResult>
   publish: (draft: IronforgePublishDraft) => Promise<IronforgePublishResult>
 }
 
@@ -47,6 +55,16 @@ export const deliveryApi: DeliveryApi = {
     }),
   execute: (draft) =>
     requestJson('/api/delivery/execute', {
+      method: 'POST',
+      body: JSON.stringify({ draft, confirmed: true }),
+    }),
+  syncGitLab: (draft) =>
+    requestJson('/api/gitlab/sync', {
+      method: 'POST',
+      body: JSON.stringify({ draft, confirmed: true }),
+    }),
+  createMergeRequest: (draft) =>
+    requestJson('/api/gitlab/merge-requests', {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
     }),

@@ -13,7 +13,6 @@ import {
   type DeliveryApi,
 } from '../../data/deliveryClient'
 import type {
-  DeliveryDraft,
   GitLabReviewer,
   OutputPackageCandidate,
 } from '../../domain/delivery'
@@ -47,6 +46,7 @@ export function DeliveryPage({
   const [selectedPackageIds, setSelectedPackageIds] = useState<Set<string>>(
     new Set(),
   )
+  const [selectedBranch, setSelectedBranch] = useState(repository.branch)
   const [selectedReviewerIds, setSelectedReviewerIds] = useState<Set<number>>(
     new Set(),
   )
@@ -71,6 +71,10 @@ export function DeliveryPage({
     'none' | 'waiting' | 'approved'
   >(initialMergeRequest?.status ?? 'none')
   const [publishResult, setPublishResult] = useState<string | null>(null)
+  const [syncResult, setSyncResult] = useState<{
+    commit: string
+    branch: string
+  } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -103,8 +107,7 @@ export function DeliveryPage({
     () => repository.changes.map((change) => change.path),
     [repository.changes],
   )
-  const canSync =
-    changePaths.length > 0 && selectedReviewerIds.size > 0 && !busy
+  const canSync = changePaths.length > 0 && Boolean(selectedBranch) && !busy
 
   function togglePackage(id: string) {
     setSelectedPackageIds((current) => {
@@ -124,32 +127,43 @@ export function DeliveryPage({
     })
   }
 
-  function draft(): DeliveryDraft {
-    return {
-      message: syncComment.trim(),
-      changePaths,
-      confirmedDeletions: [],
-      selectedPackageIds: [...selectedPackageIds],
-      reviewerIds: [...selectedReviewerIds],
-      targetBranch: 'main',
-      mrTitle: syncComment.trim(),
-    }
-  }
-
   async function handleSync() {
     setBusy(true)
     setError(null)
     try {
-      const execution = await api.execute(draft())
-      setResult({
-        iid: execution.mergeRequestIid,
-        url: execution.mergeRequestUrl,
+      const execution = await api.syncGitLab({
+        message: syncComment.trim(),
+        changePaths,
+        confirmedDeletions: [],
+        selectedPackageIds: [...selectedPackageIds],
+        branch: selectedBranch,
       })
-      setMergeRequestStatus('waiting')
+      setSyncResult(execution)
       setShowSyncDialog(false)
       await onRefresh?.()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'GitLab 同步失败')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleCreateMergeRequest() {
+    if (!syncResult || !selectedReviewerIds.size) return
+    setBusy(true)
+    setError(null)
+    try {
+      const mergeRequest = await api.createMergeRequest({
+        sourceBranch: syncResult.branch,
+        targetBranch: 'main',
+        title: syncComment.trim(),
+        description: `同步注释：${syncComment.trim()}`,
+        reviewerIds: [...selectedReviewerIds],
+      })
+      setResult({ iid: mergeRequest.iid, url: mergeRequest.webUrl })
+      setMergeRequestStatus('waiting')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'MR 创建失败')
     } finally {
       setBusy(false)
     }
@@ -183,8 +197,8 @@ export function DeliveryPage({
           <span className="delivery-kicker">Engineer delivery</span>
           <h1>准备本次交付</h1>
           <p>
-            系统已扫描本地工程。核对文件、选择交付包和审核人，然后同步到
-            GitLab。
+            系统已扫描本地工程。核对文件、选择交付包和同步分支，先同步到
+            GitLab；同步成功后再选择 MR 审核人。
           </p>
         </div>
         <div className="delivery-header__actions">
@@ -228,7 +242,7 @@ export function DeliveryPage({
           <header>
             <div>
               <h2>同步到 GitLab</h2>
-              <p>同步全部有效工程改动，并创建管理员审核的 MR。</p>
+              <p>将全部有效工程改动 Commit 并 Push 到所选分支。</p>
             </div>
             <span className="status-pill status-pill--ready">已扫描</span>
           </header>
@@ -265,8 +279,45 @@ export function DeliveryPage({
           <div className="delivery-subsection">
             <div className="delivery-subsection__heading">
               <div>
+                <h3>同步分支</h3>
+                <p>选择本次 Commit 和 Push 所在的分支。</p>
+              </div>
+            </div>
+            <label className="branch-select">
+              <span>同步分支</span>
+              <select
+                aria-label="同步分支"
+                onChange={(event) => setSelectedBranch(event.target.value)}
+                value={selectedBranch}
+              >
+                {repository.branches.map((branch) => (
+                  <option key={branch.name} value={branch.name}>
+                    {branch.name}
+                    {branch.current ? '（当前）' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="delivery-action-row">
+            <span>点击后填写同步注释并进行最终确认</span>
+            <button
+              className="button button--primary"
+              disabled={!canSync}
+              onClick={() => setShowSyncDialog(true)}
+              type="button"
+            >
+              <Send aria-hidden="true" size={17} />
+              同步到 GitLab
+            </button>
+          </div>
+
+          <div className="delivery-subsection">
+            <div className="delivery-subsection__heading">
+              <div>
                 <h3>MR 审核人</h3>
-                <p>至少选择一位，选择结果会写入 GitLab Reviewer。</p>
+                <p>GitLab 同步完成后，选择审核人并单独创建 MR。</p>
               </div>
               <span>{selectedReviewerIds.size} 位已选</span>
             </div>
@@ -278,23 +329,23 @@ export function DeliveryPage({
             {reviewerError ? (
               <p className="reviewer-error">{reviewerError}</p>
             ) : null}
-          </div>
-
-          <div className="delivery-action-row">
-            <span>
-              {selectedReviewerIds.size
-                ? '点击后填写同步注释并进行最终确认'
-                : '请先选择审核人'}
-            </span>
-            <button
-              className="button button--primary"
-              disabled={!canSync}
-              onClick={() => setShowSyncDialog(true)}
-              type="button"
-            >
-              <Send aria-hidden="true" size={17} />
-              同步到 GitLab
-            </button>
+            <div className="mr-action">
+              <span>
+                {syncResult
+                  ? `已同步 ${syncResult.commit} 到 ${syncResult.branch}`
+                  : '请先同步到 GitLab'}
+              </span>
+              <button
+                className="button button--secondary"
+                disabled={
+                  !syncResult || selectedReviewerIds.size === 0 || busy
+                }
+                onClick={() => void handleCreateMergeRequest()}
+                type="button"
+              >
+                创建 MR
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -386,14 +437,13 @@ export function DeliveryPage({
       ) : null}
       {showSyncDialog ? (
         <GitLabSyncDialog
-          branch={repository.branch}
+          branch={selectedBranch}
           busy={busy}
           comment={syncComment}
           fileCount={repository.changes.length}
           onCancel={() => setShowSyncDialog(false)}
           onCommentChange={setSyncComment}
           onConfirm={() => void handleSync()}
-          reviewerCount={selectedReviewerIds.size}
         />
       ) : null}
       {showPublishDialog ? (

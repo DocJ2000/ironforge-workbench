@@ -5,7 +5,6 @@ interface GitLabSyncDialogProps {
   busy: boolean
   comment: string
   fileCount: number
-  reviewerCount: number
   onCancel: () => void
   onCommentChange: (value: string) => void
   onConfirm: () => void
@@ -16,7 +15,6 @@ export function GitLabSyncDialog({
   busy,
   comment,
   fileCount,
-  reviewerCount,
   onCancel,
   onCommentChange,
   onConfirm,
@@ -56,10 +54,6 @@ export function GitLabSyncDialog({
             <dt>文件</dt>
             <dd>{fileCount} 个</dd>
           </div>
-          <div>
-            <dt>审核人</dt>
-            <dd>{reviewerCount} 位</dd>
-          </div>
         </dl>
         <label className="delivery-field">
           <span>同步注释</span>
@@ -71,7 +65,7 @@ export function GitLabSyncDialog({
             rows={4}
             value={comment}
           />
-          <small>这段内容会成为 Commit 说明，并写入 MR 描述。</small>
+          <small>这段内容会成为本次 Git Commit 的说明。</small>
         </label>
         <footer>
           <button
@@ -88,7 +82,7 @@ export function GitLabSyncDialog({
             onClick={onConfirm}
             type="button"
           >
-            {busy ? '正在同步' : '确认同步并创建 MR'}
+            {busy ? '正在同步' : '确认同步到 GitLab'}
           </button>
         </footer>
       </section>

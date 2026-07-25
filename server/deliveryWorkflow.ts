@@ -1,19 +1,26 @@
 import type {
   DeliveryDraft,
-  DeliveryExecutionResult,
   DeliveryPreview,
+  GitLabSyncDraft,
+  GitLabSyncResult,
+  MergeRequestDraft,
+  MergeRequestResult,
   OutputPackageCandidate,
 } from '../src/domain/delivery.js'
-import { validateDeliveryDraft } from '../src/domain/delivery.js'
-import type {
-  RepositoryCommitPreview,
-  RepositoryCommitRequest,
-} from './repositoryCommit.js'
+import {
+  validateDeliveryDraft,
+  validateGitLabSyncDraft,
+  validateMergeRequestDraft,
+} from '../src/domain/delivery.js'
 import type { ChargePreview } from './chargeGenerator.js'
 import type {
   CreatedMergeRequest,
   CreateMergeRequestInput,
 } from './gitlabClient.js'
+import type {
+  RepositoryCommitPreview,
+  RepositoryCommitRequest,
+} from './repositoryCommit.js'
 
 interface RepositoryIdentity {
   branch: string
@@ -28,9 +35,7 @@ interface CommitResult {
 
 export interface DeliveryWorkflowDependencies {
   scanRepository: (repositoryPath: string) => Promise<RepositoryIdentity>
-  scanPackages: (
-    repositoryPath: string,
-  ) => Promise<OutputPackageCandidate[]>
+  scanPackages: (repositoryPath: string) => Promise<OutputPackageCandidate[]>
   previewCharge: (
     repositoryPath: string,
     candidates: OutputPackageCandidate[],
@@ -48,19 +53,20 @@ export interface DeliveryWorkflowDependencies {
     repositoryPath: string,
     request: RepositoryCommitRequest,
   ) => Promise<CommitResult>
+  checkout: (repositoryPath: string, branch: string) => Promise<void>
   push: (repositoryPath: string, branch: string) => Promise<void>
   createMergeRequest: (
     input: CreateMergeRequestInput,
   ) => Promise<CreatedMergeRequest>
 }
 
-export interface ExecuteDeliveryRequest {
-  draft: DeliveryDraft
+export interface ConfirmedRequest<T> {
+  draft: T
   confirmed: boolean
 }
 
 function commitRequest(
-  draft: DeliveryDraft,
+  draft: GitLabSyncDraft,
   chargeChanged: boolean,
 ): RepositoryCommitRequest {
   return {
@@ -75,9 +81,12 @@ function commitRequest(
   }
 }
 
-function validate(draft: DeliveryDraft) {
-  const errors = validateDeliveryDraft(draft)
+function assertValid(errors: string[]) {
   if (errors.length) throw new Error(errors.join('；'))
+}
+
+function assertConfirmed(confirmed: boolean, operation: string) {
+  if (!confirmed) throw new Error(`请先确认${operation}`)
 }
 
 export async function previewDelivery(
@@ -85,7 +94,7 @@ export async function previewDelivery(
   draft: DeliveryDraft,
   dependencies: DeliveryWorkflowDependencies,
 ): Promise<DeliveryPreview> {
-  validate(draft)
+  assertValid(validateDeliveryDraft(draft))
   const [repository, packages] = await Promise.all([
     dependencies.scanRepository(repositoryPath),
     dependencies.scanPackages(repositoryPath),
@@ -109,21 +118,17 @@ export async function previewDelivery(
   }
 }
 
-export async function executeDelivery(
+export async function syncGitLab(
   repositoryPath: string,
-  request: ExecuteDeliveryRequest,
+  request: ConfirmedRequest<GitLabSyncDraft>,
   dependencies: DeliveryWorkflowDependencies,
-): Promise<DeliveryExecutionResult> {
-  if (!request.confirmed) {
-    throw new Error('请先确认 GitLab 同步操作')
-  }
-
+): Promise<GitLabSyncResult> {
+  assertConfirmed(request.confirmed, '同步到 GitLab')
   const { draft } = request
-  validate(draft)
-  const [repository, packages] = await Promise.all([
-    dependencies.scanRepository(repositoryPath),
-    dependencies.scanPackages(repositoryPath),
-  ])
+  assertValid(validateGitLabSyncDraft(draft))
+
+  await dependencies.checkout(repositoryPath, draft.branch)
+  const packages = await dependencies.scanPackages(repositoryPath)
   const charge = await dependencies.previewCharge(
     repositoryPath,
     packages,
@@ -134,20 +139,35 @@ export async function executeDelivery(
   const commitInput = commitRequest(draft, charge.changed)
   await dependencies.previewCommit(repositoryPath, commitInput)
   const commit = await dependencies.commit(repositoryPath, commitInput)
-  await dependencies.push(repositoryPath, repository.branch)
+  await dependencies.push(repositoryPath, draft.branch)
+
+  return {
+    commit: commit.commit,
+    branch: draft.branch,
+  }
+}
+
+export async function createDeliveryMergeRequest(
+  repositoryPath: string,
+  request: ConfirmedRequest<MergeRequestDraft>,
+  dependencies: DeliveryWorkflowDependencies,
+): Promise<MergeRequestResult> {
+  assertConfirmed(request.confirmed, '创建 MR')
+  const { draft } = request
+  assertValid(validateMergeRequestDraft(draft))
+
+  const repository = await dependencies.scanRepository(repositoryPath)
   const mergeRequest = await dependencies.createMergeRequest({
     projectPath: repository.gitlabPath,
-    sourceBranch: repository.branch,
+    sourceBranch: draft.sourceBranch,
     targetBranch: draft.targetBranch,
-    title: draft.mrTitle,
-    description: `同步注释：${draft.message}`,
+    title: draft.title,
+    description: draft.description,
     reviewerIds: draft.reviewerIds,
   })
 
   return {
-    commit: commit.commit,
-    branch: repository.branch,
-    mergeRequestIid: mergeRequest.iid,
-    mergeRequestUrl: mergeRequest.webUrl,
+    iid: mergeRequest.iid,
+    webUrl: mergeRequest.webUrl,
   }
 }

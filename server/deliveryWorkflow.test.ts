@@ -1,19 +1,37 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { DeliveryDraft } from '../src/domain/delivery'
+import type {
+  DeliveryDraft,
+  GitLabSyncDraft,
+  MergeRequestDraft,
+} from '../src/domain/delivery'
 import {
-  executeDelivery,
+  createDeliveryMergeRequest,
   previewDelivery,
+  syncGitLab,
   type DeliveryWorkflowDependencies,
 } from './deliveryWorkflow'
 
-const draft: DeliveryDraft = {
-  message: '提交所有的BOM交付包',
+const syncDraft: GitLabSyncDraft = {
+  message: '提交所有的 BOM 交付包',
   changePaths: ['output/mechanical/五金件/导轴.pdf'],
   confirmedDeletions: [],
   selectedPackageIds: ['output/mechanical/五金件'],
-  reviewerIds: [42],
+  branch: 'dev/T2',
+}
+
+const mergeRequestDraft: MergeRequestDraft = {
+  sourceBranch: 'dev/T2',
   targetBranch: 'main',
-  mrTitle: '提交所有的BOM交付包',
+  title: '提交所有的 BOM 交付包',
+  description: '同步注释：提交所有的 BOM 交付包',
+  reviewerIds: [42],
+}
+
+const legacyDraft: DeliveryDraft = {
+  ...syncDraft,
+  reviewerIds: mergeRequestDraft.reviewerIds,
+  targetBranch: mergeRequestDraft.targetBranch,
+  mrTitle: mergeRequestDraft.title,
 }
 
 function dependencies(order: string[] = []): DeliveryWorkflowDependencies {
@@ -44,13 +62,16 @@ function dependencies(order: string[] = []): DeliveryWorkflowDependencies {
     }),
     previewCommit: vi.fn().mockResolvedValue({
       branch: 'dev/T2',
-      message: draft.message,
-      paths: [...draft.changePaths, 'charge.json'],
+      message: syncDraft.message,
+      paths: [...syncDraft.changePaths, 'charge.json'],
       deletedCadPaths: [],
     }),
     commit: vi.fn().mockImplementation(async () => {
       order.push('commit')
       return { branch: 'dev/T2', commit: 'abc1234', paths: [] }
+    }),
+    checkout: vi.fn().mockImplementation(async () => {
+      order.push('checkout')
     }),
     push: vi.fn().mockImplementation(async () => {
       order.push('push')
@@ -69,7 +90,11 @@ describe('previewDelivery', () => {
   it('does not write charge or execute Git operations', async () => {
     const deps = dependencies()
 
-    const preview = await previewDelivery('C:/fake-repository', draft, deps)
+    const preview = await previewDelivery(
+      'C:/fake-repository',
+      legacyDraft,
+      deps,
+    )
 
     expect(preview).toMatchObject({
       branch: 'dev/T2',
@@ -83,40 +108,74 @@ describe('previewDelivery', () => {
   })
 })
 
-describe('executeDelivery', () => {
-  it('requires an explicit final confirmation', async () => {
+describe('syncGitLab', () => {
+  it('requires confirmation and does not require a reviewer', async () => {
     await expect(
-      executeDelivery(
+      syncGitLab(
         'C:/fake-repository',
-        { draft, confirmed: false },
+        { draft: syncDraft, confirmed: false },
         dependencies(),
       ),
-    ).rejects.toThrow('请先确认 GitLab 同步操作')
+    ).rejects.toThrow('请先确认同步到 GitLab')
   })
 
-  it('writes, commits, pushes, then creates the MR with the sync comment', async () => {
+  it('checks out the selected branch, commits, and pushes without creating MR', async () => {
     const order: string[] = []
     const deps = dependencies(order)
 
-    const result = await executeDelivery(
+    const result = await syncGitLab(
       'C:/fake-repository',
-      { draft, confirmed: true },
+      { draft: syncDraft, confirmed: true },
       deps,
     )
 
-    expect(order).toEqual(['charge', 'commit', 'push', 'mr'])
+    expect(order).toEqual(['checkout', 'charge', 'commit', 'push'])
+    expect(deps.checkout).toHaveBeenCalledWith(
+      'C:/fake-repository',
+      'dev/T2',
+    )
+    expect(deps.push).toHaveBeenCalledWith('C:/fake-repository', 'dev/T2')
+    expect(deps.createMergeRequest).not.toHaveBeenCalled()
+    expect(result).toEqual({ branch: 'dev/T2', commit: 'abc1234' })
+  })
+})
+
+describe('createDeliveryMergeRequest', () => {
+  it('requires a reviewer and creates MR without another commit or push', async () => {
+    const order: string[] = []
+    const deps = dependencies(order)
+
+    await expect(
+      createDeliveryMergeRequest(
+        'C:/fake-repository',
+        {
+          confirmed: true,
+          draft: { ...mergeRequestDraft, reviewerIds: [] },
+        },
+        deps,
+      ),
+    ).rejects.toThrow('至少选择一位审核人')
+
+    const result = await createDeliveryMergeRequest(
+      'C:/fake-repository',
+      { draft: mergeRequestDraft, confirmed: true },
+      deps,
+    )
+
+    expect(order).toEqual(['mr'])
+    expect(deps.commit).not.toHaveBeenCalled()
+    expect(deps.push).not.toHaveBeenCalled()
     expect(deps.createMergeRequest).toHaveBeenCalledWith({
       projectPath: 'rockteam/dragon/optics/lens-mechanics',
       sourceBranch: 'dev/T2',
       targetBranch: 'main',
-      title: draft.mrTitle,
-      description: `同步注释：${draft.message}`,
+      title: '提交所有的 BOM 交付包',
+      description: '同步注释：提交所有的 BOM 交付包',
       reviewerIds: [42],
     })
-    expect(result).toMatchObject({
-      branch: 'dev/T2',
-      commit: 'abc1234',
-      mergeRequestIid: 3,
+    expect(result).toEqual({
+      iid: 3,
+      webUrl: 'https://gitlfs.lab.tp/project/-/merge_requests/3',
     })
   })
 })

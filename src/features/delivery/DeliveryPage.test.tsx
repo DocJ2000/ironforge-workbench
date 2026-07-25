@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getDemoRepository } from '../../data/demoRepository'
 import type { DeliveryApi } from '../../data/deliveryClient'
@@ -47,6 +53,14 @@ function createApi(): DeliveryApi {
       mergeRequestIid: 3,
       mergeRequestUrl: 'https://gitlfs.lab.tp/mr/3',
     }),
+    syncGitLab: vi.fn().mockResolvedValue({
+      commit: 'abc1234',
+      branch: 'dev/T2',
+    }),
+    createMergeRequest: vi.fn().mockResolvedValue({
+      iid: 3,
+      webUrl: 'https://gitlfs.lab.tp/mr/3',
+    }),
     publish: vi.fn().mockResolvedValue({
       jobId: 'job-1',
       packageCount: 1,
@@ -55,7 +69,7 @@ function createApi(): DeliveryApi {
 }
 
 describe('DeliveryPage', () => {
-  it('opens read-only changes and requires a reviewer', async () => {
+  it('opens read-only changes and does not require a reviewer to sync', async () => {
     const repository = getDemoRepository()
     render(<DeliveryPage api={createApi()} repository={repository} />)
 
@@ -69,31 +83,21 @@ describe('DeliveryPage', () => {
     ).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: '关闭文件清单' }))
 
-    const syncButton = screen.getByRole('button', { name: '同步到 GitLab' })
-    expect(syncButton).toBeDisabled()
-
-    const reviewer = await screen.findByRole('checkbox', {
-      name: '选择审核人 胡庆磊',
-    })
-    fireEvent.click(reviewer)
-    expect(syncButton).toBeEnabled()
+    expect(
+      screen.getByRole('button', { name: '同步到 GitLab' }),
+    ).toBeEnabled()
   })
 
   it('requires a sync comment before executing', async () => {
     const api = createApi()
     render(<DeliveryPage api={api} repository={getDemoRepository()} />)
 
-    fireEvent.click(
-      await screen.findByRole('checkbox', {
-        name: '选择审核人 胡庆磊',
-      }),
-    )
     fireEvent.click(screen.getByRole('button', { name: '同步到 GitLab' }))
 
     const dialog = screen.getByRole('dialog', { name: '确认同步到 GitLab' })
     expect(dialog).toBeVisible()
     const confirm = screen.getByRole('button', {
-      name: '确认同步并创建 MR',
+      name: '确认同步到 GitLab',
     })
     expect(confirm).toBeDisabled()
 
@@ -103,13 +107,29 @@ describe('DeliveryPage', () => {
     expect(confirm).toBeEnabled()
     fireEvent.click(confirm)
 
-    await waitFor(() => expect(api.execute).toHaveBeenCalledOnce())
-    expect(api.execute).toHaveBeenCalledWith(
+    await waitFor(() => expect(api.syncGitLab).toHaveBeenCalledOnce())
+    expect(api.syncGitLab).toHaveBeenCalledWith(
       expect.objectContaining({
         message: '提交所有的BOM交付包',
-        reviewerIds: [42],
+        branch: 'dev/T2',
       }),
     )
+  })
+
+  it('chooses the synchronization branch before pushing', () => {
+    const api = createApi()
+    const repository = getDemoRepository()
+    render(<DeliveryPage api={api} repository={repository} />)
+
+    fireEvent.change(screen.getByLabelText('同步分支'), {
+      target: { value: 'dev/T1' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '同步到 GitLab' }))
+    expect(
+      within(
+        screen.getByRole('dialog', { name: '确认同步到 GitLab' }),
+      ).getByText('dev/T1'),
+    ).toBeVisible()
   })
 
   it('selects packages and opens their file list', async () => {

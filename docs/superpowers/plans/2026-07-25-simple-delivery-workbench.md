@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the multi-page engineer interface with one guided delivery page that scans all valid repository changes, generates `charge.json` from selected output packages, assigns real GitLab reviewers, and creates an MR only after explicit confirmation.
+**Goal:** Replace the multi-page engineer interface with one guided delivery page that scans all valid repository changes, generates `charge.json` from selected output packages, syncs a user-selected branch, and creates an MR with real GitLab reviewers only after a separate confirmation.
 
 **Architecture:** Move the Vite local API modules behind an Electron main-process IPC boundary for production while retaining Vite middleware during development. Add focused modules for output scanning, charge generation, GitLab operations, and workflow orchestration; expose typed clients to one React delivery page. Package pinned PortableGit and Git LFS binaries with the application so the browser never receives credentials and the installed app has no external runtime dependencies.
 
@@ -13,8 +13,9 @@
 - GitLab synchronization includes all valid changes under `source`, `reference`, `output`, plus root project files such as `charge.json`.
 - Ironforge publishes only selected non-empty output packages represented in `charge.json`.
 - At least one GitLab reviewer is required before MR creation.
-- “同步到 GitLab” and “发布到 Ironforge” are separate buttons with separate required comment dialogs.
-- The GitLab sync comment becomes the Commit message and is recorded in the MR description.
+- “同步到 GitLab”, “创建 MR”, and “发布到 Ironforge” are separate actions.
+- GitLab sync requires a selected branch and a comment, then performs only checkout, Commit, and push.
+- Reviewer selection is required only when creating the MR; syncing never requires a reviewer.
 - The Ironforge publish comment is recorded with the publication and never reuses the GitLab comment implicitly.
 - GitLab MR approval must complete before the Ironforge publication button becomes available.
 - Every `git commit`, `git push`, MR creation/reopen, and MR merge requires explicit user confirmation immediately before execution.
@@ -334,11 +335,12 @@ git commit -m "feat: connect GitLab reviewers and merge requests"
   - `GET /api/gitlab/reviewers`
   - `POST /api/delivery/preview`
   - `POST /api/delivery/execute`
-- `executeDelivery` returns `DeliveryExecutionResult` and never publishes Ironforge.
+- `syncGitLab` returns `GitLabSyncResult` and never creates an MR or publishes Ironforge.
+- `createDeliveryMergeRequest` requires reviewers and creates the MR without committing or pushing again.
 
 - [ ] **Step 1: Add failing workflow tests**
 
-Cover preview without file writes, explicit `confirmed: true` enforcement, charge atomic write before commit, commit before push, push before MR creation, reviewer propagation, and MR-create retry without a second commit.
+Cover preview without file writes, explicit `confirmed: true` enforcement, selected-branch checkout, charge atomic write before commit, commit before push, sync without reviewers, reviewer propagation during separate MR creation, and MR-create retry without a second commit.
 
 - [ ] **Step 2: Run workflow tests**
 
@@ -348,7 +350,7 @@ Expected: FAIL because the workflow module does not exist.
 
 - [ ] **Step 3: Implement the orchestration boundary**
 
-`previewDelivery` validates the draft, checks deleted CAD confirmations, calculates charge changes, and returns a complete preview. `executeDelivery` rejects requests without `confirmed: true`, writes charge, calls the existing commit executor with all valid change paths plus `charge.json`, pushes the current branch, then creates the MR.
+`previewDelivery` validates the draft, checks deleted CAD confirmations, calculates charge changes, and returns a complete preview. `syncGitLab` rejects requests without `confirmed: true`, switches to the selected branch, writes charge, calls the existing commit executor with all valid change paths plus `charge.json`, and pushes that branch. `createDeliveryMergeRequest` is a separate confirmed operation that validates reviewers and creates the MR from the already-pushed source branch.
 
 Persist a small local operation receipt under the OS user data directory, keyed by repository root and commit SHA. If push succeeded but MR creation failed, a retry reads the receipt and calls only `createMergeRequest`.
 

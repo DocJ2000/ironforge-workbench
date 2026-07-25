@@ -85,4 +85,40 @@ describe('deliveryApi', () => {
       }),
     )
   })
+
+  it('separates GitLab synchronization from MR creation', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ commit: 'abc1234', branch: 'dev/T2' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ iid: 3, webUrl: 'https://gitlab/mr/3' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    vi.stubGlobal('fetch', fetcher)
+
+    await deliveryApi.syncGitLab({
+      message: '同步图纸',
+      changePaths: ['charge.json'],
+      confirmedDeletions: [],
+      selectedPackageIds: [],
+      branch: 'dev/T2',
+    })
+    await deliveryApi.createMergeRequest({
+      sourceBranch: 'dev/T2',
+      targetBranch: 'main',
+      title: '同步图纸',
+      description: '',
+      reviewerIds: [42],
+    })
+
+    expect(fetcher.mock.calls[0][0]).toBe('/api/gitlab/sync')
+    expect(fetcher.mock.calls[1][0]).toBe('/api/gitlab/merge-requests')
+  })
 })
