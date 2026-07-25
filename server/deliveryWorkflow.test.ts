@@ -76,6 +76,15 @@ function dependencies(order: string[] = []): DeliveryWorkflowDependencies {
     push: vi.fn().mockImplementation(async () => {
       order.push('push')
     }),
+    assertTagAvailable: vi.fn().mockImplementation(async () => {
+      order.push('tag-check')
+    }),
+    createTag: vi.fn().mockImplementation(async () => {
+      order.push('tag-create')
+    }),
+    pushTag: vi.fn().mockImplementation(async () => {
+      order.push('tag-push')
+    }),
     createMergeRequest: vi.fn().mockImplementation(async () => {
       order.push('mr')
       return {
@@ -137,6 +146,41 @@ describe('syncGitLab', () => {
     expect(deps.push).toHaveBeenCalledWith('C:/fake-repository', 'dev/T2')
     expect(deps.createMergeRequest).not.toHaveBeenCalled()
     expect(result).toEqual({ branch: 'dev/T2', commit: 'abc1234' })
+  })
+
+  it('checks uniqueness before commit and pushes an optional version Tag', async () => {
+    const order: string[] = []
+    const deps = dependencies(order)
+    const taggedDraft = {
+      ...syncDraft,
+      tag: { name: 'T2-v1', message: 'Dragon T2 第一个存档版本' },
+    }
+
+    const result = await syncGitLab(
+      'C:/fake-repository',
+      { draft: taggedDraft, confirmed: true },
+      deps,
+    )
+
+    expect(order).toEqual([
+      'tag-check',
+      'checkout',
+      'charge',
+      'commit',
+      'push',
+      'tag-create',
+      'tag-push',
+    ])
+    expect(deps.createTag).toHaveBeenCalledWith(
+      'C:/fake-repository',
+      taggedDraft.tag,
+      'abc1234',
+    )
+    expect(result).toEqual({
+      branch: 'dev/T2',
+      commit: 'abc1234',
+      tag: 'T2-v1',
+    })
   })
 })
 

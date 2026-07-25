@@ -55,3 +55,46 @@ export async function pushRepositoryBranch(
 ) {
   await git(repositoryPath, ['push', '--set-upstream', 'origin', branch])
 }
+
+export async function assertTagAvailable(
+  repositoryPath: string,
+  name: string,
+) {
+  const normalized = name.trim()
+  try {
+    await git(repositoryPath, ['check-ref-format', `refs/tags/${normalized}`])
+  } catch {
+    throw new Error('版本 Tag 名称不合法')
+  }
+  const local = await git(repositoryPath, ['tag', '--list', normalized])
+  if (local) throw new Error(`版本 Tag ${normalized} 已存在`)
+  const remote = await git(repositoryPath, [
+    'ls-remote',
+    '--tags',
+    'origin',
+    `refs/tags/${normalized}`,
+  ])
+  if (remote) throw new Error(`远端版本 Tag ${normalized} 已存在`)
+}
+
+export async function createAnnotatedTag(
+  repositoryPath: string,
+  tag: { name: string; message: string },
+  commit: string,
+) {
+  await git(repositoryPath, [
+    'tag',
+    '-a',
+    tag.name,
+    commit,
+    '-m',
+    tag.message,
+  ])
+}
+
+export async function pushRepositoryTag(
+  repositoryPath: string,
+  name: string,
+) {
+  await git(repositoryPath, ['push', 'origin', `refs/tags/${name}`])
+}

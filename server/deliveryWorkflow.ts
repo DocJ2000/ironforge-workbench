@@ -55,6 +55,13 @@ export interface DeliveryWorkflowDependencies {
   ) => Promise<CommitResult>
   checkout: (repositoryPath: string, branch: string) => Promise<void>
   push: (repositoryPath: string, branch: string) => Promise<void>
+  assertTagAvailable: (repositoryPath: string, name: string) => Promise<void>
+  createTag: (
+    repositoryPath: string,
+    tag: { name: string; message: string },
+    commit: string,
+  ) => Promise<void>
+  pushTag: (repositoryPath: string, name: string) => Promise<void>
   createMergeRequest: (
     input: CreateMergeRequestInput,
   ) => Promise<CreatedMergeRequest>
@@ -127,6 +134,9 @@ export async function syncGitLab(
   const { draft } = request
   assertValid(validateGitLabSyncDraft(draft))
 
+  if (draft.tag) {
+    await dependencies.assertTagAvailable(repositoryPath, draft.tag.name)
+  }
   await dependencies.checkout(repositoryPath, draft.branch)
   const packages = await dependencies.scanPackages(repositoryPath)
   const charge = await dependencies.previewCharge(
@@ -140,10 +150,15 @@ export async function syncGitLab(
   await dependencies.previewCommit(repositoryPath, commitInput)
   const commit = await dependencies.commit(repositoryPath, commitInput)
   await dependencies.push(repositoryPath, draft.branch)
+  if (draft.tag) {
+    await dependencies.createTag(repositoryPath, draft.tag, commit.commit)
+    await dependencies.pushTag(repositoryPath, draft.tag.name)
+  }
 
   return {
     commit: commit.commit,
     branch: draft.branch,
+    ...(draft.tag ? { tag: draft.tag.name } : {}),
   }
 }
 

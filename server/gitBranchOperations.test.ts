@@ -5,7 +5,11 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createRepositoryBranch } from './gitBranchOperations'
+import {
+  assertTagAvailable,
+  createAnnotatedTag,
+  createRepositoryBranch,
+} from './gitBranchOperations'
 
 const repositories: string[] = []
 
@@ -63,5 +67,23 @@ describe('createRepositoryBranch', () => {
       }),
     ).rejects.toThrow('分支名称不合法')
     expect(git(repositoryPath, 'branch', '--show-current')).toBe('dev/T2')
+  })
+})
+
+describe('version Tags', () => {
+  it('creates an annotated Tag and refuses to reuse its name', async () => {
+    const repositoryPath = await createRepository()
+    const commit = git(repositoryPath, 'rev-parse', 'HEAD')
+
+    await createAnnotatedTag(
+      repositoryPath,
+      { name: 'T2-v1', message: 'Dragon T2 存档版本' },
+      commit,
+    )
+
+    await expect(
+      assertTagAvailable(repositoryPath, 'T2-v1'),
+    ).rejects.toThrow('版本 Tag T2-v1 已存在')
+    expect(git(repositoryPath, 'tag', '--list')).toBe('T2-v1')
   })
 })

@@ -14,8 +14,11 @@ import {
   syncGitLab,
 } from './deliveryWorkflow.js'
 import {
+  assertTagAvailable,
   checkoutRepositoryBranch,
+  createAnnotatedTag,
   createRepositoryBranch,
+  pushRepositoryTag,
   type CreateBranchInput,
   pushRepositoryBranch,
 } from './gitBranchOperations.js'
@@ -105,6 +108,9 @@ export function createRepositoryMiddleware({
       commit: commitRepositoryChanges,
       checkout: checkoutRepositoryBranch,
       push: pushRepositoryBranch,
+      assertTagAvailable,
+      createTag: createAnnotatedTag,
+      pushTag: pushRepositoryTag,
       createMergeRequest: gitLab.createMergeRequest.bind(gitLab),
     }
   }

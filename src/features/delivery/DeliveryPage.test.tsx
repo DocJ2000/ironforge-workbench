@@ -115,6 +115,38 @@ describe('DeliveryPage', () => {
     )
   })
 
+  it('optionally creates a generated version Tag during synchronization', async () => {
+    const api = createApi()
+    render(<DeliveryPage api={api} repository={getDemoRepository()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '同步到 GitLab' }))
+    fireEvent.change(screen.getByLabelText('同步注释'), {
+      target: { value: '同步 T2 图纸' },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: '保存为版本 Tag' }))
+    fireEvent.change(screen.getByLabelText('Tag 版本'), {
+      target: { value: 'v3' },
+    })
+    fireEvent.change(screen.getByLabelText('Tag 说明'), {
+      target: { value: 'Dragon T2 第三版存档' },
+    })
+    expect(screen.getByText('T2-v3')).toBeVisible()
+    fireEvent.click(
+      screen.getByRole('button', { name: '确认同步到 GitLab' }),
+    )
+
+    await waitFor(() =>
+      expect(api.syncGitLab).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tag: {
+            name: 'T2-v3',
+            message: 'Dragon T2 第三版存档',
+          },
+        }),
+      ),
+    )
+  })
+
   it('chooses the synchronization branch before pushing', () => {
     const api = createApi()
     const repository = getDemoRepository()

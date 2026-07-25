@@ -90,4 +90,17 @@ describe('split GitLab actions', () => {
       }),
     ).toEqual(['至少选择一位审核人'])
   })
+
+  it('requires a complete version Tag only when Tag creation is selected', () => {
+    expect(
+      validateGitLabSyncDraft({
+        message: '同步机械图纸',
+        changePaths: ['charge.json'],
+        confirmedDeletions: [],
+        selectedPackageIds: [],
+        branch: 'dev/T2',
+        tag: { name: 'T2-v1', message: '' },
+      }),
+    ).toContain('请填写 Tag 说明')
+  })
 })

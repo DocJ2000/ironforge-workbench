@@ -62,6 +62,11 @@ export function DeliveryPage({
     useState<OutputPackageCandidate | null>(null)
   const [showSyncDialog, setShowSyncDialog] = useState(false)
   const [syncComment, setSyncComment] = useState('')
+  const [tagEnabled, setTagEnabled] = useState(false)
+  const [tagStage, setTagStage] = useState('T2')
+  const [tagVersion, setTagVersion] = useState('v1')
+  const [tagFinal, setTagFinal] = useState(false)
+  const [tagMessage, setTagMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{
@@ -112,6 +117,12 @@ export function DeliveryPage({
     [repository.changes],
   )
   const canSync = changePaths.length > 0 && Boolean(selectedBranch) && !busy
+  const tagName =
+    tagStage === 'custom'
+      ? tagVersion.trim()
+      : tagFinal
+        ? tagStage
+        : `${tagStage}-${tagVersion.trim()}`
 
   function togglePackage(id: string) {
     setSelectedPackageIds((current) => {
@@ -141,6 +152,9 @@ export function DeliveryPage({
         confirmedDeletions: [],
         selectedPackageIds: [...selectedPackageIds],
         branch: selectedBranch,
+        ...(tagEnabled
+          ? { tag: { name: tagName, message: tagMessage.trim() } }
+          : {}),
       })
       setSyncResult(execution)
       setShowSyncDialog(false)
@@ -457,6 +471,17 @@ export function DeliveryPage({
           onCancel={() => setShowSyncDialog(false)}
           onCommentChange={setSyncComment}
           onConfirm={() => void handleSync()}
+          onTagEnabledChange={setTagEnabled}
+          onTagFinalChange={setTagFinal}
+          onTagMessageChange={setTagMessage}
+          onTagStageChange={setTagStage}
+          onTagVersionChange={setTagVersion}
+          tagEnabled={tagEnabled}
+          tagFinal={tagFinal}
+          tagMessage={tagMessage}
+          tagName={tagName}
+          tagStage={tagStage}
+          tagVersion={tagVersion}
         />
       ) : null}
       {showCreateBranch ? (

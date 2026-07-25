@@ -45,11 +45,16 @@ export interface GitLabSyncDraft {
   confirmedDeletions: string[]
   selectedPackageIds: string[]
   branch: string
+  tag?: {
+    name: string
+    message: string
+  }
 }
 
 export interface GitLabSyncResult {
   commit: string
   branch: string
+  tag?: string
 }
 
 export interface MergeRequestDraft {
@@ -98,6 +103,10 @@ export function validateGitLabSyncDraft(draft: GitLabSyncDraft) {
   if (!draft.changePaths.length) errors.push('没有需要同步的文件')
   if (!draft.message.trim()) errors.push('请填写同步注释')
   if (!draft.branch.trim()) errors.push('请选择同步分支')
+  if (draft.tag) {
+    if (!draft.tag.name.trim()) errors.push('请填写版本 Tag')
+    if (!draft.tag.message.trim()) errors.push('请填写 Tag 说明')
+  }
   return errors
 }
 
