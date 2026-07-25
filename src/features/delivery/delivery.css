@@ -293,6 +293,128 @@
   }
 }
 
+.mr-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.mr-editor__tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mr-editor__tabs button {
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.mr-editor__tabs button[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.mr-editor__toolbar {
+  display: flex;
+  gap: 4px;
+}
+
+.mr-editor__toolbar button,
+.resource-row button,
+.attachment-row button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.mr-editor__preview {
+  min-height: 150px;
+  padding: 12px 0;
+  color: var(--text);
+}
+
+.mr-editor__resources {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.mr-editor__resources > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.resource-row,
+.attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.resource-row input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.attachment-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.attachment-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.attachment-row {
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.attachment-row span,
+.attachment-row small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.attachment-row small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 720px) {
+  .mr-editor__resources {
+    grid-template-columns: 1fr;
+  }
+}
+
 .branch-select > span {
   font-size: 12px;
   font-weight: 800;

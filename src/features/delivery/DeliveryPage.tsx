@@ -22,6 +22,7 @@ import { ChangeSummary } from './ChangeSummary'
 import { CreateBranchDialog } from './CreateBranchDialog'
 import { GitLabSyncDialog } from './GitLabSyncDialog'
 import { PackageSelector } from './PackageSelector'
+import { MergeRequestEditor } from './MergeRequestEditor'
 import { ReviewerSelector } from './ReviewerSelector'
 import './delivery.css'
 
@@ -67,6 +68,10 @@ export function DeliveryPage({
   const [tagVersion, setTagVersion] = useState('v1')
   const [tagFinal, setTagFinal] = useState(false)
   const [tagMessage, setTagMessage] = useState('')
+  const [mrTitle, setMrTitle] = useState('')
+  const [mrDescription, setMrDescription] = useState('')
+  const [feishuLinks, setFeishuLinks] = useState<string[]>([])
+  const [mrAttachments, setMrAttachments] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{
@@ -157,6 +162,7 @@ export function DeliveryPage({
           : {}),
       })
       setSyncResult(execution)
+      if (!mrTitle.trim()) setMrTitle(syncComment.trim())
       setShowSyncDialog(false)
       await onRefresh?.()
     } catch (cause) {
@@ -194,14 +200,19 @@ export function DeliveryPage({
     setBusy(true)
     setError(null)
     try {
+      const attachmentMarkdown: string[] = []
+      for (const file of mrAttachments) {
+        const uploaded = await api.uploadAttachment(file)
+        attachmentMarkdown.push(uploaded.markdown)
+      }
       const mergeRequest = await api.createMergeRequest({
         sourceBranch: syncResult.branch,
         targetBranch: 'main',
-        title: syncComment.trim(),
-        description: `同步注释：${syncComment.trim()}`,
+        title: mrTitle.trim(),
+        description: mrDescription.trim(),
         reviewerIds: [...selectedReviewerIds],
-        feishuLinks: [],
-        attachmentMarkdown: [],
+        feishuLinks: feishuLinks.map((link) => link.trim()).filter(Boolean),
+        attachmentMarkdown,
       })
       setResult({ iid: mergeRequest.iid, url: mergeRequest.webUrl })
       setMergeRequestStatus('waiting')
@@ -386,6 +397,24 @@ export function DeliveryPage({
           <div className="delivery-subsection">
             <div className="delivery-subsection__heading">
               <div>
+                <h3>MR 内容</h3>
+                <p>说明本次发布内容，并按需附上飞书文档、PDF 或图片。</p>
+              </div>
+            </div>
+            <MergeRequestEditor
+              attachments={mrAttachments}
+              description={mrDescription}
+              feishuLinks={feishuLinks}
+              onAttachmentsChange={setMrAttachments}
+              onDescriptionChange={setMrDescription}
+              onFeishuLinksChange={setFeishuLinks}
+              onTitleChange={setMrTitle}
+              title={mrTitle}
+            />
+          </div>
+          <div className="delivery-subsection">
+            <div className="delivery-subsection__heading">
+              <div>
                 <h3>MR 审核人</h3>
                 <p>审核人将在 GitLab MR 中检查并批准本次 Ironforge 发布。</p>
               </div>
@@ -410,6 +439,7 @@ export function DeliveryPage({
               className="button button--secondary"
               disabled={
                 !syncResult ||
+                !mrTitle.trim() ||
                 selectedReviewerIds.size === 0 ||
                 busy ||
                 Boolean(result)
