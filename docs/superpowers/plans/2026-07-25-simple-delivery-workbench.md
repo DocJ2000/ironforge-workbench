@@ -13,11 +13,11 @@
 - GitLab synchronization includes all valid changes under `source`, `reference`, `output`, plus root project files such as `charge.json`.
 - Ironforge publishes only selected non-empty output packages represented in `charge.json`.
 - At least one GitLab reviewer is required before MR creation.
-- “同步到 GitLab”, “创建 MR”, and “发布到 Ironforge” are separate actions.
+- “同步到 GitLab” and “提交 Ironforge 发布审核（创建 MR）” are separate actions.
 - GitLab sync requires a selected branch and a comment, then performs only checkout, Commit, and push.
 - Reviewer selection is required only when creating the MR; syncing never requires a reviewer.
-- The Ironforge publish comment is recorded with the publication and never reuses the GitLab comment implicitly.
-- GitLab MR approval must complete before the Ironforge publication button becomes available.
+- Creating the GitLab MR submits the Ironforge publication for administrator review; no second publication button or comment is required.
+- GitLab MR merge is treated as successful Ironforge publication.
 - Every `git commit`, `git push`, MR creation/reopen, and MR merge requires explicit user confirmation immediately before execution.
 - `.superpowers`, logs, caches, editor files, and tool temporary directories must never be committed.
 - Credentials remain in the local backend process or OS-managed storage and are never returned to the React client.
@@ -42,7 +42,6 @@
 - `src/features/delivery/PackageSelector.tsx`: selectable package list and file drawer.
 - `src/features/delivery/ReviewerSelector.tsx`: searchable real member list.
 - `src/features/delivery/GitLabSyncDialog.tsx`: required GitLab sync comment and final Commit/push/MR confirmation.
-- `src/features/delivery/IronforgePublishDialog.tsx`: required publication comment and selected-package confirmation.
 - `src/features/delivery/delivery.css`: responsive layout and stable control dimensions.
 - `src/app/routes.tsx`: make the delivery page the primary route.
 - `src/components/AppShell.tsx`: reduce navigation to the single primary workflow and secondary history access.
@@ -403,7 +402,7 @@ it('opens read-only change details and requires a reviewer', async () => {
 })
 ```
 
-Add tests for package selection, package file details, charge diff details, ignored-file details, reviewer search, the required GitLab sync comment dialog, and the required Ironforge publish comment dialog.
+Add tests for package selection, package file details, charge diff details, ignored-file details, reviewer search, the required GitLab sync comment dialog, and MR creation as the Ironforge publication review.
 
 - [ ] **Step 2: Run page tests**
 
@@ -413,7 +412,7 @@ Expected: FAIL because the page does not exist.
 
 - [ ] **Step 3: Implement focused components**
 
-Use button elements for clickable status chips, checkboxes for packages and reviewers, Lucide icons for refresh/search/close/file/status actions, and one accessible right-side drawer for all detail views. Keep file selection read-only. Render “同步到 GitLab” in step 1 and “发布到 Ironforge” in step 2; never combine them into one action.
+Use button elements for clickable status chips, checkboxes for packages and reviewers, Lucide icons for refresh/search/close/file/status actions, and one accessible right-side drawer for all detail views. Keep file selection read-only. Render “同步到 GitLab” in step 1 and “提交发布审核” in step 2; the latter creates the GitLab MR.
 
 - [ ] **Step 4: Implement the page state machine**
 
@@ -467,7 +466,7 @@ Expected: FAIL because the status adapter does not exist.
 
 - [ ] **Step 3: Implement polling and UI states**
 
-Poll every 30 seconds only while the page is visible and an MR is open. Show `等待审核`, `需要修改`, `审核通过`, `已关闭`, or `已合并`. Render the Ironforge publish action disabled until `canPublishIronforge` returns true, with an explanation beside it.
+Poll every 30 seconds only while the page is visible and an MR is open. Show `等待审核`, `需要修改`, `审核通过`, `已关闭`, or `已合并发布`. Do not render a second Ironforge publish action.
 
 - [ ] **Step 4: Run status and page tests**
 

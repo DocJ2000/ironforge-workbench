@@ -20,7 +20,7 @@ export function PackageSelector({
         <div className="package-row" key={item.id}>
           <label>
             <input
-              aria-label={`发布 ${item.name}`}
+              aria-label={`选择 ${item.name}`}
               checked={selectedIds.has(item.id)}
               onChange={() => onToggle(item.id)}
               type="checkbox"

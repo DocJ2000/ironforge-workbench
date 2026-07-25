@@ -61,10 +61,6 @@ function createApi(): DeliveryApi {
       iid: 3,
       webUrl: 'https://gitlfs.lab.tp/mr/3',
     }),
-    publish: vi.fn().mockResolvedValue({
-      jobId: 'job-1',
-      packageCount: 1,
-    }),
   } as unknown as DeliveryApi
 }
 
@@ -136,7 +132,7 @@ describe('DeliveryPage', () => {
     render(<DeliveryPage api={createApi()} repository={getDemoRepository()} />)
 
     const packageCheckbox = await screen.findByRole('checkbox', {
-      name: '发布 五金件',
+      name: '选择 五金件',
     })
     expect(packageCheckbox).toBeChecked()
 
@@ -144,36 +140,32 @@ describe('DeliveryPage', () => {
     expect(screen.getByText('导轴.pdf')).toBeVisible()
   })
 
-  it('requires a separate publication comment after approval', async () => {
+  it('uses MR creation as the Ironforge publication review', async () => {
     const api = createApi()
-    render(
-      <DeliveryPage
-        api={api}
-        initialMergeRequest={{ iid: 3, status: 'approved' }}
-        repository={getDemoRepository()}
-      />,
-    )
-    await screen.findByRole('checkbox', { name: '发布 五金件' })
+    render(<DeliveryPage api={api} repository={getDemoRepository()} />)
+    await screen.findByRole('checkbox', { name: '选择 五金件' })
 
+    fireEvent.click(screen.getByRole('button', { name: '同步到 GitLab' }))
+    fireEvent.change(screen.getByLabelText('同步注释'), {
+      target: { value: '提交所有的 BOM 交付包' },
+    })
     fireEvent.click(
-      screen.getByRole('button', { name: '发布到 Ironforge' }),
+      screen.getByRole('button', { name: '确认同步到 GitLab' }),
+    )
+    await waitFor(() => expect(api.syncGitLab).toHaveBeenCalledOnce())
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /胡庆磊/ }))
+    fireEvent.click(screen.getByRole('button', { name: '提交发布审核' }))
+
+    await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledOnce())
+    expect(api.createMergeRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceBranch: 'dev/T2',
+        reviewerIds: [42],
+      }),
     )
     expect(
-      screen.getByRole('dialog', { name: '确认发布到 Ironforge' }),
-    ).toBeVisible()
-    const confirm = screen.getByRole('button', { name: '确认发布' })
-    expect(confirm).toBeDisabled()
-
-    fireEvent.change(screen.getByLabelText('发布注释'), {
-      target: { value: '发布采购交付包' },
-    })
-    fireEvent.click(confirm)
-
-    await waitFor(() => expect(api.publish).toHaveBeenCalledOnce())
-    expect(api.publish).toHaveBeenCalledWith({
-      mergeRequestIid: 3,
-      packageIds: ['output/mechanical/五金件'],
-      comment: '发布采购交付包',
-    })
+      screen.queryByRole('button', { name: '发布到 Ironforge' }),
+    ).not.toBeInTheDocument()
   })
 })

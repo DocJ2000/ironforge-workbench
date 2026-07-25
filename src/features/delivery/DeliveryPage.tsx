@@ -19,7 +19,6 @@ import type {
 import type { RepositorySnapshot } from '../../domain/repository'
 import { ChangeSummary } from './ChangeSummary'
 import { GitLabSyncDialog } from './GitLabSyncDialog'
-import { IronforgePublishDialog } from './IronforgePublishDialog'
 import { PackageSelector } from './PackageSelector'
 import { ReviewerSelector } from './ReviewerSelector'
 import './delivery.css'
@@ -55,8 +54,6 @@ export function DeliveryPage({
     useState<OutputPackageCandidate | null>(null)
   const [showSyncDialog, setShowSyncDialog] = useState(false)
   const [syncComment, setSyncComment] = useState('')
-  const [publishComment, setPublishComment] = useState('')
-  const [showPublishDialog, setShowPublishDialog] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{
@@ -70,7 +67,6 @@ export function DeliveryPage({
   const [mergeRequestStatus, setMergeRequestStatus] = useState<
     'none' | 'waiting' | 'approved'
   >(initialMergeRequest?.status ?? 'none')
-  const [publishResult, setPublishResult] = useState<string | null>(null)
   const [syncResult, setSyncResult] = useState<{
     commit: string
     branch: string
@@ -169,27 +165,6 @@ export function DeliveryPage({
     }
   }
 
-  async function handlePublish() {
-    if (!result) return
-    setBusy(true)
-    setError(null)
-    try {
-      const publication = await api.publish({
-        mergeRequestIid: result.iid,
-        packageIds: [...selectedPackageIds],
-        comment: publishComment.trim(),
-      })
-      setPublishResult(
-        `Ironforge 发布任务 ${publication.jobId} 已创建，共 ${publication.packageCount} 个交付包。`,
-      )
-      setShowPublishDialog(false)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Ironforge 发布失败')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <div className="page delivery-page">
       <header className="delivery-header">
@@ -229,13 +204,6 @@ export function DeliveryPage({
           ) : null}
         </div>
       ) : null}
-      {publishResult ? (
-        <div className="delivery-alert delivery-alert--success">
-          <CheckCircle2 aria-hidden="true" size={18} />
-          {publishResult}
-        </div>
-      ) : null}
-
       <section className="delivery-step">
         <div className="delivery-step__number">1</div>
         <div className="delivery-step__content">
@@ -300,6 +268,22 @@ export function DeliveryPage({
             </label>
           </div>
 
+          <div className="delivery-subsection">
+            <div className="delivery-subsection__heading">
+              <div>
+                <h3>Ironforge 交付包</h3>
+                <p>勾选本次需要发布的 output 包，系统将自动更新 charge.json。</p>
+              </div>
+              <span>{selectedPackageIds.size} 个已选</span>
+            </div>
+            <PackageSelector
+              onOpen={setOpenPackage}
+              onToggle={togglePackage}
+              packages={packages}
+              selectedIds={selectedPackageIds}
+            />
+          </div>
+
           <div className="delivery-action-row">
             <span>点击后填写同步注释并进行最终确认</span>
             <button
@@ -313,11 +297,36 @@ export function DeliveryPage({
             </button>
           </div>
 
+        </div>
+      </section>
+
+      <section className="delivery-step">
+        <div className="delivery-step__number">2</div>
+        <div className="delivery-step__content">
+          <header>
+            <div>
+              <h2>提交 Ironforge 发布审核</h2>
+              <p>选择管理员并创建 GitLab MR；MR 合并后即完成发布。</p>
+            </div>
+            <span
+              className={`status-pill${
+                mergeRequestStatus === 'approved'
+                  ? ' status-pill--ready'
+                  : ''
+              }`}
+            >
+              {mergeRequestStatus === 'approved'
+                ? '已审核发布'
+                : result
+                  ? '等待管理员审核'
+                  : '尚未提交审核'}
+            </span>
+          </header>
           <div className="delivery-subsection">
             <div className="delivery-subsection__heading">
               <div>
                 <h3>MR 审核人</h3>
-                <p>GitLab 同步完成后，选择审核人并单独创建 MR。</p>
+                <p>审核人将在 GitLab MR 中检查并批准本次 Ironforge 发布。</p>
               </div>
               <span>{selectedReviewerIds.size} 位已选</span>
             </div>
@@ -329,66 +338,25 @@ export function DeliveryPage({
             {reviewerError ? (
               <p className="reviewer-error">{reviewerError}</p>
             ) : null}
-            <div className="mr-action">
-              <span>
-                {syncResult
-                  ? `已同步 ${syncResult.commit} 到 ${syncResult.branch}`
-                  : '请先同步到 GitLab'}
-              </span>
-              <button
-                className="button button--secondary"
-                disabled={
-                  !syncResult || selectedReviewerIds.size === 0 || busy
-                }
-                onClick={() => void handleCreateMergeRequest()}
-                type="button"
-              >
-                创建 MR
-              </button>
-            </div>
           </div>
-        </div>
-      </section>
-
-      <section className="delivery-step">
-        <div className="delivery-step__number">2</div>
-        <div className="delivery-step__content">
-          <header>
-            <div>
-              <h2>发布到 Ironforge</h2>
-              <p>只发布勾选的 output 包，管理员审核通过后解锁。</p>
-            </div>
-            <span
-              className={`status-pill${
-                mergeRequestStatus === 'approved'
-                  ? ' status-pill--ready'
-                  : ''
-              }`}
-            >
-              {mergeRequestStatus === 'approved'
-                ? 'MR 审核通过'
-                : '等待 MR 审核'}
+          <div className="mr-action">
+            <span>
+              {syncResult
+                ? `已同步 ${syncResult.commit} 到 ${syncResult.branch}`
+                : '请先同步到 GitLab'}
             </span>
-          </header>
-          <PackageSelector
-            onOpen={setOpenPackage}
-            onToggle={togglePackage}
-            packages={packages}
-            selectedIds={selectedPackageIds}
-          />
-          <div className="delivery-action-row">
-            <span>已选择 {selectedPackageIds.size} 个交付包</span>
             <button
-              className="button button--primary"
+              className="button button--secondary"
               disabled={
-                mergeRequestStatus !== 'approved' ||
-                selectedPackageIds.size === 0 ||
-                busy
+                !syncResult ||
+                selectedReviewerIds.size === 0 ||
+                busy ||
+                Boolean(result)
               }
-              onClick={() => setShowPublishDialog(true)}
+              onClick={() => void handleCreateMergeRequest()}
               type="button"
             >
-              发布到 Ironforge
+              提交发布审核
             </button>
           </div>
         </div>
@@ -444,16 +412,6 @@ export function DeliveryPage({
           onCancel={() => setShowSyncDialog(false)}
           onCommentChange={setSyncComment}
           onConfirm={() => void handleSync()}
-        />
-      ) : null}
-      {showPublishDialog ? (
-        <IronforgePublishDialog
-          busy={busy}
-          comment={publishComment}
-          onCancel={() => setShowPublishDialog(false)}
-          onCommentChange={setPublishComment}
-          onConfirm={() => void handlePublish()}
-          packageCount={selectedPackageIds.size}
         />
       ) : null}
     </div>

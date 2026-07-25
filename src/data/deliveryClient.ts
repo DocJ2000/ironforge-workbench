@@ -5,8 +5,6 @@ import type {
   GitLabSyncDraft,
   GitLabSyncResult,
   GitLabReviewer,
-  IronforgePublishDraft,
-  IronforgePublishResult,
   MergeRequestDraft,
   MergeRequestResult,
   OutputPackageCandidate,
@@ -43,7 +41,6 @@ export interface DeliveryApi {
   createMergeRequest: (
     draft: MergeRequestDraft,
   ) => Promise<MergeRequestResult>
-  publish: (draft: IronforgePublishDraft) => Promise<IronforgePublishResult>
 }
 
 export const deliveryApi: DeliveryApi = {
@@ -65,11 +62,6 @@ export const deliveryApi: DeliveryApi = {
     }),
   createMergeRequest: (draft) =>
     requestJson('/api/gitlab/merge-requests', {
-      method: 'POST',
-      body: JSON.stringify({ draft, confirmed: true }),
-    }),
-  publish: (draft) =>
-    requestJson('/api/ironforge/publish', {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
     }),
