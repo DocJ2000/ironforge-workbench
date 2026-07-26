@@ -16,4 +16,8 @@ contextBridge.exposeInMainWorld('ironforgeDesktop', {
     clear: (projectId: string) =>
       ipcRenderer.invoke('credentials:clear', projectId),
   },
+  dialogs: {
+    chooseDirectory: () => ipcRenderer.invoke('dialog:directory'),
+    chooseSshKey: () => ipcRenderer.invoke('dialog:ssh-key'),
+  },
 })

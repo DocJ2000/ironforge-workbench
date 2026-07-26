@@ -1,7 +1,8 @@
-import { ExternalLink, Eye, EyeOff, KeyRound, ShieldCheck } from 'lucide-react'
+import { ExternalLink, Eye, EyeOff, FolderOpen, KeyRound, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { credentialClient } from '../../data/credentialClient'
 import type { RegisteredProject } from '../../data/repositoryContext'
+import { desktopDialogClient } from '../../data/desktopDialogClient'
 import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
@@ -102,7 +103,7 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
         <div className="connection-form">
           <label className="plain-field"><span>GitLab 地址</span><input aria-label="GitLab 地址" onChange={(event) => setGitlabUrl(event.target.value)} value={gitlabUrl} /></label>
           <label className="plain-field"><span>GitLab Token</span><span className="secret-input"><input aria-label="GitLab Token" autoComplete="off" onChange={(event) => { setToken(event.target.value); setChecked(false) }} placeholder="粘贴个人访问令牌" type={showToken ? 'text' : 'password'} value={token} /><button aria-label={showToken ? '隐藏 Token' : '显示 Token'} onClick={() => setShowToken((value) => !value)} type="button">{showToken ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
-          <label className="plain-field"><span>SSH 私钥路径</span><input aria-label="SSH 私钥路径" onChange={(event) => { setKeyPath(event.target.value); setChecked(false) }} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={keyPath} /></label>
+          <label className="plain-field"><span>SSH 私钥路径</span><span className="path-input"><input aria-label="SSH 私钥路径" onChange={(event) => { setKeyPath(event.target.value); setChecked(false) }} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={keyPath} />{desktopDialogClient.available() ? <button aria-label="选择 SSH 私钥" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setKeyPath(path) })} title="选择 SSH 私钥" type="button"><FolderOpen size={17} /></button> : null}</span></label>
           <label className="plain-field"><span>SSH 私钥密码（可选）</span><input aria-label="SSH 私钥密码（可选）" autoComplete="off" onChange={(event) => setPassphrase(event.target.value)} type="password" value={passphrase} /></label>
         </div>
         <div className="connection-note"><ShieldCheck size={16} /><span>{desktopStorage ? 'Token 和私钥密码将由 Windows 系统加密保存，页面无法读取回明文。' : '浏览器预览只在内存中检查填写内容，刷新页面后会清空；桌面版才会安全保存。'}</span></div>

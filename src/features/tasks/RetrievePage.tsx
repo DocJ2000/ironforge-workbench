@@ -1,7 +1,8 @@
-import { ArrowRight, Download, FolderDown, RefreshCw } from 'lucide-react'
+import { ArrowRight, Download, FolderDown, FolderOpen, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import type { RegisteredProject } from '../../data/repositoryContext'
 import { deliveryApi, type DeliveryApi } from '../../data/deliveryClient'
+import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './retrieve.css'
 import './ironforgeLink.css'
@@ -144,11 +145,11 @@ export function RetrievePage({
           </dl>
           {action === 'clone' ? <>
             <label className="plain-field spaced-field"><span>GitLab 项目的 SSH 地址</span><input aria-label="GitLab 项目的 SSH 地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlfs.lab.tp:rockteam/project.git" value={remoteUrl} /></label>
-            <label className="plain-field spaced-field"><span>这次使用的 SSH 私钥路径</span><input aria-label="这次使用的 SSH 私钥路径" onChange={(event) => setSshKeyPath(event.target.value)} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={sshKeyPath} /></label>
+            <label className="plain-field spaced-field"><span>这次使用的 SSH 私钥路径</span><span className="path-input"><input aria-label="这次使用的 SSH 私钥路径" onChange={(event) => setSshKeyPath(event.target.value)} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={sshKeyPath} />{desktopDialogClient.available() ? <button aria-label="选择 SSH 私钥" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setSshKeyPath(path) })} title="选择 SSH 私钥" type="button"><FolderOpen size={17} /></button> : null}</span></label>
           </> : null}
           <label className="plain-field spaced-field">
             <span>{action === 'pull' ? '更新这个本地文件夹' : '保存到这个文件夹'}</span>
-            <input aria-label="本地保存位置" onChange={(event) => setDestination(event.target.value)} readOnly={action === 'pull'} value={destination} />
+            <span className={action === 'clone' && desktopDialogClient.available() ? 'path-input' : undefined}><input aria-label="本地保存位置" onChange={(event) => setDestination(event.target.value)} readOnly={action === 'pull'} value={destination} />{action === 'clone' && desktopDialogClient.available() ? <button aria-label="选择本地保存位置" onClick={() => void desktopDialogClient.chooseDirectory().then((path) => { if (path) setDestination(path) })} title="选择本地保存位置" type="button"><FolderOpen size={17} /></button> : null}</span>
           </label>
           {action === 'ironforge' ? (
             <a className="button button--secondary ironforge-link" href="http://ironforge.holo.tp/projects" rel="noreferrer" target="_blank">

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CredentialVault, type GitLabCredentialInput } from './credentialVault.js'
@@ -20,6 +20,22 @@ function registerCredentialHandlers(vault: CredentialVault) {
   ipcMain.handle('credentials:clear', (_event, projectId: string) =>
     vault.clear(projectId),
   )
+}
+
+function registerFileDialogHandlers() {
+  ipcMain.handle('dialog:directory', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    return result.canceled ? null : result.filePaths[0] ?? null
+  })
+  ipcMain.handle('dialog:ssh-key', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      title: '选择 SSH 私钥',
+    })
+    return result.canceled ? null : result.filePaths[0] ?? null
+  })
 }
 
 let productionOrigin: string | null = null
@@ -64,6 +80,7 @@ app.whenReady().then(async () => {
     safeStorage,
   )
   registerCredentialHandlers(vault)
+  registerFileDialogHandlers()
   if (!process.env.VITE_DEV_SERVER_URL) {
     const repositoryPath = app.getPath('documents')
     const registry = new ProjectRegistry(

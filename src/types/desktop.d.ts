@@ -22,5 +22,9 @@ interface Window {
       save: (input: DesktopCredentialInput) => Promise<DesktopCredentialStatus>
       clear: (projectId: string) => Promise<DesktopCredentialStatus>
     }
+    dialogs?: {
+      chooseDirectory: () => Promise<string | null>
+      chooseSshKey: () => Promise<string | null>
+    }
   }
 }
