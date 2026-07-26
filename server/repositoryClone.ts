@@ -6,6 +6,7 @@ import {
   gitRemoteEnvironment,
   type GitRemoteCredentials,
 } from './gitBranchOperations.js'
+import { gitExecutable } from './gitExecutable.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -33,7 +34,7 @@ export async function cloneRepository(input: CloneRepositoryInput) {
     throw new Error('选择的文件夹不是空的，请换一个新文件夹')
   }
   await mkdir(dirname(destination), { recursive: true })
-  await execFileAsync('git', ['clone', '--', remoteUrl, destination], {
+  await execFileAsync(gitExecutable(), ['clone', '--', remoteUrl, destination], {
     encoding: 'utf8',
     windowsHide: true,
     maxBuffer: 10 * 1024 * 1024,

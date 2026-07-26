@@ -15,7 +15,8 @@
     "preview": "vite preview",
     "build:desktop": "npm run build && node -e \"require('fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p tsconfig.electron.json",
     "desktop": "npm run build:desktop && electron .",
-    "package:win": "npm run build:desktop && electron-builder --win nsis"
+    "stage:git": "node scripts/stage-git-runtime.mjs",
+    "package:win": "npm run build:desktop && npm run stage:git && electron-builder --win nsis"
   },
   "dependencies": {
     "busboy": "^1.6.0",
@@ -53,6 +54,12 @@
       "dist/**/*",
       "dist-electron/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-runtime/git",
+        "to": "git"
+      }
     ],
     "win": {
       "target": [

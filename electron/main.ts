@@ -6,7 +6,7 @@ import { startLocalServer } from './localServer.js'
 import { createRepositoryMiddleware } from '../server/repositoryApiPlugin.js'
 import { ProjectRegistry } from '../server/projectRegistry.js'
 import { homedir } from 'node:os'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { access, mkdir, writeFile } from 'node:fs/promises'
 
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
 
@@ -77,6 +77,13 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   const userDataPath = app.getPath('userData')
+  if (app.isPackaged) {
+    const bundledGit = join(process.resourcesPath, 'git', 'cmd', 'git.exe')
+    const bundledSsh = join(process.resourcesPath, 'git', 'usr', 'bin', 'ssh.exe')
+    await Promise.all([access(bundledGit), access(bundledSsh)])
+    process.env.IRONFORGE_GIT_EXECUTABLE = bundledGit
+    process.env.IRONFORGE_SSH_EXECUTABLE = bundledSsh
+  }
   const vault = new CredentialVault(
     join(userDataPath, 'gitlab-credentials.dat'),
     safeStorage,

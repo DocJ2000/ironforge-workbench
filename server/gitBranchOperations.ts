@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { gitExecutable } from './gitExecutable.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -11,6 +12,9 @@ export interface GitRemoteCredentials {
 
 export function gitRemoteEnvironment(credentials: GitRemoteCredentials) {
   const escapedKeyPath = credentials.sshKeyPath.replace(/"/g, '\\"')
+  const sshExecutable = (
+    process.env.IRONFORGE_SSH_EXECUTABLE?.trim() || 'ssh'
+  ).replace(/"/g, '\\"')
   const passphraseEnvironment =
     credentials.sshPassphrase && credentials.sshAskPassPath
       ? {
@@ -23,7 +27,7 @@ export function gitRemoteEnvironment(credentials: GitRemoteCredentials) {
   return {
     ...process.env,
     ...passphraseEnvironment,
-    GIT_SSH_COMMAND: `ssh -i "${escapedKeyPath}" -o IdentitiesOnly=yes${credentials.sshPassphrase ? '' : ' -o BatchMode=yes'}`,
+    GIT_SSH_COMMAND: `"${sshExecutable}" -i "${escapedKeyPath}" -o IdentitiesOnly=yes${credentials.sshPassphrase ? '' : ' -o BatchMode=yes'}`,
   }
 }
 
@@ -32,7 +36,7 @@ async function git(
   args: string[],
   credentials?: GitRemoteCredentials,
 ) {
-  const { stdout } = await execFileAsync('git', ['-C', repositoryPath, ...args], {
+  const { stdout } = await execFileAsync(gitExecutable(), ['-C', repositoryPath, ...args], {
     encoding: 'utf8',
     windowsHide: true,
     maxBuffer: 10 * 1024 * 1024,

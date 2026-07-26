@@ -4,6 +4,7 @@ import {
   gitRemoteEnvironment,
   type GitRemoteCredentials,
 } from './gitBranchOperations.js'
+import { gitExecutable } from './gitExecutable.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -12,7 +13,7 @@ async function git(
   args: string[],
   credentials?: GitRemoteCredentials,
 ) {
-  const { stdout } = await execFileAsync('git', ['-C', repositoryPath, ...args], {
+  const { stdout } = await execFileAsync(gitExecutable(), ['-C', repositoryPath, ...args], {
     encoding: 'utf8',
     windowsHide: true,
     maxBuffer: 10 * 1024 * 1024,

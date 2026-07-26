@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, resolve as resolvePath } from 'node:path'
 import { promisify } from 'node:util'
+import { gitExecutable } from './gitExecutable.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -20,7 +21,7 @@ interface StoredRegistry {
 }
 
 async function git(path: string, args: string[]) {
-  const { stdout } = await execFileAsync('git', ['-C', path, ...args], {
+  const { stdout } = await execFileAsync(gitExecutable(), ['-C', path, ...args], {
     encoding: 'utf8',
     windowsHide: true,
   })

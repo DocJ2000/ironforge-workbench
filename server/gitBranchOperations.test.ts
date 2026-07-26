@@ -45,7 +45,7 @@ it('builds a project-specific non-interactive SSH environment', () => {
     sshKeyPath: 'C:\\Users\\engineer\\.ssh\\dragon key',
   })
   expect(environment.GIT_SSH_COMMAND).toBe(
-    'ssh -i "C:\\Users\\engineer\\.ssh\\dragon key" -o IdentitiesOnly=yes -o BatchMode=yes',
+    '"ssh" -i "C:\\Users\\engineer\\.ssh\\dragon key" -o IdentitiesOnly=yes -o BatchMode=yes',
   )
 })
 

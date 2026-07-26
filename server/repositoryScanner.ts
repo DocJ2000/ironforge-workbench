@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, extname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
+import { gitExecutable } from './gitExecutable.js'
 import type {
   BranchSummary,
   ChangeKind,
@@ -43,7 +44,7 @@ interface ChargeEntry {
 }
 
 async function git(repositoryPath: string, args: string[]) {
-  const { stdout } = await execFileAsync('git', ['-C', repositoryPath, ...args], {
+  const { stdout } = await execFileAsync(gitExecutable(), ['-C', repositoryPath, ...args], {
     encoding: 'utf8',
     windowsHide: true,
     maxBuffer: 10 * 1024 * 1024,
