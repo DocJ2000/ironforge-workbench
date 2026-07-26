@@ -43,7 +43,11 @@ it('stores encrypted credentials and returns only redacted status', async () => 
   const disk = await readFile(vaultPath, 'utf8')
   expect(disk).not.toContain('top-secret-token')
   expect(await vault.status('project-one')).not.toHaveProperty('token')
+  await expect(vault.get('project-one')).resolves.toMatchObject({
+    token: 'top-secret-token',
+  })
   expect(await vault.clear('project-one')).toEqual({ configured: false })
+  await expect(vault.get('project-one')).rejects.toThrow('尚未配置')
 })
 
 it('rejects a missing SSH private key before writing credentials', async () => {

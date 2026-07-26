@@ -55,6 +55,12 @@ export class CredentialVault {
       : { configured: false }
   }
 
+  async get(projectId: string): Promise<GitLabCredentialInput> {
+    const credentials = (await this.read())[projectId]
+    if (!credentials) throw new Error('当前项目尚未配置 GitLab 登录')
+    return credentials
+  }
+
   private async persist(credentials: Record<string, GitLabCredentialInput>) {
     const encrypted = this.protector
       .encryptString(JSON.stringify(credentials))

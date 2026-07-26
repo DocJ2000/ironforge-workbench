@@ -4,14 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { CredentialVault, type GitLabCredentialInput } from './credentialVault.js'
 import { startLocalServer } from './localServer.js'
 import { createRepositoryMiddleware } from '../server/repositoryApiPlugin.js'
+import { ProjectRegistry } from '../server/projectRegistry.js'
+import { homedir } from 'node:os'
 
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
 
-function registerCredentialHandlers() {
-  const vault = new CredentialVault(
-    join(app.getPath('userData'), 'gitlab-credentials.dat'),
-    safeStorage,
-  )
+function registerCredentialHandlers(vault: CredentialVault) {
   ipcMain.handle('credentials:status', (_event, projectId: string) =>
     vault.status(projectId),
   )
@@ -61,10 +59,22 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  registerCredentialHandlers()
+  const vault = new CredentialVault(
+    join(app.getPath('userData'), 'gitlab-credentials.dat'),
+    safeStorage,
+  )
+  registerCredentialHandlers(vault)
   if (!process.env.VITE_DEV_SERVER_URL) {
     const repositoryPath = app.getPath('documents')
-    const middleware = createRepositoryMiddleware({ repositoryPath })
+    const registry = new ProjectRegistry(
+      join(homedir(), '.ironforge-workbench', 'projects.json'),
+      repositoryPath,
+    )
+    const middleware = createRepositoryMiddleware({
+      repositoryPath,
+      registry,
+      credentials: (projectId) => vault.get(projectId),
+    })
     const localServer = await startLocalServer({
       staticRoot: join(currentDirectory, '..', '..', 'dist'),
       middleware,

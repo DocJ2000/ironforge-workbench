@@ -69,6 +69,11 @@ interface RepositoryMiddlewareOptions {
   createMergeRequest?: MergeRequestExecutor
   createBranch?: BranchCreator
   uploadAttachment?: AttachmentUploader
+  credentials?: (projectId: string) => Promise<{
+    baseUrl: string
+    token: string
+    sshKeyPath: string
+  }>
 }
 
 function sendJson(response: ServerResponse, statusCode: number, value: unknown) {
@@ -154,9 +159,23 @@ export function createRepositoryMiddleware({
   createMergeRequest,
   createBranch,
   uploadAttachment,
+  credentials,
 }: RepositoryMiddlewareOptions) {
-  const workflowDependencies = () => {
-    const gitLab = createGitLabClient(loadGitLabConfig())
+  const resolveCredentials = async (projectId: string) => {
+    if (credentials) return credentials(projectId)
+    return {
+      ...loadGitLabConfig(),
+      sshKeyPath: process.env.GIT_SSH_KEY_PATH ?? '',
+    }
+  }
+  const workflowDependencies = async (projectId: string) => {
+    const projectCredentials = await resolveCredentials(projectId)
+    const gitLab = createGitLabClient({
+      baseUrl: projectCredentials.baseUrl,
+      token: projectCredentials.token,
+      recommendedReviewers: ['huqinglei'],
+    })
+    const remoteCredentials = { sshKeyPath: projectCredentials.sshKeyPath }
     return {
       scanRepository,
       scanPackages: scanOutputPackages,
@@ -165,27 +184,36 @@ export function createRepositoryMiddleware({
       previewCommit: previewRepositoryCommit,
       commit: commitRepositoryChanges,
       checkout: checkoutRepositoryBranch,
-      push: pushRepositoryBranch,
-      assertTagAvailable,
+      push: (path: string, branch: string) =>
+        pushRepositoryBranch(path, branch, remoteCredentials),
+      assertTagAvailable: (path: string, name: string) =>
+        assertTagAvailable(path, name, remoteCredentials),
       createTag: createAnnotatedTag,
-      pushTag: pushRepositoryTag,
+      pushTag: (path: string, name: string) =>
+        pushRepositoryTag(path, name, remoteCredentials),
       createMergeRequest: gitLab.createMergeRequest.bind(gitLab),
     }
   }
   const executeSync = (
     path: string,
+    projectId: string,
     operation: { draft: GitLabSyncDraft; confirmed: boolean },
   ) =>
     sync
       ? sync(operation)
-      : syncGitLab(path, operation, workflowDependencies())
+      : workflowDependencies(projectId).then((dependencies) =>
+          syncGitLab(path, operation, dependencies),
+        )
   const executeMergeRequest = (
     path: string,
+    projectId: string,
     operation: { draft: MergeRequestDraft; confirmed: boolean },
   ) =>
     createMergeRequest
       ? createMergeRequest(operation)
-      : createDeliveryMergeRequest(path, operation, workflowDependencies())
+      : workflowDependencies(projectId).then((dependencies) =>
+          createDeliveryMergeRequest(path, operation, dependencies),
+        )
   const executeCreateBranch = (path: string, input: CreateBranchInput) =>
     createBranch
       ? createBranch(input)
@@ -194,13 +222,19 @@ export function createRepositoryMiddleware({
         }))
   const executeUpload = (
     path: string,
+    projectId: string,
     upload: { name: string; type: string; bytes: Uint8Array },
   ) =>
     uploadAttachment
       ? uploadAttachment(upload)
       : (async () => {
       const repository = await scan(path)
-      const gitLab = createGitLabClient(loadGitLabConfig())
+      const projectCredentials = await resolveCredentials(projectId)
+      const gitLab = createGitLabClient({
+        baseUrl: projectCredentials.baseUrl,
+        token: projectCredentials.token,
+        recommendedReviewers: ['huqinglei'],
+      })
       return gitLab.uploadMarkdownFile(
         gitLabProjectPath(repository.gitlabPath),
         upload,
@@ -278,6 +312,7 @@ export function createRepositoryMiddleware({
     }
 
     let activeRepositoryPath = repositoryPath
+    let activeProjectId = 'default'
     if (registry) {
       try {
         const projectId = requestUrl.searchParams.get('projectId')
@@ -286,6 +321,7 @@ export function createRepositoryMiddleware({
           : (await registry.list())[0]
         if (!project) throw new Error('没有已登记的项目')
         activeRepositoryPath = project.path
+        activeProjectId = project.id
       } catch (error) {
         sendJson(response, 404, {
           error: error instanceof Error ? error.message : '项目不存在',
@@ -298,6 +334,7 @@ export function createRepositoryMiddleware({
       try {
         const result = await executeUpload(
           activeRepositoryPath,
+          activeProjectId,
           await readUpload(request),
         )
         sendJson(response, 200, result)
@@ -350,10 +387,12 @@ export function createRepositoryMiddleware({
         const result = isSyncRequest
           ? await executeSync(
               activeRepositoryPath,
+              activeProjectId,
               body as { draft: GitLabSyncDraft; confirmed: boolean },
             )
           : await executeMergeRequest(
               activeRepositoryPath,
+              activeProjectId,
               body as { draft: MergeRequestDraft; confirmed: boolean },
             )
         sendJson(response, 200, result)
@@ -395,7 +434,12 @@ export function createRepositoryMiddleware({
           scanOutputPackages(activeRepositoryPath),
         ])
         try {
-          const gitLab = createGitLabClient(loadGitLabConfig())
+          const projectCredentials = await resolveCredentials(activeProjectId)
+          const gitLab = createGitLabClient({
+            baseUrl: projectCredentials.baseUrl,
+            token: projectCredentials.token,
+            recommendedReviewers: ['huqinglei'],
+          })
           const reviewers = await gitLab.listReviewers(
             gitLabProjectPath(repository.gitlabPath),
           )

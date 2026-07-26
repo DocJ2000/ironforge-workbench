@@ -9,6 +9,7 @@ import {
   assertTagAvailable,
   createAnnotatedTag,
   createRepositoryBranch,
+  gitRemoteEnvironment,
 } from './gitBranchOperations'
 
 const repositories: string[] = []
@@ -36,6 +37,15 @@ afterEach(async () => {
     repositories.splice(0).map((path) =>
       rm(path, { recursive: true, force: true }),
     ),
+  )
+})
+
+it('builds a project-specific non-interactive SSH environment', () => {
+  const environment = gitRemoteEnvironment({
+    sshKeyPath: 'C:\\Users\\engineer\\.ssh\\dragon key',
+  })
+  expect(environment.GIT_SSH_COMMAND).toBe(
+    'ssh -i "C:\\Users\\engineer\\.ssh\\dragon key" -o IdentitiesOnly=yes -o BatchMode=yes',
   )
 })
 

@@ -3,11 +3,28 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
-async function git(repositoryPath: string, args: string[]) {
+export interface GitRemoteCredentials {
+  sshKeyPath: string
+}
+
+export function gitRemoteEnvironment(credentials: GitRemoteCredentials) {
+  const escapedKeyPath = credentials.sshKeyPath.replace(/"/g, '\\"')
+  return {
+    ...process.env,
+    GIT_SSH_COMMAND: `ssh -i "${escapedKeyPath}" -o IdentitiesOnly=yes -o BatchMode=yes`,
+  }
+}
+
+async function git(
+  repositoryPath: string,
+  args: string[],
+  credentials?: GitRemoteCredentials,
+) {
   const { stdout } = await execFileAsync('git', ['-C', repositoryPath, ...args], {
     encoding: 'utf8',
     windowsHide: true,
     maxBuffer: 10 * 1024 * 1024,
+    ...(credentials ? { env: gitRemoteEnvironment(credentials) } : {}),
   })
   return stdout.trim()
 }
@@ -52,13 +69,15 @@ export async function checkoutRepositoryBranch(
 export async function pushRepositoryBranch(
   repositoryPath: string,
   branch: string,
+  credentials?: GitRemoteCredentials,
 ) {
-  await git(repositoryPath, ['push', '--set-upstream', 'origin', branch])
+  await git(repositoryPath, ['push', '--set-upstream', 'origin', branch], credentials)
 }
 
 export async function assertTagAvailable(
   repositoryPath: string,
   name: string,
+  credentials?: GitRemoteCredentials,
 ) {
   const normalized = name.trim()
   try {
@@ -73,7 +92,7 @@ export async function assertTagAvailable(
     '--tags',
     'origin',
     `refs/tags/${normalized}`,
-  ])
+  ], credentials)
   if (remote) throw new Error(`远端版本 Tag ${normalized} 已存在`)
 }
 
@@ -95,6 +114,7 @@ export async function createAnnotatedTag(
 export async function pushRepositoryTag(
   repositoryPath: string,
   name: string,
+  credentials?: GitRemoteCredentials,
 ) {
-  await git(repositoryPath, ['push', 'origin', `refs/tags/${name}`])
+  await git(repositoryPath, ['push', 'origin', `refs/tags/${name}`], credentials)
 }
