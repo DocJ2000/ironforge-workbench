@@ -81,7 +81,10 @@ interface RepositoryMiddlewareOptions {
     baseUrl: string
     token: string
     sshKeyPath: string
+    sshPassphrase?: string
+    sshAskPassPath?: string
   }>
+  sshAskPassPath?: string
 }
 
 function sendJson(response: ServerResponse, statusCode: number, value: unknown) {
@@ -170,6 +173,7 @@ export function createRepositoryMiddleware({
   pull,
   clone,
   credentials,
+  sshAskPassPath,
 }: RepositoryMiddlewareOptions) {
   const resolveCredentials = async (projectId: string) => {
     if (credentials) return credentials(projectId)
@@ -185,7 +189,15 @@ export function createRepositoryMiddleware({
       token: projectCredentials.token,
       recommendedReviewers: ['huqinglei'],
     })
-    const remoteCredentials = { sshKeyPath: projectCredentials.sshKeyPath }
+    const remoteCredentials = {
+      sshKeyPath: projectCredentials.sshKeyPath,
+      ...(projectCredentials.sshPassphrase
+        ? { sshPassphrase: projectCredentials.sshPassphrase }
+        : {}),
+      ...(projectCredentials.sshAskPassPath
+        ? { sshAskPassPath: projectCredentials.sshAskPassPath }
+        : {}),
+    }
     return {
       scanRepository,
       scanPackages: scanOutputPackages,
@@ -321,7 +333,7 @@ export function createRepositoryMiddleware({
     if (isCloneRequest) {
       try {
         const body = await readJson<{
-          input: { remoteUrl: string; destination: string; sshKeyPath?: string }
+          input: { remoteUrl: string; destination: string; sshKeyPath?: string; sshPassphrase?: string }
           confirmed: boolean
         }>(request)
         if (!body.confirmed) throw new Error('请先确认下载云端项目')
@@ -331,7 +343,11 @@ export function createRepositoryMiddleware({
               remoteUrl: body.input.remoteUrl,
               destination: body.input.destination,
               ...(body.input.sshKeyPath
-                ? { credentials: { sshKeyPath: body.input.sshKeyPath } }
+                ? { credentials: {
+                    sshKeyPath: body.input.sshKeyPath,
+                    ...(body.input.sshPassphrase ? { sshPassphrase: body.input.sshPassphrase } : {}),
+                    ...(sshAskPassPath ? { sshAskPassPath } : {}),
+                  } }
                 : {}),
             })
         const project = registry ? await registry.add(cloned.path) : cloned
@@ -395,6 +411,12 @@ export function createRepositoryMiddleware({
           ? await pull(activeRepositoryPath)
           : await pullRepository(activeRepositoryPath, {
               sshKeyPath: projectCredentials.sshKeyPath,
+              ...(projectCredentials.sshPassphrase
+                ? { sshPassphrase: projectCredentials.sshPassphrase }
+                : {}),
+              ...(projectCredentials.sshAskPassPath
+                ? { sshAskPassPath: projectCredentials.sshAskPassPath }
+                : {}),
             })
         sendJson(response, 200, result)
       } catch (error) {

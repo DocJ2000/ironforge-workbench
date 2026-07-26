@@ -5,13 +5,25 @@ const execFileAsync = promisify(execFile)
 
 export interface GitRemoteCredentials {
   sshKeyPath: string
+  sshPassphrase?: string
+  sshAskPassPath?: string
 }
 
 export function gitRemoteEnvironment(credentials: GitRemoteCredentials) {
   const escapedKeyPath = credentials.sshKeyPath.replace(/"/g, '\\"')
+  const passphraseEnvironment =
+    credentials.sshPassphrase && credentials.sshAskPassPath
+      ? {
+          SSH_ASKPASS: credentials.sshAskPassPath,
+          SSH_ASKPASS_REQUIRE: 'force',
+          DISPLAY: 'ironforge-workbench',
+          IRONFORGE_SSH_PASSPHRASE: credentials.sshPassphrase,
+        }
+      : {}
   return {
     ...process.env,
-    GIT_SSH_COMMAND: `ssh -i "${escapedKeyPath}" -o IdentitiesOnly=yes -o BatchMode=yes`,
+    ...passphraseEnvironment,
+    GIT_SSH_COMMAND: `ssh -i "${escapedKeyPath}" -o IdentitiesOnly=yes${credentials.sshPassphrase ? '' : ' -o BatchMode=yes'}`,
   }
 }
 

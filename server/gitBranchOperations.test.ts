@@ -49,6 +49,18 @@ it('builds a project-specific non-interactive SSH environment', () => {
   )
 })
 
+it('uses an askpass helper without putting the passphrase in the Git command', () => {
+  const environment = gitRemoteEnvironment({
+    sshKeyPath: 'C:\\keys\\dragon',
+    sshPassphrase: 'private password',
+    sshAskPassPath: 'C:\\AppData\\ironforge-askpass.cmd',
+  })
+  expect(environment.SSH_ASKPASS).toContain('ironforge-askpass.cmd')
+  expect(environment.IRONFORGE_SSH_PASSPHRASE).toBe('private password')
+  expect(environment.GIT_SSH_COMMAND).not.toContain('private password')
+  expect(environment.GIT_SSH_COMMAND).not.toContain('BatchMode')
+})
+
 describe('createRepositoryBranch', () => {
   it('creates and switches to a new branch from the selected start point', async () => {
     const repositoryPath = await createRepository()

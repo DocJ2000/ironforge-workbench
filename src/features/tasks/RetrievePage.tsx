@@ -43,6 +43,7 @@ export function RetrievePage({
   const [cloneResult, setCloneResult] = useState<string | null>(null)
   const [remoteUrl, setRemoteUrl] = useState('')
   const [sshKeyPath, setSshKeyPath] = useState('')
+  const [sshPassphrase, setSshPassphrase] = useState('')
   const selectedAction = actions.find((item) => item.id === action)
 
   function selectProject(id: string) {
@@ -63,6 +64,7 @@ export function RetrievePage({
           remoteUrl,
           destination,
           ...(sshKeyPath.trim() ? { sshKeyPath } : {}),
+          ...(sshPassphrase ? { sshPassphrase } : {}),
         })
         setCloneResult(result.project.path)
       }
@@ -146,6 +148,7 @@ export function RetrievePage({
           {action === 'clone' ? <>
             <label className="plain-field spaced-field"><span>GitLab 项目的 SSH 地址</span><input aria-label="GitLab 项目的 SSH 地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlfs.lab.tp:rockteam/project.git" value={remoteUrl} /></label>
             <label className="plain-field spaced-field"><span>这次使用的 SSH 私钥路径</span><span className="path-input"><input aria-label="这次使用的 SSH 私钥路径" onChange={(event) => setSshKeyPath(event.target.value)} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={sshKeyPath} />{desktopDialogClient.available() ? <button aria-label="选择 SSH 私钥" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setSshKeyPath(path) })} title="选择 SSH 私钥" type="button"><FolderOpen size={17} /></button> : null}</span></label>
+            <label className="plain-field spaced-field"><span>SSH 私钥密码（没有可留空）</span><input aria-label="SSH 私钥密码（没有可留空）" autoComplete="off" onChange={(event) => setSshPassphrase(event.target.value)} type="password" value={sshPassphrase} /></label>
           </> : null}
           <label className="plain-field spaced-field">
             <span>{action === 'pull' ? '更新这个本地文件夹' : '保存到这个文件夹'}</span>

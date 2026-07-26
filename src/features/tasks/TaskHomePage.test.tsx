@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getDemoRepository } from '../../data/demoRepository'
 import { TaskHomePage } from './TaskHomePage'
+import { MemoryRouter } from 'react-router-dom'
 
 describe('TaskHomePage', () => {
   it('shows local projects and changes the current project', () => {
@@ -14,7 +15,7 @@ describe('TaskHomePage', () => {
     }
     const onSelect = vi.fn()
     render(
-      <TaskHomePage
+      <MemoryRouter><TaskHomePage
         onAdd={vi.fn()}
         onSelect={onSelect}
         projects={[
@@ -22,7 +23,7 @@ describe('TaskHomePage', () => {
           { id: aurora.id, repository: aurora, connected: false, lastOpened: '昨天' },
         ]}
         selectedId={dragon.id}
-      />,
+      /></MemoryRouter>,
     )
     expect(screen.getByText('这台电脑上的项目')).toBeVisible()
     expect(screen.getByText('Aurora Lens Mechanics')).toBeVisible()

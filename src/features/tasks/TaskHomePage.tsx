@@ -2,6 +2,7 @@ import {
   CheckCircle2,
   CloudDownload,
   FolderPlus,
+  FolderOpen,
   GitBranch,
   HardDrive,
   RefreshCw,
@@ -9,6 +10,8 @@ import {
 import type { RegisteredProject } from '../../data/repositoryContext'
 import { summarizeRepository } from '../../domain/repository'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { desktopDialogClient } from '../../data/desktopDialogClient'
 import './tasks.css'
 import './projectCenter.css'
 import './addProject.css'
@@ -43,10 +46,10 @@ export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
             <FolderPlus size={17} />
             添加本地项目
           </button>
-          <button className="button button--primary" type="button">
+          <Link className="button button--primary" to="/workspace/retrieve">
             <CloudDownload size={17} />
             从云端下载项目
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -54,12 +57,12 @@ export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
         <section className="add-project-panel">
           <label className="plain-field">
             <span>本地 Git 项目文件夹</span>
-            <input
+            <span className="path-input"><input
               aria-label="本地 Git 项目文件夹"
               onChange={(event) => setPath(event.target.value)}
               placeholder="例如：D:\Projects\Dragon\lens-mechanics"
               value={path}
-            />
+            />{desktopDialogClient.available() ? <button aria-label="选择本地项目文件夹" onClick={() => void desktopDialogClient.chooseDirectory().then((selected) => { if (selected) setPath(selected) })} title="选择本地项目文件夹" type="button"><FolderOpen size={17} /></button> : null}</span>
           </label>
           <button
             className="button button--primary"

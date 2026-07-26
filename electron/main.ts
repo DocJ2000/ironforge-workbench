@@ -6,6 +6,7 @@ import { startLocalServer } from './localServer.js'
 import { createRepositoryMiddleware } from '../server/repositoryApiPlugin.js'
 import { ProjectRegistry } from '../server/projectRegistry.js'
 import { homedir } from 'node:os'
+import { mkdir, writeFile } from 'node:fs/promises'
 
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
 
@@ -75,13 +76,22 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  const userDataPath = app.getPath('userData')
   const vault = new CredentialVault(
-    join(app.getPath('userData'), 'gitlab-credentials.dat'),
+    join(userDataPath, 'gitlab-credentials.dat'),
     safeStorage,
   )
   registerCredentialHandlers(vault)
   registerFileDialogHandlers()
   if (!process.env.VITE_DEV_SERVER_URL) {
+    const helperDirectory = join(userDataPath, 'helpers')
+    const sshAskPassPath = join(helperDirectory, 'ssh-askpass.cmd')
+    await mkdir(helperDirectory, { recursive: true })
+    await writeFile(
+      sshAskPassPath,
+      '@echo off\r\necho %IRONFORGE_SSH_PASSPHRASE%\r\n',
+      'utf8',
+    )
     const repositoryPath = app.getPath('documents')
     const registry = new ProjectRegistry(
       join(homedir(), '.ironforge-workbench', 'projects.json'),
@@ -90,7 +100,11 @@ app.whenReady().then(async () => {
     const middleware = createRepositoryMiddleware({
       repositoryPath,
       registry,
-      credentials: (projectId) => vault.get(projectId),
+      credentials: async (projectId) => ({
+        ...(await vault.get(projectId)),
+        sshAskPassPath,
+      }),
+      sshAskPassPath,
     })
     const localServer = await startLocalServer({
       staticRoot: join(currentDirectory, '..', '..', 'dist'),
