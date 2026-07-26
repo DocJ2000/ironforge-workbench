@@ -1,67 +1,91 @@
-import { ArrowRight, Download, FolderSync, PackageCheck, UploadCloud } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import type { RepositorySnapshot } from '../../domain/repository'
+import {
+  CheckCircle2,
+  CloudDownload,
+  FolderPlus,
+  GitBranch,
+  HardDrive,
+  RefreshCw,
+} from 'lucide-react'
+import type { RegisteredProject } from '../../data/repositoryContext'
+import { summarizeRepository } from '../../domain/repository'
 import './tasks.css'
+import './projectCenter.css'
 
-interface TaskHomePageProps {
-  repository: RepositorySnapshot
+interface Props {
+  projects: RegisteredProject[]
+  selectedId: string
+  onSelect: (id: string) => void
 }
 
-const tasks = [
-  {
-    to: '/workspace/project-upload',
-    title: '上传整个工程',
-    description: '把本地工程的新增和修改保存到 GitLab，方便同事获取。',
-    icon: UploadCloud,
-    tone: 'cyan',
-  },
-  {
-    to: '/workspace/ironforge-delivery',
-    title: '提交图纸到铁炉堡',
-    description: '选择 OUTPUT 交付包，提交审核；审核通过后发布到铁炉堡。',
-    icon: PackageCheck,
-    tone: 'red',
-  },
-  {
-    to: '/workspace/retrieve',
-    title: '获取项目和图纸',
-    description: '在新电脑下载项目、获取同事改动，或下载已发布图纸。',
-    icon: Download,
-    tone: 'green',
-  },
-]
+export function TaskHomePage({ projects, selectedId, onSelect }: Props) {
+  const attentionCount = projects.filter(
+    ({ repository }) =>
+      repository.changes.length > 0 || repository.behind > 0,
+  ).length
 
-export function TaskHomePage({ repository }: TaskHomePageProps) {
   return (
-    <div className="task-page task-home">
-      <header className="task-home__header">
+    <div className="task-page project-center">
+      <header className="project-center__header">
         <div>
-          <span className="task-eyebrow">当前项目</span>
-          <h1>{repository.displayName}</h1>
-          <p>你现在想做什么？选择一项，软件会一步一步带你完成。</p>
+          <span className="task-eyebrow">项目中心</span>
+          <h1>这台电脑上的项目</h1>
+          <p>先选择当前项目，左侧的上传、交付和获取操作都会使用它。</p>
         </div>
-        <div className="current-project">
-          <FolderSync aria-hidden="true" size={18} />
-          <span>
-            <small>当前分支</small>
-            <strong>{repository.branch}</strong>
-          </span>
+        <div className="project-center__commands">
+          <button className="button button--secondary" type="button">
+            <FolderPlus size={17} />
+            添加本地项目
+          </button>
+          <button className="button button--primary" type="button">
+            <CloudDownload size={17} />
+            从云端下载项目
+          </button>
         </div>
       </header>
-      <nav aria-label="选择要做的事情" className="task-list">
-        {tasks.map(({ to, title, description, icon: Icon, tone }) => (
-          <Link className={`task-entry task-entry--${tone}`} key={to} to={to}>
-            <span className="task-entry__icon">
-              <Icon aria-hidden="true" size={25} />
-            </span>
-            <span className="task-entry__copy">
-              <strong>{title}</strong>
-              <small>{description}</small>
-            </span>
-            <ArrowRight aria-hidden="true" className="task-entry__arrow" size={21} />
-          </Link>
-        ))}
-      </nav>
+
+      {attentionCount ? (
+        <div className="project-attention">
+          <RefreshCw aria-hidden="true" size={17} />
+          <strong>{attentionCount} 个项目需要处理</strong>
+          <span>有本地文件未上传，或云端存在新内容。</span>
+        </div>
+      ) : null}
+
+      <div className="project-list">
+        {projects.map((project) => {
+          const { repository } = project
+          const current = project.id === selectedId
+          const sync = summarizeRepository(repository)
+          return (
+            <article className={`project-row${current ? ' project-row--current' : ''}`} key={project.id}>
+              <div className="project-row__identity">
+                <span className="project-row__icon"><HardDrive size={20} /></span>
+                <span>
+                  <strong>{repository.displayName}</strong>
+                  <small title={repository.path}>{repository.path}</small>
+                </span>
+              </div>
+              <div className="project-row__facts">
+                <span><GitBranch size={14} />{repository.branch}</span>
+                <span>{repository.changes.length} 个本地改动</span>
+                <span className={`project-state project-state--${sync.syncTone}`}>{sync.syncLabel}</span>
+                {!project.connected ? <span className="project-state project-state--neutral">尚未连接</span> : null}
+              </div>
+              <div className="project-row__action">
+                <small>最近打开：{project.lastOpened}</small>
+                <button
+                  className={current ? 'button button--quiet' : 'button button--secondary'}
+                  disabled={current}
+                  onClick={() => onSelect(project.id)}
+                  type="button"
+                >
+                  {current ? <><CheckCircle2 size={16} />当前项目</> : '设为当前项目'}
+                </button>
+              </div>
+            </article>
+          )
+        })}
+      </div>
     </div>
   )
 }

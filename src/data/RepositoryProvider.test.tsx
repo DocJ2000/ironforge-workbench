@@ -9,12 +9,24 @@ afterEach(() => {
 })
 
 function Probe() {
-  const { repository, source, error, refresh } = useRepository()
+  const {
+    repository,
+    projects,
+    source,
+    error,
+    refresh,
+    selectProject,
+    operationReady,
+  } = useRepository()
   return (
     <>
       <span>{repository.branch}</span>
       <span>{source}</span>
       <span>{error ?? 'ok'}</span>
+      <span>{operationReady ? 'ready' : 'blocked'}</span>
+      <button onClick={() => selectProject(projects[1].id)} type="button">
+        select preview
+      </button>
       <button onClick={() => void refresh()} type="button">
         refresh
       </button>
@@ -60,5 +72,16 @@ describe('RepositoryProvider', () => {
 
     await waitFor(() => expect(screen.getByText('demo')).toBeVisible())
     expect(screen.getByText('无法读取本地仓库，当前显示演示数据')).toBeVisible()
+  })
+
+  it('switches to an unconnected project and blocks operations', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    render(<RepositoryProvider><Probe /></RepositoryProvider>)
+    await waitFor(() => expect(screen.getByText('ready')).toBeVisible())
+    await act(async () =>
+      screen.getByRole('button', { name: 'select preview' }).click(),
+    )
+    await waitFor(() => expect(screen.getByText('dev/T1')).toBeVisible())
+    expect(screen.getByText('blocked')).toBeVisible()
   })
 })

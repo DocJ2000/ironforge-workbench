@@ -37,7 +37,14 @@ const navigation = [
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const { error, repository, source } = useRepository()
+  const {
+    error,
+    projects,
+    repository,
+    selectedProjectId,
+    selectProject,
+    source,
+  } = useRepository()
 
   return (
     <div className={`app-shell${sidebarCollapsed ? ' app-shell--collapsed' : ''}`}>
@@ -76,7 +83,11 @@ export function AppShell() {
           </button>
         </div>
 
-        <RepositorySwitcher repository={repository} />
+        <RepositorySwitcher
+          onSelect={selectProject}
+          projects={projects}
+          selectedId={selectedProjectId}
+        />
         <div
           className={`repository-source repository-source--${source}`}
           title={error ?? '正在读取本地 Git 仓库'}

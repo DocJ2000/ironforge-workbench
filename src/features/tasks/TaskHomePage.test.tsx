@@ -1,14 +1,31 @@
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { getDemoRepository } from '../../data/demoRepository'
 import { TaskHomePage } from './TaskHomePage'
 
 describe('TaskHomePage', () => {
-  it('offers three plain-language task routes', () => {
-    render(<MemoryRouter><TaskHomePage repository={getDemoRepository()} /></MemoryRouter>)
-    expect(screen.getByRole('link', { name: /上传整个工程/ })).toHaveAttribute('href', '/workspace/project-upload')
-    expect(screen.getByRole('link', { name: /提交图纸到铁炉堡/ })).toHaveAttribute('href', '/workspace/ironforge-delivery')
-    expect(screen.getByRole('link', { name: /获取项目和图纸/ })).toHaveAttribute('href', '/workspace/retrieve')
+  it('shows local projects and changes the current project', () => {
+    const dragon = getDemoRepository()
+    const aurora = {
+      ...dragon,
+      id: 'aurora',
+      displayName: 'Aurora Lens Mechanics',
+      path: 'D:\\Projects\\Aurora',
+    }
+    const onSelect = vi.fn()
+    render(
+      <TaskHomePage
+        onSelect={onSelect}
+        projects={[
+          { id: dragon.id, repository: dragon, connected: true, lastOpened: '刚刚' },
+          { id: aurora.id, repository: aurora, connected: false, lastOpened: '昨天' },
+        ]}
+        selectedId={dragon.id}
+      />,
+    )
+    expect(screen.getByText('这台电脑上的项目')).toBeVisible()
+    expect(screen.getByText('Aurora Lens Mechanics')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '设为当前项目' }))
+    expect(onSelect).toHaveBeenCalledWith('aurora')
   })
 })

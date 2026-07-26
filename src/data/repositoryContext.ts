@@ -3,8 +3,19 @@ import type { RepositorySnapshot } from '../domain/repository'
 
 export type RepositorySource = 'live' | 'demo'
 
+export interface RegisteredProject {
+  id: string
+  repository: RepositorySnapshot
+  connected: boolean
+  lastOpened: string
+}
+
 export interface RepositoryContextValue {
   repository: RepositorySnapshot
+  projects: RegisteredProject[]
+  selectedProjectId: string
+  selectProject: (id: string) => void
+  operationReady: boolean
   source: RepositorySource
   loading: boolean
   error: string | null

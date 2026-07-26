@@ -10,9 +10,18 @@ import { TaskHomePage } from '../features/tasks/TaskHomePage'
 import { ProjectUploadPage } from '../features/tasks/ProjectUploadPage'
 import { IronforgeDeliveryPage } from '../features/tasks/IronforgeDeliveryPage'
 import { RetrievePage } from '../features/tasks/RetrievePage'
+import { ProjectUnavailable } from '../features/tasks/ProjectUnavailable'
 
 export function AppRoutes() {
-  const { repository, loading, refresh } = useRepository()
+  const {
+    operationReady,
+    projects,
+    repository,
+    selectedProjectId,
+    selectProject,
+    loading,
+    refresh,
+  } = useRepository()
 
   return (
     <Routes>
@@ -30,11 +39,17 @@ export function AppRoutes() {
         />
         <Route
           path="/workspace"
-          element={<TaskHomePage repository={repository} />}
+          element={
+            <TaskHomePage
+              onSelect={selectProject}
+              projects={projects}
+              selectedId={selectedProjectId}
+            />
+          }
         />
         <Route path="/workspace/legacy" element={<DeliveryPage onRefresh={refresh} repository={repository} />} />
-        <Route path="/workspace/project-upload" element={<ProjectUploadPage onRefresh={refresh} repository={repository} />} />
-        <Route path="/workspace/ironforge-delivery" element={<IronforgeDeliveryPage onRefresh={refresh} repository={repository} />} />
+        <Route path="/workspace/project-upload" element={operationReady ? <ProjectUploadPage onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
+        <Route path="/workspace/ironforge-delivery" element={operationReady ? <IronforgeDeliveryPage onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
         <Route path="/workspace/retrieve" element={<RetrievePage repository={repository} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />

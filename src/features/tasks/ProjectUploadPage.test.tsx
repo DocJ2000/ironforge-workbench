@@ -11,6 +11,7 @@ it('uploads all project changes without a tag', async () => {
   render(<MemoryRouter><ProjectUploadPage api={api} repository={getDemoRepository()} /></MemoryRouter>)
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.change(screen.getByLabelText('本次更新标题'), { target: { value: '更新整个结构工程' } })
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '确认上传' }))
