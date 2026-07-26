@@ -13,7 +13,7 @@
     "test": "vitest",
     "test:e2e": "playwright test",
     "preview": "vite preview",
-    "build:desktop": "npm run build && tsc -p tsconfig.electron.json",
+    "build:desktop": "npm run build && node -e \"require('fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p tsconfig.electron.json",
     "desktop": "npm run build:desktop && electron .",
     "package:win": "npm run build:desktop && electron-builder --win nsis"
   },

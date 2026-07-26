@@ -53,7 +53,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      preload: join(currentDirectory, 'preload.js'),
+      preload: join(currentDirectory, 'preload.cjs'),
     },
   })
 

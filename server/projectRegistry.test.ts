@@ -54,4 +54,12 @@ describe('ProjectRegistry', () => {
     await expect(stat(repository)).resolves.toBeTruthy()
     await expect(registry.resolve(project.id)).rejects.toThrow('尚未登记')
   })
+
+  it('ignores a packaged fallback path that is not a Git repository', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ironforge-invalid-seed-'))
+    roots.push(root)
+    const registry = new ProjectRegistry(join(root, 'projects.json'), root)
+
+    await expect(registry.list()).resolves.toEqual([])
+  })
 })

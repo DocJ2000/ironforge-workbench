@@ -9,6 +9,6 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["electron/**/*.ts", "server/**/*.ts", "src/domain/**/*.ts"],
+  "include": ["electron/**/*.ts", "electron/**/*.cts", "server/**/*.ts", "src/domain/**/*.ts"],
   "exclude": ["electron/**/*.test.ts", "server/**/*.test.ts", "src/**/*.test.ts"]
 }

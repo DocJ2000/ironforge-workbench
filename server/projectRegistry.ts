@@ -75,9 +75,9 @@ export class ProjectRegistry {
       // A missing or unreadable registry starts empty; validated seed follows.
     }
     this.projects = Array.isArray(stored.projects) ? stored.projects : []
-    if (this.seedPath) {
-      const seed = await this.record(this.seedPath)
-      if (!this.projects.some((project) => project.id === seed.id)) {
+    if (this.seedPath && this.projects.length === 0) {
+      const seed = await this.record(this.seedPath).catch(() => null)
+      if (seed) {
         this.projects.unshift(seed)
         await this.persist()
       }
