@@ -1,8 +1,26 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { CredentialVault, type GitLabCredentialInput } from './credentialVault.js'
 
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
+
+function registerCredentialHandlers() {
+  const vault = new CredentialVault(
+    join(app.getPath('userData'), 'gitlab-credentials.dat'),
+    safeStorage,
+  )
+  ipcMain.handle('credentials:status', (_event, projectId: string) =>
+    vault.status(projectId),
+  )
+  ipcMain.handle(
+    'credentials:save',
+    (_event, input: GitLabCredentialInput) => vault.save(input),
+  )
+  ipcMain.handle('credentials:clear', (_event, projectId: string) =>
+    vault.clear(projectId),
+  )
+}
 
 function createWindow() {
   const window = new BrowserWindow({
@@ -22,7 +40,11 @@ function createWindow() {
 
   window.once('ready-to-show', () => window.show())
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) void shell.openExternal(url)
+    const target = new URL(url)
+    const allowed =
+      target.protocol === 'https:' ||
+      (target.protocol === 'http:' && target.hostname === 'ironforge.holo.tp')
+    if (allowed) void shell.openExternal(url)
     return { action: 'deny' }
   })
 
@@ -38,6 +60,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  registerCredentialHandlers()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

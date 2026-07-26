@@ -63,7 +63,16 @@ export function AppRoutes() {
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={<HistoryPage repository={repository} />} />
-        <Route path="/account" element={<AccountPage />} />
+        <Route
+          path="/account"
+          element={
+            <AccountPage
+              onSelect={selectProject}
+              projects={projects}
+              selectedId={selectedProjectId}
+            />
+          }
+        />
       </Route>
     </Routes>
   )
