@@ -39,6 +39,9 @@ export function RetrievePage({
     updated: boolean
     receivedCommits: number
   } | null>(null)
+  const [cloneResult, setCloneResult] = useState<string | null>(null)
+  const [remoteUrl, setRemoteUrl] = useState('')
+  const [sshKeyPath, setSshKeyPath] = useState('')
   const selectedAction = actions.find((item) => item.id === action)
 
   function selectProject(id: string) {
@@ -48,12 +51,20 @@ export function RetrievePage({
   }
 
   async function retrieve() {
-    if (action !== 'pull') return
+    if (action !== 'pull' && action !== 'clone') return
     setBusy(true)
     setError(null)
     try {
-      const result = await api.pull()
-      setPullResult(result)
+      if (action === 'pull') {
+        setPullResult(await api.pull())
+      } else {
+        const result = await api.clone({
+          remoteUrl,
+          destination,
+          ...(sshKeyPath.trim() ? { sshKeyPath } : {}),
+        })
+        setCloneResult(result.project.path)
+      }
       await onRefresh?.()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '获取云端改动失败')
@@ -69,11 +80,12 @@ export function RetrievePage({
       nextDisabled={
         (step === 0 && !selectedProject) ||
         (step === 1 && !action) ||
-        (step === 2 && !destination.trim())
+        (step === 2 && (!destination.trim() || (action === 'clone' && !remoteUrl.trim()))) ||
+        busy
       }
-      nextLabel={step === 2 && action === 'pull' ? busy ? '正在获取' : '确认获取' : step === 2 ? '确认位置' : '下一步'}
+      nextLabel={step === 2 && (action === 'pull' || action === 'clone') ? busy ? '正在处理' : action === 'pull' ? '确认获取' : '确认下载' : step === 2 ? '确认位置' : '下一步'}
       onBack={step > 0 ? () => setStep((current) => current - 1) : undefined}
-      onNext={step < 2 ? () => setStep((current) => current + 1) : action === 'pull' && !pullResult ? () => void retrieve() : undefined}
+      onNext={step < 2 ? () => setStep((current) => current + 1) : (action === 'pull' && !pullResult) || (action === 'clone' && !cloneResult) ? () => void retrieve() : undefined}
       steps={['选择项目', '选择要获取的内容', '选择保存位置']}
       title="获取项目和图纸"
     >
@@ -104,7 +116,7 @@ export function RetrievePage({
           <div className="wizard-panel__intro"><h2>你要获取什么？</h2><p>请选择最符合当前情况的一项。</p></div>
           <div className="retrieve-list">
             {actions.map(({ id, title, description, icon: Icon }) => (
-              <button aria-pressed={action === id} className="retrieve-choice" key={id} onClick={() => setAction(id)} type="button">
+              <button aria-pressed={action === id} className="retrieve-choice" key={id} onClick={() => { setAction(id); if (id === 'clone') setDestination('') }} type="button">
                 <Icon size={21} /><span><strong>{title}</strong><small>{description}</small></span><ArrowRight size={18} />
               </button>
             ))}
@@ -120,15 +132,20 @@ export function RetrievePage({
               <p>{pullResult.updated ? `本次获取了 ${pullResult.receivedCommits} 个新版本。` : '云端没有比本地更新的内容。'}</p>
             </div>
           ) : null}
-          {!pullResult ? <>
+          {cloneResult ? <div className="wizard-success"><h2>云端项目已下载</h2><p>已保存到 {cloneResult}，并加入项目列表。</p></div> : null}
+          {!pullResult && !cloneResult ? <>
           <div className="wizard-panel__intro">
             <h2>{selectedAction.title}</h2>
             <p>确认项目和本地位置。</p>
           </div>
           <dl className="confirm-list">
             <div><dt>本次操作项目</dt><dd>{selectedProject.repository.displayName}</dd></div>
-            <div><dt>云端项目</dt><dd>{selectedProject.repository.gitlabPath}</dd></div>
+            {action !== 'clone' ? <div><dt>云端项目</dt><dd>{selectedProject.repository.gitlabPath}</dd></div> : null}
           </dl>
+          {action === 'clone' ? <>
+            <label className="plain-field spaced-field"><span>GitLab 项目的 SSH 地址</span><input aria-label="GitLab 项目的 SSH 地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlfs.lab.tp:rockteam/project.git" value={remoteUrl} /></label>
+            <label className="plain-field spaced-field"><span>这次使用的 SSH 私钥路径</span><input aria-label="这次使用的 SSH 私钥路径" onChange={(event) => setSshKeyPath(event.target.value)} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={sshKeyPath} /></label>
+          </> : null}
           <label className="plain-field spaced-field">
             <span>{action === 'pull' ? '更新这个本地文件夹' : '保存到这个文件夹'}</span>
             <input aria-label="本地保存位置" onChange={(event) => setDestination(event.target.value)} readOnly={action === 'pull'} value={destination} />

@@ -34,6 +34,7 @@ import { scanOutputPackages } from './outputPackages.js'
 import { scanRepository } from './repositoryScanner.js'
 import { ProjectRegistry } from './projectRegistry.js'
 import { pullRepository } from './repositoryPull.js'
+import { cloneRepository } from './repositoryClone.js'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -71,6 +72,11 @@ interface RepositoryMiddlewareOptions {
   createBranch?: BranchCreator
   uploadAttachment?: AttachmentUploader
   pull?: (repositoryPath: string) => Promise<unknown>
+  clone?: (input: {
+    remoteUrl: string
+    destination: string
+    sshKeyPath?: string
+  }) => Promise<{ path: string }>
   credentials?: (projectId: string) => Promise<{
     baseUrl: string
     token: string
@@ -162,6 +168,7 @@ export function createRepositoryMiddleware({
   createBranch,
   uploadAttachment,
   pull,
+  clone,
   credentials,
 }: RepositoryMiddlewareOptions) {
   const resolveCredentials = async (projectId: string) => {
@@ -261,6 +268,7 @@ export function createRepositoryMiddleware({
     const isBranchRequest = path === '/api/gitlab/branches'
     const isUploadRequest = path === '/api/gitlab/uploads'
     const isPullRequest = path === '/api/gitlab/pull'
+    const isCloneRequest = path === '/api/gitlab/clone'
 
     if (
       !isProjectsRequest &&
@@ -273,6 +281,7 @@ export function createRepositoryMiddleware({
       !isBranchRequest &&
       !isUploadRequest
       && !isPullRequest
+      && !isCloneRequest
     ) {
       next()
       return
@@ -304,6 +313,32 @@ export function createRepositoryMiddleware({
       } catch (error) {
         sendJson(response, 400, {
           error: error instanceof Error ? error.message : '项目操作失败',
+        })
+      }
+      return
+    }
+
+    if (isCloneRequest) {
+      try {
+        const body = await readJson<{
+          input: { remoteUrl: string; destination: string; sshKeyPath?: string }
+          confirmed: boolean
+        }>(request)
+        if (!body.confirmed) throw new Error('请先确认下载云端项目')
+        const cloned = clone
+          ? await clone(body.input)
+          : await cloneRepository({
+              remoteUrl: body.input.remoteUrl,
+              destination: body.input.destination,
+              ...(body.input.sshKeyPath
+                ? { credentials: { sshKeyPath: body.input.sshKeyPath } }
+                : {}),
+            })
+        const project = registry ? await registry.add(cloned.path) : cloned
+        sendJson(response, 201, { project })
+      } catch (error) {
+        sendJson(response, 400, {
+          error: error instanceof Error ? error.message : '下载云端项目失败',
         })
       }
       return

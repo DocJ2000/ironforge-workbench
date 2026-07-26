@@ -142,6 +142,26 @@ describe('deliveryApi', () => {
     )
   })
 
+  it('downloads and registers a new cloud project', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        project: { id: 'project-new', path: 'D:\\Projects\\new', name: 'new' },
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } }),
+    )
+    vi.stubGlobal('fetch', fetcher)
+
+    await deliveryApi.clone({
+      remoteUrl: 'git@gitlfs.lab.tp:rockteam/new.git',
+      destination: 'D:\\Projects\\new',
+      sshKeyPath: 'C:\\Users\\engineer\\.ssh\\id_ed25519',
+    })
+
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/gitlab/clone',
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
   it('uploads an attachment as multipart form data', async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(

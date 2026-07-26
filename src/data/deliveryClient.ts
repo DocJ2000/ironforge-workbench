@@ -52,6 +52,11 @@ export interface DeliveryApi {
     receivedCommits: number
     commit: string
   }>
+  clone: (input: {
+    remoteUrl: string
+    destination: string
+    sshKeyPath?: string
+  }) => Promise<{ project: { id: string; path: string; name: string } }>
 }
 
 function projectPath(path: string, projectId?: string) {
@@ -92,6 +97,11 @@ export function createDeliveryApi(projectId?: string): DeliveryApi {
     requestJson(projectPath('/api/gitlab/pull', projectId), {
       method: 'POST',
       body: JSON.stringify({ confirmed: true }),
+    }),
+  clone: (input) =>
+    requestJson('/api/gitlab/clone', {
+      method: 'POST',
+      body: JSON.stringify({ input, confirmed: true }),
     }),
   uploadAttachment: async (file) => {
     const body = new FormData()
