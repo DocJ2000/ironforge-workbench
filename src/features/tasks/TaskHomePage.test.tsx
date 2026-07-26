@@ -15,6 +15,7 @@ describe('TaskHomePage', () => {
     const onSelect = vi.fn()
     render(
       <TaskHomePage
+        onAdd={vi.fn()}
         onSelect={onSelect}
         projects={[
           { id: dragon.id, repository: dragon, connected: true, lastOpened: '刚刚' },

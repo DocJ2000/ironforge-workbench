@@ -48,37 +48,44 @@ export interface DeliveryApi {
   uploadAttachment: (file: File) => Promise<{ markdown: string }>
 }
 
-export const deliveryApi: DeliveryApi = {
-  overview: () => requestJson('/api/delivery'),
+function projectPath(path: string, projectId?: string) {
+  return projectId
+    ? `${path}?projectId=${encodeURIComponent(projectId)}`
+    : path
+}
+
+export function createDeliveryApi(projectId?: string): DeliveryApi {
+  return {
+  overview: () => requestJson(projectPath('/api/delivery', projectId)),
   preview: (draft) =>
-    requestJson('/api/delivery/preview', {
+    requestJson(projectPath('/api/delivery/preview', projectId), {
       method: 'POST',
       body: JSON.stringify({ draft }),
     }),
   execute: (draft) =>
-    requestJson('/api/delivery/execute', {
+    requestJson(projectPath('/api/delivery/execute', projectId), {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
     }),
   syncGitLab: (draft) =>
-    requestJson('/api/gitlab/sync', {
+    requestJson(projectPath('/api/gitlab/sync', projectId), {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
     }),
   createMergeRequest: (draft) =>
-    requestJson('/api/gitlab/merge-requests', {
+    requestJson(projectPath('/api/gitlab/merge-requests', projectId), {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
     }),
   createBranch: (input) =>
-    requestJson('/api/gitlab/branches', {
+    requestJson(projectPath('/api/gitlab/branches', projectId), {
       method: 'POST',
       body: JSON.stringify({ input, confirmed: true }),
     }),
   uploadAttachment: async (file) => {
     const body = new FormData()
     body.append('file', file)
-    const response = await fetch('/api/gitlab/uploads', {
+    const response = await fetch(projectPath('/api/gitlab/uploads', projectId), {
       method: 'POST',
       body,
       headers: { Accept: 'application/json' },
@@ -93,3 +100,6 @@ export const deliveryApi: DeliveryApi = {
     return { markdown: payload.markdown }
   },
 }
+}
+
+export const deliveryApi: DeliveryApi = createDeliveryApi()

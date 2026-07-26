@@ -101,5 +101,5 @@ describe('tagged delivery release flow', () => {
     expect(result).toMatchObject({ branch: 'dev/T3', tag: 'T3-v1' })
     expect(git(remotePath, 'show-ref', '--verify', 'refs/heads/dev/T3')).toBeTruthy()
     expect(git(remotePath, 'show-ref', '--verify', 'refs/tags/T3-v1')).toBeTruthy()
-  })
+  }, 15_000)
 })

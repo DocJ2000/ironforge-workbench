@@ -13,10 +13,12 @@ import { RetrievePage } from '../features/tasks/RetrievePage'
 import { ProjectUnavailable } from '../features/tasks/ProjectUnavailable'
 import { UploadEntryPage } from '../features/tasks/UploadEntryPage'
 import { AccountPage } from '../features/account/AccountPage'
+import { createDeliveryApi } from '../data/deliveryClient'
 
 export function AppRoutes() {
   const {
     operationReady,
+    addProject,
     projects,
     repository,
     selectedProjectId,
@@ -24,6 +26,7 @@ export function AppRoutes() {
     loading,
     refresh,
   } = useRepository()
+  const projectDeliveryApi = createDeliveryApi(selectedProjectId)
 
   return (
     <Routes>
@@ -44,15 +47,16 @@ export function AppRoutes() {
           element={
             <TaskHomePage
               onSelect={selectProject}
+              onAdd={addProject}
               projects={projects}
               selectedId={selectedProjectId}
             />
           }
         />
-        <Route path="/workspace/legacy" element={<DeliveryPage onRefresh={refresh} repository={repository} />} />
+        <Route path="/workspace/legacy" element={<DeliveryPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} />} />
         <Route path="/workspace/upload" element={<UploadEntryPage onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
-        <Route path="/workspace/upload/gitlab" element={operationReady ? <ProjectUploadPage onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
-        <Route path="/workspace/upload/ironforge" element={operationReady ? <IronforgeDeliveryPage onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
+        <Route path="/workspace/upload/gitlab" element={operationReady ? <ProjectUploadPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
+        <Route path="/workspace/upload/ironforge" element={operationReady ? <IronforgeDeliveryPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
         <Route path="/workspace/project-upload" element={<Navigate replace to="/workspace/upload/gitlab" />} />
         <Route path="/workspace/ironforge-delivery" element={<Navigate replace to="/workspace/upload/ironforge" />} />
         <Route path="/workspace/retrieve" element={<RetrievePage onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />

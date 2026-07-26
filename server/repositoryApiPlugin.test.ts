@@ -34,6 +34,43 @@ function jsonRequest(url: string, value: unknown) {
 }
 
 describe('createRepositoryMiddleware', () => {
+  it('lists registered projects and rejects unknown project IDs before scanning', async () => {
+    const scan = vi.fn()
+    const registry = {
+      list: vi.fn().mockResolvedValue([
+        { id: 'project-a', path: 'C:\\a', name: 'a', gitlabRemote: '', addedAt: '' },
+      ]),
+      add: vi.fn(),
+      remove: vi.fn(),
+      resolve: vi.fn().mockRejectedValue(new Error('项目不存在或尚未登记')),
+    }
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\legacy',
+      registry,
+      scan,
+    })
+    const listResponse = responseDouble()
+    const unknownResponse = responseDouble()
+
+    await middleware(
+      { method: 'GET', url: '/api/projects' } as IncomingMessage,
+      listResponse.response,
+      vi.fn(),
+    )
+    await middleware(
+      {
+        method: 'GET',
+        url: '/api/repository?projectId=project-unknown',
+      } as IncomingMessage,
+      unknownResponse.response,
+      vi.fn(),
+    )
+
+    expect(JSON.parse(listResponse.body()).projects[0].id).toBe('project-a')
+    expect(unknownResponse.response.statusCode).toBe(404)
+    expect(scan).not.toHaveBeenCalled()
+  })
+
   it('returns a live repository snapshot without caching', async () => {
     const scan = vi.fn().mockResolvedValue(getDemoRepository())
     const middleware = createRepositoryMiddleware({

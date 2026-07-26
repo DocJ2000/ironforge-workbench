@@ -15,6 +15,8 @@ export interface RepositoryContextValue {
   projects: RegisteredProject[]
   selectedProjectId: string
   selectProject: (id: string) => void
+  addProject: (path: string) => Promise<void>
+  removeProject: (id: string) => Promise<void>
   operationReady: boolean
   source: RepositorySource
   loading: boolean

@@ -8,16 +8,23 @@ import {
 } from 'lucide-react'
 import type { RegisteredProject } from '../../data/repositoryContext'
 import { summarizeRepository } from '../../domain/repository'
+import { useState } from 'react'
 import './tasks.css'
 import './projectCenter.css'
+import './addProject.css'
 
 interface Props {
   projects: RegisteredProject[]
   selectedId: string
   onSelect: (id: string) => void
+  onAdd: (path: string) => Promise<void>
 }
 
-export function TaskHomePage({ projects, selectedId, onSelect }: Props) {
+export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [path, setPath] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
   const attentionCount = projects.filter(
     ({ repository }) =>
       repository.changes.length > 0 || repository.behind > 0,
@@ -32,7 +39,7 @@ export function TaskHomePage({ projects, selectedId, onSelect }: Props) {
           <p>先选择当前项目，左侧的上传、交付和获取操作都会使用它。</p>
         </div>
         <div className="project-center__commands">
-          <button className="button button--secondary" type="button">
+          <button className="button button--secondary" onClick={() => setShowAdd((value) => !value)} type="button">
             <FolderPlus size={17} />
             添加本地项目
           </button>
@@ -42,6 +49,41 @@ export function TaskHomePage({ projects, selectedId, onSelect }: Props) {
           </button>
         </div>
       </header>
+
+      {showAdd ? (
+        <section className="add-project-panel">
+          <label className="plain-field">
+            <span>本地 Git 项目文件夹</span>
+            <input
+              aria-label="本地 Git 项目文件夹"
+              onChange={(event) => setPath(event.target.value)}
+              placeholder="例如：D:\Projects\Dragon\lens-mechanics"
+              value={path}
+            />
+          </label>
+          <button
+            className="button button--primary"
+            disabled={!path.trim() || adding}
+            onClick={() => {
+              setAdding(true)
+              setAddError(null)
+              void onAdd(path)
+                .then(() => {
+                  setPath('')
+                  setShowAdd(false)
+                })
+                .catch((cause) =>
+                  setAddError(cause instanceof Error ? cause.message : '添加项目失败'),
+                )
+                .finally(() => setAdding(false))
+            }}
+            type="button"
+          >
+            {adding ? '正在验证' : '验证并添加'}
+          </button>
+          {addError ? <p className="add-project-error">{addError}</p> : null}
+        </section>
+      ) : null}
 
       {attentionCount ? (
         <div className="project-attention">

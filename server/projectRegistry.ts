@@ -47,11 +47,13 @@ function projectId(path: string) {
 
 export class ProjectRegistry {
   private projects: ProjectRecord[] | null = null
+  private readonly storagePath: string
+  private readonly seedPath?: string
 
-  constructor(
-    private readonly storagePath: string,
-    private readonly seedPath?: string,
-  ) {}
+  constructor(storagePath: string, seedPath?: string) {
+    this.storagePath = storagePath
+    this.seedPath = seedPath
+  }
 
   private async record(path: string): Promise<ProjectRecord> {
     const root = await canonicalGitRoot(path)

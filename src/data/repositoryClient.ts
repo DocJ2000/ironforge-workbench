@@ -5,8 +5,9 @@ export interface RepositoryResponse {
   repository: RepositorySnapshot
 }
 
-export async function fetchRepositorySnapshot(): Promise<RepositoryResponse> {
-  const response = await fetch('/api/repository', {
+export async function fetchRepositorySnapshot(projectId?: string): Promise<RepositoryResponse> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''
+  const response = await fetch(`/api/repository${query}`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
   })

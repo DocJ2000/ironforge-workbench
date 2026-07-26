@@ -32,6 +32,9 @@ import { createGitLabClient } from './gitlabClient.js'
 import { loadGitLabConfig } from './gitlabConfig.js'
 import { scanOutputPackages } from './outputPackages.js'
 import { scanRepository } from './repositoryScanner.js'
+import { ProjectRegistry } from './projectRegistry.js'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 
 type NextFunction = (error?: unknown) => void
 type RepositoryScanner = (repositoryPath: string) => Promise<RepositorySnapshot>
@@ -58,6 +61,7 @@ type AttachmentUploader = (input: {
 
 interface RepositoryMiddlewareOptions {
   repositoryPath: string
+  registry?: Pick<ProjectRegistry, 'list' | 'add' | 'remove' | 'resolve'>
   scan?: RepositoryScanner
   preview?: CommitPreviewer
   commit?: CommitExecutor
@@ -142,6 +146,7 @@ async function readUpload(request: IncomingMessage) {
 
 export function createRepositoryMiddleware({
   repositoryPath,
+  registry,
   scan = scanRepository,
   preview = previewRepositoryCommit,
   commit = commitRepositoryChanges,
@@ -167,41 +172,49 @@ export function createRepositoryMiddleware({
       createMergeRequest: gitLab.createMergeRequest.bind(gitLab),
     }
   }
-  const executeSync =
-    sync ??
-    ((operation) =>
-      syncGitLab(repositoryPath, operation, workflowDependencies()))
-  const executeMergeRequest =
-    createMergeRequest ??
-    ((operation) =>
-      createDeliveryMergeRequest(
-        repositoryPath,
-        operation,
-        workflowDependencies(),
-      ))
-  const executeCreateBranch =
-    createBranch ??
-    ((input) =>
-      createRepositoryBranch(repositoryPath, input).then(() => ({
-        branch: input.name.trim(),
-      })))
-  const executeUpload =
-    uploadAttachment ??
-    (async (upload) => {
-      const repository = await scan(repositoryPath)
+  const executeSync = (
+    path: string,
+    operation: { draft: GitLabSyncDraft; confirmed: boolean },
+  ) =>
+    sync
+      ? sync(operation)
+      : syncGitLab(path, operation, workflowDependencies())
+  const executeMergeRequest = (
+    path: string,
+    operation: { draft: MergeRequestDraft; confirmed: boolean },
+  ) =>
+    createMergeRequest
+      ? createMergeRequest(operation)
+      : createDeliveryMergeRequest(path, operation, workflowDependencies())
+  const executeCreateBranch = (path: string, input: CreateBranchInput) =>
+    createBranch
+      ? createBranch(input)
+      : createRepositoryBranch(path, input).then(() => ({
+          branch: input.name.trim(),
+        }))
+  const executeUpload = (
+    path: string,
+    upload: { name: string; type: string; bytes: Uint8Array },
+  ) =>
+    uploadAttachment
+      ? uploadAttachment(upload)
+      : (async () => {
+      const repository = await scan(path)
       const gitLab = createGitLabClient(loadGitLabConfig())
       return gitLab.uploadMarkdownFile(
         gitLabProjectPath(repository.gitlabPath),
         upload,
       )
-    })
+    })()
 
   return async (
     request: IncomingMessage,
     response: ServerResponse,
     next: NextFunction,
   ) => {
-    const path = request.url?.split('?')[0]
+    const requestUrl = new URL(request.url ?? '/', 'http://localhost')
+    const path = requestUrl.pathname
+    const isProjectsRequest = path === '/api/projects'
     const isRepositoryRequest = path === '/api/repository'
     const isDeliveryRequest = path === '/api/delivery'
     const isPreviewRequest = path === '/api/commit/preview'
@@ -212,6 +225,7 @@ export function createRepositoryMiddleware({
     const isUploadRequest = path === '/api/gitlab/uploads'
 
     if (
+      !isProjectsRequest &&
       !isRepositoryRequest &&
       !isDeliveryRequest &&
       !isPreviewRequest &&
@@ -225,6 +239,37 @@ export function createRepositoryMiddleware({
       return
     }
 
+    if (isProjectsRequest) {
+      if (!registry) {
+        sendJson(response, 200, {
+          projects: [{ id: 'default', path: repositoryPath }],
+        })
+        return
+      }
+      try {
+        if (request.method === 'GET') {
+          sendJson(response, 200, { projects: await registry.list() })
+          return
+        }
+        if (request.method === 'POST') {
+          const body = await readJson<{ path: string }>(request)
+          sendJson(response, 201, { project: await registry.add(body.path) })
+          return
+        }
+        if (request.method === 'DELETE') {
+          const body = await readJson<{ id: string }>(request)
+          sendJson(response, 200, { project: await registry.remove(body.id) })
+          return
+        }
+        sendJson(response, 405, { error: 'Method not allowed' })
+      } catch (error) {
+        sendJson(response, 400, {
+          error: error instanceof Error ? error.message : '项目操作失败',
+        })
+      }
+      return
+    }
+
     const expectedMethod =
       isRepositoryRequest || isDeliveryRequest ? 'GET' : 'POST'
     if (request.method !== expectedMethod) {
@@ -232,9 +277,29 @@ export function createRepositoryMiddleware({
       return
     }
 
+    let activeRepositoryPath = repositoryPath
+    if (registry) {
+      try {
+        const projectId = requestUrl.searchParams.get('projectId')
+        const project = projectId
+          ? await registry.resolve(projectId)
+          : (await registry.list())[0]
+        if (!project) throw new Error('没有已登记的项目')
+        activeRepositoryPath = project.path
+      } catch (error) {
+        sendJson(response, 404, {
+          error: error instanceof Error ? error.message : '项目不存在',
+        })
+        return
+      }
+    }
+
     if (isUploadRequest) {
       try {
-        const result = await executeUpload(await readUpload(request))
+        const result = await executeUpload(
+          activeRepositoryPath,
+          await readUpload(request),
+        )
         sendJson(response, 200, result)
       } catch (error) {
         sendJson(response, 400, {
@@ -257,7 +322,11 @@ export function createRepositoryMiddleware({
         return
       }
       try {
-        sendJson(response, 200, await executeCreateBranch(body.input))
+        sendJson(
+          response,
+          200,
+          await executeCreateBranch(activeRepositoryPath, body.input),
+        )
       } catch (error) {
         sendJson(response, 400, {
           error: error instanceof Error ? error.message : 'Branch creation failed',
@@ -280,9 +349,11 @@ export function createRepositoryMiddleware({
       try {
         const result = isSyncRequest
           ? await executeSync(
+              activeRepositoryPath,
               body as { draft: GitLabSyncDraft; confirmed: boolean },
             )
           : await executeMergeRequest(
+              activeRepositoryPath,
               body as { draft: MergeRequestDraft; confirmed: boolean },
             )
         sendJson(response, 200, result)
@@ -306,8 +377,8 @@ export function createRepositoryMiddleware({
 
       try {
         const result = isPreviewRequest
-          ? await preview(repositoryPath, body)
-          : await commit(repositoryPath, body)
+          ? await preview(activeRepositoryPath, body)
+          : await commit(activeRepositoryPath, body)
         sendJson(response, 200, result)
       } catch (error) {
         sendJson(response, 400, {
@@ -320,8 +391,8 @@ export function createRepositoryMiddleware({
     if (isDeliveryRequest) {
       try {
         const [repository, packages] = await Promise.all([
-          scan(repositoryPath),
-          scanOutputPackages(repositoryPath),
+          scan(activeRepositoryPath),
+          scanOutputPackages(activeRepositoryPath),
         ])
         try {
           const gitLab = createGitLabClient(loadGitLabConfig())
@@ -346,7 +417,7 @@ export function createRepositoryMiddleware({
     }
 
     try {
-      const repository = await scan(repositoryPath)
+      const repository = await scan(activeRepositoryPath)
       sendJson(response, 200, { source: 'live', repository })
     } catch {
       sendJson(response, 500, { error: 'Unable to read the local repository' })
@@ -355,7 +426,12 @@ export function createRepositoryMiddleware({
 }
 
 export function repositoryApiPlugin(repositoryPath: string): Plugin {
-  const middleware = createRepositoryMiddleware({ repositoryPath })
+  const registry = new ProjectRegistry(
+    process.env.IRONFORGE_PROJECT_REGISTRY ??
+      join(homedir(), '.ironforge-workbench', 'projects.json'),
+    repositoryPath,
+  )
+  const middleware = createRepositoryMiddleware({ repositoryPath, registry })
   const register = (middlewares: {
     use: (
       handler: (

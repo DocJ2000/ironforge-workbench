@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react'
 import { getDemoRepository } from './demoRepository'
+import { projectClient } from './projectClient'
 import {
   RepositoryContext,
   type RegisteredProject,
@@ -14,81 +15,106 @@ import {
 import { fetchRepositorySnapshot } from './repositoryClient'
 
 export function RepositoryProvider({ children }: PropsWithChildren) {
-  const previewRepository = useMemo(() => {
-    const base = getDemoRepository()
-    return {
-      ...base,
-      id: 'aurora-lens-mechanics',
-      name: 'aurora-lens-mechanics',
-      displayName: 'Aurora Lens Mechanics',
-      path: 'D:\\Projects\\Aurora\\lens-mechanics',
-      gitlabPath: 'rockteam/aurora/optics/lens-mechanics',
-      branch: 'dev/T1',
-      stage: 'T1 设计',
-      changes: base.changes.slice(0, 2),
-      ahead: 0,
-      behind: 2,
-    }
-  }, [])
-  const [liveRepository, setLiveRepository] = useState(getDemoRepository())
-  const [selectedProjectId, setSelectedProjectId] = useState(liveRepository.id)
+  const demo = getDemoRepository()
+  const [projects, setProjects] = useState<RegisteredProject[]>([
+    {
+      id: demo.id,
+      repository: demo,
+      connected: false,
+      lastOpened: '正在读取',
+    },
+  ])
+  const [selectedProjectId, setSelectedProjectId] = useState(demo.id)
   const [source, setSource] = useState<RepositorySource>('demo')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const refresh = useCallback(async () => {
+  const loadProjects = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetchRepositorySnapshot()
-      setLiveRepository((current) => {
-        setSelectedProjectId((selected) =>
-          selected === current.id ? response.repository.id : selected,
-        )
-        return response.repository
-      })
+      const { projects: records } = await projectClient.list()
+      const snapshots = await Promise.all(
+        records.map(async (record) => ({
+          id: record.id,
+          repository: (await fetchRepositorySnapshot(record.id)).repository,
+          connected: true,
+          lastOpened: new Date(record.addedAt).toLocaleDateString('zh-CN'),
+        })),
+      )
+      if (!snapshots.length) throw new Error('还没有登记本地项目')
+      setProjects(snapshots)
+      setSelectedProjectId((current) =>
+        snapshots.some((project) => project.id === current)
+          ? current
+          : snapshots[0].id,
+      )
       setSource('live')
       setError(null)
-    } catch {
-      setError('无法读取本地仓库，当前显示演示数据')
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : '无法读取本地项目，当前显示演示数据',
+      )
     } finally {
       setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    void loadProjects()
+  }, [loadProjects])
 
-  const projects = useMemo<RegisteredProject[]>(
-    () => [
-      {
-        id: liveRepository.id,
-        repository: liveRepository,
-        connected: true,
-        lastOpened: '刚刚',
-      },
-      {
-        id: previewRepository.id,
-        repository: previewRepository,
-        connected: false,
-        lastOpened: '7 月 18 日',
-      },
-    ],
-    [liveRepository, previewRepository],
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    try {
+      const response = await fetchRepositorySnapshot(selectedProjectId)
+      setProjects((current) =>
+        current.map((project) =>
+          project.id === selectedProjectId
+            ? { ...project, repository: response.repository }
+            : project,
+        ),
+      )
+      setSource('live')
+      setError(null)
+    } catch {
+      setError('无法读取当前本地仓库')
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedProjectId])
+
+  const addProject = useCallback(
+    async (path: string) => {
+      await projectClient.add(path)
+      await loadProjects()
+    },
+    [loadProjects],
   )
+  const removeProject = useCallback(
+    async (id: string) => {
+      await projectClient.remove(id)
+      await loadProjects()
+    },
+    [loadProjects],
+  )
+  const selectProject = useCallback((id: string) => setSelectedProjectId(id), [])
   const repository =
     projects.find((project) => project.id === selectedProjectId)?.repository ??
-    liveRepository
+    projects[0].repository
   const operationReady =
     projects.find((project) => project.id === selectedProjectId)?.connected ??
     false
-  const selectProject = useCallback((id: string) => setSelectedProjectId(id), [])
+
   const value = useMemo(
     () => ({
       repository,
       projects,
       selectedProjectId,
       selectProject,
+      addProject,
+      removeProject,
       operationReady,
       source,
       loading,
@@ -96,11 +122,13 @@ export function RepositoryProvider({ children }: PropsWithChildren) {
       refresh,
     }),
     [
+      addProject,
       error,
       loading,
       operationReady,
       projects,
       refresh,
+      removeProject,
       repository,
       selectedProjectId,
       selectProject,
