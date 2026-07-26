@@ -33,6 +33,7 @@ import { loadGitLabConfig } from './gitlabConfig.js'
 import { scanOutputPackages } from './outputPackages.js'
 import { scanRepository } from './repositoryScanner.js'
 import { ProjectRegistry } from './projectRegistry.js'
+import { pullRepository } from './repositoryPull.js'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -69,6 +70,7 @@ interface RepositoryMiddlewareOptions {
   createMergeRequest?: MergeRequestExecutor
   createBranch?: BranchCreator
   uploadAttachment?: AttachmentUploader
+  pull?: (repositoryPath: string) => Promise<unknown>
   credentials?: (projectId: string) => Promise<{
     baseUrl: string
     token: string
@@ -159,6 +161,7 @@ export function createRepositoryMiddleware({
   createMergeRequest,
   createBranch,
   uploadAttachment,
+  pull,
   credentials,
 }: RepositoryMiddlewareOptions) {
   const resolveCredentials = async (projectId: string) => {
@@ -257,6 +260,7 @@ export function createRepositoryMiddleware({
     const isMergeRequest = path === '/api/gitlab/merge-requests'
     const isBranchRequest = path === '/api/gitlab/branches'
     const isUploadRequest = path === '/api/gitlab/uploads'
+    const isPullRequest = path === '/api/gitlab/pull'
 
     if (
       !isProjectsRequest &&
@@ -268,6 +272,7 @@ export function createRepositoryMiddleware({
       !isMergeRequest &&
       !isBranchRequest &&
       !isUploadRequest
+      && !isPullRequest
     ) {
       next()
       return
@@ -341,6 +346,25 @@ export function createRepositoryMiddleware({
       } catch (error) {
         sendJson(response, 400, {
           error: error instanceof Error ? error.message : 'Attachment upload failed',
+        })
+      }
+      return
+    }
+
+    if (isPullRequest) {
+      try {
+        const body = await readJson<{ confirmed: boolean }>(request)
+        if (!body.confirmed) throw new Error('请先确认获取云端改动')
+        const projectCredentials = await resolveCredentials(activeProjectId)
+        const result = pull
+          ? await pull(activeRepositoryPath)
+          : await pullRepository(activeRepositoryPath, {
+              sshKeyPath: projectCredentials.sshKeyPath,
+            })
+        sendJson(response, 200, result)
+      } catch (error) {
+        sendJson(response, 400, {
+          error: error instanceof Error ? error.message : '获取云端改动失败',
         })
       }
       return

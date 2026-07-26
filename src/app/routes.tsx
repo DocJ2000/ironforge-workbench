@@ -60,7 +60,7 @@ export function AppRoutes() {
         <Route path="/workspace/upload/ironforge" element={operationReady ? <CredentialGate projectId={selectedProjectId}><IronforgeDeliveryPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></CredentialGate> : <ProjectUnavailable repository={repository} />} />
         <Route path="/workspace/project-upload" element={<Navigate replace to="/workspace/upload/gitlab" />} />
         <Route path="/workspace/ironforge-delivery" element={<Navigate replace to="/workspace/upload/ironforge" />} />
-        <Route path="/workspace/retrieve" element={<RetrievePage onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
+        <Route path="/workspace/retrieve" element={<RetrievePage api={projectDeliveryApi} onRefresh={refresh} onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={<HistoryPage repository={repository} />} />

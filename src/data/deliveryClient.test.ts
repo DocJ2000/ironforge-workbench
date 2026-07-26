@@ -120,6 +120,28 @@ describe('deliveryApi', () => {
     )
   })
 
+  it('confirms retrieval from the selected project endpoint', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        branch: 'dev/T2',
+        updated: true,
+        receivedCommits: 2,
+        commit: 'abc1234',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    )
+    vi.stubGlobal('fetch', fetcher)
+
+    await deliveryApi.pull()
+
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/gitlab/pull',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ confirmed: true }),
+      }),
+    )
+  })
+
   it('uploads an attachment as multipart form data', async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(

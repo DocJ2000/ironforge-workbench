@@ -1,6 +1,7 @@
 import { ArrowRight, Download, FolderDown, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import type { RegisteredProject } from '../../data/repositoryContext'
+import { deliveryApi, type DeliveryApi } from '../../data/deliveryClient'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './retrieve.css'
 import './ironforgeLink.css'
@@ -9,6 +10,8 @@ interface Props {
   projects: RegisteredProject[]
   selectedId: string
   onSelect: (id: string) => void
+  api?: DeliveryApi
+  onRefresh?: () => Promise<void>
 }
 const actions = [
   { id: 'clone', title: '把云端项目下载到这台电脑', description: '适合新电脑，或者本地还没有这个项目。', icon: FolderDown },
@@ -17,19 +20,46 @@ const actions = [
 ] as const
 type ActionId = typeof actions[number]['id']
 
-export function RetrievePage({ projects, selectedId, onSelect }: Props) {
+export function RetrievePage({
+  projects,
+  selectedId,
+  onSelect,
+  api = deliveryApi,
+  onRefresh,
+}: Props) {
   const [step, setStep] = useState(0)
   const [action, setAction] = useState<ActionId | null>(null)
   const selectedProject = projects.find((project) => project.id === selectedId)
   const [destination, setDestination] = useState(
     selectedProject?.repository.path ?? '',
   )
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pullResult, setPullResult] = useState<{
+    updated: boolean
+    receivedCommits: number
+  } | null>(null)
   const selectedAction = actions.find((item) => item.id === action)
 
   function selectProject(id: string) {
     onSelect(id)
     const project = projects.find((item) => item.id === id)
     if (project) setDestination(project.repository.path)
+  }
+
+  async function retrieve() {
+    if (action !== 'pull') return
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await api.pull()
+      setPullResult(result)
+      await onRefresh?.()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '获取云端改动失败')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -41,9 +71,9 @@ export function RetrievePage({ projects, selectedId, onSelect }: Props) {
         (step === 1 && !action) ||
         (step === 2 && !destination.trim())
       }
-      nextLabel={step === 2 ? '确认位置' : '下一步'}
+      nextLabel={step === 2 && action === 'pull' ? busy ? '正在获取' : '确认获取' : step === 2 ? '确认位置' : '下一步'}
       onBack={step > 0 ? () => setStep((current) => current - 1) : undefined}
-      onNext={step < 2 ? () => setStep((current) => current + 1) : undefined}
+      onNext={step < 2 ? () => setStep((current) => current + 1) : action === 'pull' && !pullResult ? () => void retrieve() : undefined}
       steps={['选择项目', '选择要获取的内容', '选择保存位置']}
       title="获取项目和图纸"
     >
@@ -83,6 +113,14 @@ export function RetrievePage({ projects, selectedId, onSelect }: Props) {
       ) : null}
       {step === 2 && selectedAction && selectedProject ? (
         <div>
+          {error ? <div className="delivery-alert delivery-alert--error">{error}</div> : null}
+          {pullResult ? (
+            <div className="wizard-success">
+              <h2>{pullResult.updated ? '已获取同事上传的改动' : '本地已经是最新版本'}</h2>
+              <p>{pullResult.updated ? `本次获取了 ${pullResult.receivedCommits} 个新版本。` : '云端没有比本地更新的内容。'}</p>
+            </div>
+          ) : null}
+          {!pullResult ? <>
           <div className="wizard-panel__intro">
             <h2>{selectedAction.title}</h2>
             <p>确认项目和本地位置。</p>
@@ -93,13 +131,14 @@ export function RetrievePage({ projects, selectedId, onSelect }: Props) {
           </dl>
           <label className="plain-field spaced-field">
             <span>{action === 'pull' ? '更新这个本地文件夹' : '保存到这个文件夹'}</span>
-            <input aria-label="本地保存位置" onChange={(event) => setDestination(event.target.value)} value={destination} />
+            <input aria-label="本地保存位置" onChange={(event) => setDestination(event.target.value)} readOnly={action === 'pull'} value={destination} />
           </label>
           {action === 'ironforge' ? (
             <a className="button button--secondary ironforge-link" href="http://ironforge.holo.tp/projects" rel="noreferrer" target="_blank">
               打开铁炉堡项目
             </a>
           ) : null}
+          </> : null}
         </div>
       ) : null}
     </GuidedWorkflow>
