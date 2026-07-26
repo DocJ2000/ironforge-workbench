@@ -26,7 +26,7 @@ describe('MergeRequestEditor', () => {
   it('edits an independent title and previews Markdown', () => {
     render(<EditorHarness />)
 
-    fireEvent.change(screen.getByLabelText('MR 标题'), {
+    fireEvent.change(screen.getByLabelText('本次交付标题'), {
       target: { value: '提交 Dragon T2 交付包' },
     })
     fireEvent.click(screen.getByRole('button', { name: '粗体' }))

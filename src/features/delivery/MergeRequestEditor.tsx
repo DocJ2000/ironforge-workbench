@@ -56,9 +56,9 @@ export function MergeRequestEditor({
   return (
     <div className="mr-editor">
       <label className="delivery-field">
-        <span>MR 标题</span>
+        <span>本次交付标题</span>
         <input
-          aria-label="MR 标题"
+          aria-label="本次交付标题"
           onChange={(event) => onTitleChange(event.target.value)}
           placeholder="例如：提交 Dragon T2 BOM 交付包"
           value={title}
@@ -98,9 +98,9 @@ export function MergeRequestEditor({
             ))}
           </div>
           <label className="delivery-field">
-            <span>MR 说明</span>
+            <span>交付补充说明（可选）</span>
             <textarea
-              aria-label="MR 说明"
+              aria-label="交付补充说明（可选）"
               onChange={(event) => onDescriptionChange(event.target.value)}
               placeholder="说明本次改动、交付范围和需要审核的重点"
               ref={textarea}
@@ -114,7 +114,7 @@ export function MergeRequestEditor({
           {description.trim() ? (
             <ReactMarkdown>{description}</ReactMarkdown>
           ) : (
-            <span>还没有 MR 说明</span>
+            <span>还没有补充说明</span>
           )}
         </div>
       )}
