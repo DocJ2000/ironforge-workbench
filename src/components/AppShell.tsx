@@ -5,13 +5,13 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
   UploadCloud,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useRepository } from '../data/repositoryContext'
-import { RepositorySwitcher } from './RepositorySwitcher'
 
 const navigation = [
   { to: '/workspace', label: '开始', icon: House, end: true },
@@ -27,14 +27,7 @@ const navigation = [
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const {
-    error,
-    projects,
-    repository,
-    selectedProjectId,
-    selectProject,
-    source,
-  } = useRepository()
+  const { repository } = useRepository()
 
   return (
     <div className={`app-shell${sidebarCollapsed ? ' app-shell--collapsed' : ''}`}>
@@ -73,19 +66,6 @@ export function AppShell() {
           </button>
         </div>
 
-        <RepositorySwitcher
-          onSelect={selectProject}
-          projects={projects}
-          selectedId={selectedProjectId}
-        />
-        <div
-          className={`repository-source repository-source--${source}`}
-          title={error ?? '正在读取本地 Git 仓库'}
-        >
-          <span aria-hidden="true" />
-          {source === 'live' ? '本地仓库实时数据' : '演示数据'}
-        </div>
-
         <nav aria-label="主要导航" className="primary-nav">
           {navigation.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -101,15 +81,16 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="sidebar__profile">
+        <NavLink className="sidebar__profile" to="/account">
           <div className="avatar" aria-hidden="true">
             蒋
           </div>
           <div>
             <strong>蒋成</strong>
-            <span>工程师 · GitLab</span>
+            <span>账户与连接</span>
           </div>
-        </div>
+          <Settings aria-hidden="true" size={16} />
+        </NavLink>
       </aside>
 
       {mobileNavOpen ? (

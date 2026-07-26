@@ -16,6 +16,10 @@ describe('App', () => {
       '/workspace/retrieve',
     )
     expect(screen.getByRole('link', { name: '历史记录' })).toBeVisible()
+    expect(screen.getByRole('link', { name: /账户与连接/ })).toHaveAttribute(
+      'href',
+      '/account',
+    )
     expect(screen.queryByRole('link', { name: '版本阶段' })).not.toBeInTheDocument()
   })
 })

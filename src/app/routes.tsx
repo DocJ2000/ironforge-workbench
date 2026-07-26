@@ -12,6 +12,7 @@ import { IronforgeDeliveryPage } from '../features/tasks/IronforgeDeliveryPage'
 import { RetrievePage } from '../features/tasks/RetrievePage'
 import { ProjectUnavailable } from '../features/tasks/ProjectUnavailable'
 import { UploadEntryPage } from '../features/tasks/UploadEntryPage'
+import { AccountPage } from '../features/account/AccountPage'
 
 export function AppRoutes() {
   const {
@@ -58,6 +59,7 @@ export function AppRoutes() {
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={<HistoryPage repository={repository} />} />
+        <Route path="/account" element={<AccountPage />} />
       </Route>
     </Routes>
   )
