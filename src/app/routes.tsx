@@ -6,6 +6,7 @@ import { HistoryPage } from '../features/history/HistoryPage'
 import { OverviewPage } from '../features/overview/OverviewPage'
 import { ReleasePage } from '../features/release/ReleasePage'
 import { StagesPage } from '../features/stages/StagesPage'
+import { TaskHomePage } from '../features/tasks/TaskHomePage'
 
 export function AppRoutes() {
   const { repository, loading, refresh } = useRepository()
@@ -26,13 +27,9 @@ export function AppRoutes() {
         />
         <Route
           path="/workspace"
-          element={
-            <DeliveryPage
-              onRefresh={refresh}
-              repository={repository}
-            />
-          }
+          element={<TaskHomePage repository={repository} />}
         />
+        <Route path="/workspace/legacy" element={<DeliveryPage onRefresh={refresh} repository={repository} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={<HistoryPage repository={repository} />} />

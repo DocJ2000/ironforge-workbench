@@ -1,7 +1,7 @@
 import {
   History,
+  House,
   Menu,
-  PackageCheck,
   PanelLeftClose,
   PanelLeftOpen,
   X,
@@ -12,7 +12,7 @@ import { useRepository } from '../data/repositoryContext'
 import { RepositorySwitcher } from './RepositorySwitcher'
 
 const navigation = [
-  { to: '/workspace', label: '交付', icon: PackageCheck },
+  { to: '/workspace', label: '开始', icon: House },
   { to: '/history', label: '历史记录', icon: History },
 ]
 
