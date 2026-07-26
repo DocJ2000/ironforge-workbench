@@ -3,7 +3,6 @@ import {
   History,
   House,
   Menu,
-  PackageCheck,
   PanelLeftClose,
   PanelLeftOpen,
   UploadCloud,
@@ -16,16 +15,7 @@ import { RepositorySwitcher } from './RepositorySwitcher'
 
 const navigation = [
   { to: '/workspace', label: '开始', icon: House, end: true },
-  {
-    to: '/workspace/project-upload',
-    label: '上传整个工程',
-    icon: UploadCloud,
-  },
-  {
-    to: '/workspace/ironforge-delivery',
-    label: '提交图纸到铁炉堡',
-    icon: PackageCheck,
-  },
+  { to: '/workspace/upload', label: '上传项目', icon: UploadCloud },
   {
     to: '/workspace/retrieve',
     label: '获取项目和图纸',

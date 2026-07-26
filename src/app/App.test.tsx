@@ -7,13 +7,10 @@ describe('App', () => {
     render(<App />)
 
     expect(screen.getByRole('link', { name: '开始' })).toBeVisible()
-    expect(screen.getByRole('link', { name: '上传整个工程' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '上传项目' })).toHaveAttribute(
       'href',
-      '/workspace/project-upload',
+      '/workspace/upload',
     )
-    expect(
-      screen.getByRole('link', { name: '提交图纸到铁炉堡' }),
-    ).toHaveAttribute('href', '/workspace/ironforge-delivery')
     expect(screen.getByRole('link', { name: '获取项目和图纸' })).toHaveAttribute(
       'href',
       '/workspace/retrieve',

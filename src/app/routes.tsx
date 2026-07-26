@@ -11,6 +11,7 @@ import { ProjectUploadPage } from '../features/tasks/ProjectUploadPage'
 import { IronforgeDeliveryPage } from '../features/tasks/IronforgeDeliveryPage'
 import { RetrievePage } from '../features/tasks/RetrievePage'
 import { ProjectUnavailable } from '../features/tasks/ProjectUnavailable'
+import { UploadEntryPage } from '../features/tasks/UploadEntryPage'
 
 export function AppRoutes() {
   const {
@@ -48,9 +49,12 @@ export function AppRoutes() {
           }
         />
         <Route path="/workspace/legacy" element={<DeliveryPage onRefresh={refresh} repository={repository} />} />
-        <Route path="/workspace/project-upload" element={operationReady ? <ProjectUploadPage onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
-        <Route path="/workspace/ironforge-delivery" element={operationReady ? <IronforgeDeliveryPage onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
-        <Route path="/workspace/retrieve" element={<RetrievePage repository={repository} />} />
+        <Route path="/workspace/upload" element={<UploadEntryPage onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
+        <Route path="/workspace/upload/gitlab" element={operationReady ? <ProjectUploadPage onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
+        <Route path="/workspace/upload/ironforge" element={operationReady ? <IronforgeDeliveryPage onRefresh={refresh} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
+        <Route path="/workspace/project-upload" element={<Navigate replace to="/workspace/upload/gitlab" />} />
+        <Route path="/workspace/ironforge-delivery" element={<Navigate replace to="/workspace/upload/ironforge" />} />
+        <Route path="/workspace/retrieve" element={<RetrievePage onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={<HistoryPage repository={repository} />} />
