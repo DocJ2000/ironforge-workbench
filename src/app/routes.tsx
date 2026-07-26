@@ -9,6 +9,7 @@ import { StagesPage } from '../features/stages/StagesPage'
 import { TaskHomePage } from '../features/tasks/TaskHomePage'
 import { ProjectUploadPage } from '../features/tasks/ProjectUploadPage'
 import { IronforgeDeliveryPage } from '../features/tasks/IronforgeDeliveryPage'
+import { RetrievePage } from '../features/tasks/RetrievePage'
 
 export function AppRoutes() {
   const { repository, loading, refresh } = useRepository()
@@ -34,6 +35,7 @@ export function AppRoutes() {
         <Route path="/workspace/legacy" element={<DeliveryPage onRefresh={refresh} repository={repository} />} />
         <Route path="/workspace/project-upload" element={<ProjectUploadPage onRefresh={refresh} repository={repository} />} />
         <Route path="/workspace/ironforge-delivery" element={<IronforgeDeliveryPage onRefresh={refresh} repository={repository} />} />
+        <Route path="/workspace/retrieve" element={<RetrievePage repository={repository} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={<HistoryPage repository={repository} />} />

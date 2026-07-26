@@ -52,10 +52,20 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi, onRefresh
   }), [repository.changes])
 
   function togglePackage(id: string) {
-    setSelectedPackages((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next })
+    setSelectedPackages((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
   function toggleReviewer(id: number) {
-    setSelectedReviewers((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next })
+    setSelectedReviewers((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   async function sync() {

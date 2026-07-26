@@ -6,6 +6,7 @@ import type { RepositorySnapshot } from '../../domain/repository'
 import { CreateBranchDialog } from '../delivery/CreateBranchDialog'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './wizardForms.css'
+import './projectUpload.css'
 
 interface Props { repository: RepositorySnapshot; api?: DeliveryApi; onRefresh?: () => Promise<void> }
 const steps = ['选择分支', '核对文件', '填写标题', '确认上传']
@@ -62,7 +63,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
       >
         {error ? <div className="delivery-alert delivery-alert--error">{error}</div> : null}
         {result ? <div className="wizard-success"><CheckCircle2 size={42} /><h2>工程已上传</h2><p>已上传到 <strong>{result.branch}</strong>，保存编号为 <strong>{result.commit.slice(0, 8)}</strong>。</p></div> : null}
-        {!result && step === 0 ? <div><Intro title="这次要上传到哪个分支？">分支可以理解为同一个项目的不同工作版本。</Intro><div className="choice-row"><label className="plain-field"><span>上传到</span><select aria-label="上传分支" onChange={(e) => setBranch(e.target.value)} value={branch}>{branches.map((item) => <option key={item}>{item}</option>)}</select></label><button aria-label="创建新分支" className="button button--secondary" onClick={() => { setStartPoint(branch); setShowCreateBranch(true) }} type="button"><Plus size={17} />新建分支</button></div></div> : null}
+        {!result && step === 0 ? <div><Intro title="这次要上传到哪个分支？">分支可以理解为同一个项目的不同工作版本。</Intro><div className="choice-row"><label className="plain-field"><span>上传到</span><select aria-label="上传分支" onChange={(e) => setBranch(e.target.value)} value={branch}>{branches.map((item) => <option key={item}>{item}</option>)}</select></label><button aria-label="创建新分支" className="button button--secondary branch-action-button" onClick={() => { setStartPoint(branch); setShowCreateBranch(true) }} type="button"><Plus size={17} />新建分支</button></div></div> : null}
         {!result && step === 1 ? <div><Intro title="核对本次上传的文件">共 {repository.changes.length} 个新增、修改或删除的文件。</Intro><ul className="simple-file-list">{repository.changes.map((change) => <li key={change.id}><FileText size={16} /><span>{change.path}</span><small className={`file-status file-status--${change.kind}`}>{change.kind === 'untracked' ? '新增' : change.kind === 'modified' ? '已修改' : '已删除'}</small></li>)}</ul></div> : null}
         {!result && step === 2 ? <div><Intro title="给本次更新起一个标题">让同事一眼看懂你改了什么，例如“更新 T2 场旋框图纸”。</Intro><label className="plain-field"><span>本次更新标题</span><input aria-label="本次更新标题" autoFocus onChange={(e) => setTitle(e.target.value)} placeholder="例如：更新 T2 场旋框图纸" value={title} /></label></div> : null}
         {!result && step === 3 ? <div><Intro title="确认上传">请核对下面的信息。点击确认后才会真正上传。</Intro><dl className="confirm-list"><div><dt><GitBranch size={16} />上传分支</dt><dd>{branch}</dd></div><div><dt><FileText size={16} />文件数量</dt><dd>{repository.changes.length} 个</dd></div><div><dt><UploadCloud size={16} />本次更新标题</dt><dd>{title}</dd></div></dl></div> : null}
