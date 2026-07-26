@@ -1,9 +1,12 @@
 import {
+  Download,
   History,
   House,
   Menu,
+  PackageCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  UploadCloud,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -12,7 +15,22 @@ import { useRepository } from '../data/repositoryContext'
 import { RepositorySwitcher } from './RepositorySwitcher'
 
 const navigation = [
-  { to: '/workspace', label: '开始', icon: House },
+  { to: '/workspace', label: '开始', icon: House, end: true },
+  {
+    to: '/workspace/project-upload',
+    label: '上传整个工程',
+    icon: UploadCloud,
+  },
+  {
+    to: '/workspace/ironforge-delivery',
+    label: '提交图纸到铁炉堡',
+    icon: PackageCheck,
+  },
+  {
+    to: '/workspace/retrieve',
+    label: '获取项目和图纸',
+    icon: Download,
+  },
   { to: '/history', label: '历史记录', icon: History },
 ]
 
@@ -68,8 +86,9 @@ export function AppShell() {
         </div>
 
         <nav aria-label="主要导航" className="primary-nav">
-          {navigation.map(({ to, label, icon: Icon }) => (
+          {navigation.map(({ to, label, icon: Icon, end }) => (
             <NavLink
+              end={end}
               key={to}
               onClick={() => setMobileNavOpen(false)}
               title={label}
