@@ -162,7 +162,7 @@ export function createGitLabClient(
       const body = new FormData()
       body.append(
         'file',
-        new Blob([upload.bytes], { type: upload.type }),
+        new Blob([new Uint8Array(upload.bytes).buffer], { type: upload.type }),
         upload.name,
       )
       const response = await request(

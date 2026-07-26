@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, safeStorage, shell } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CredentialVault, type GitLabCredentialInput } from './credentialVault.js'
+import { startLocalServer } from './localServer.js'
+import { createRepositoryMiddleware } from '../server/repositoryApiPlugin.js'
 
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
 
@@ -21,6 +23,8 @@ function registerCredentialHandlers() {
     vault.clear(projectId),
   )
 }
+
+let productionOrigin: string | null = null
 
 function createWindow() {
   const window = new BrowserWindow({
@@ -52,15 +56,22 @@ function createWindow() {
   if (developmentUrl) {
     void window.loadURL(developmentUrl)
   } else {
-    void window.loadFile(
-      join(currentDirectory, '..', '..', 'dist', 'index.html'),
-      { hash: '/workspace' },
-    )
+    void window.loadURL(`${productionOrigin}/workspace`)
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerCredentialHandlers()
+  if (!process.env.VITE_DEV_SERVER_URL) {
+    const repositoryPath = app.getPath('documents')
+    const middleware = createRepositoryMiddleware({ repositoryPath })
+    const localServer = await startLocalServer({
+      staticRoot: join(currentDirectory, '..', '..', 'dist'),
+      middleware,
+    })
+    productionOrigin = localServer.origin
+    app.once('before-quit', () => void localServer.close())
+  }
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
