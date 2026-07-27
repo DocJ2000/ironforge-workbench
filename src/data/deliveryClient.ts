@@ -57,8 +57,6 @@ export interface DeliveryApi {
   clone: (input: {
     remoteUrl: string
     destination: string
-    sshKeyPath?: string
-    sshPassphrase?: string
   }) => Promise<{ project: { id: string; path: string; name: string } }>
 }
 

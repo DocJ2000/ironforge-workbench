@@ -78,7 +78,10 @@ interface RepositoryMiddlewareOptions {
   clone?: (input: {
     remoteUrl: string
     destination: string
-    sshKeyPath?: string
+  }, credentials: {
+    sshKeyPath: string
+    sshPassphrase?: string
+    sshAskPassPath?: string
   }) => Promise<{ path: string }>
   credentials?: (projectId: string) => Promise<{
     baseUrl: string
@@ -338,23 +341,21 @@ export function createRepositoryMiddleware({
     if (isCloneRequest) {
       try {
         const body = await readJson<{
-          input: { remoteUrl: string; destination: string; sshKeyPath?: string; sshPassphrase?: string }
+          input: { remoteUrl: string; destination: string }
           confirmed: boolean
         }>(request)
         if (!body.confirmed) throw new Error('请先确认下载云端项目')
+        const computerCredentials = await resolveCredentials('computer')
+        const remoteCredentials = {
+          sshKeyPath: computerCredentials.sshKeyPath,
+          ...(computerCredentials.sshPassphrase ? { sshPassphrase: computerCredentials.sshPassphrase } : {}),
+          ...(computerCredentials.sshAskPassPath
+            ? { sshAskPassPath: computerCredentials.sshAskPassPath }
+            : sshAskPassPath ? { sshAskPassPath } : {}),
+        }
         const cloned = clone
-          ? await clone(body.input)
-          : await cloneRepository({
-              remoteUrl: body.input.remoteUrl,
-              destination: body.input.destination,
-              ...(body.input.sshKeyPath
-                ? { credentials: {
-                    sshKeyPath: body.input.sshKeyPath,
-                    ...(body.input.sshPassphrase ? { sshPassphrase: body.input.sshPassphrase } : {}),
-                    ...(sshAskPassPath ? { sshAskPassPath } : {}),
-                  } }
-                : {}),
-            })
+          ? await clone(body.input, remoteCredentials)
+          : await cloneRepository({ ...body.input, credentials: remoteCredentials })
         const project = registry ? await registry.add(cloned.path) : cloned
         sendJson(response, 201, { project })
       } catch (error) {

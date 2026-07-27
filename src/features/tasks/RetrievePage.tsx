@@ -42,8 +42,6 @@ export function RetrievePage({
   } | null>(null)
   const [cloneResult, setCloneResult] = useState<string | null>(null)
   const [remoteUrl, setRemoteUrl] = useState('')
-  const [sshKeyPath, setSshKeyPath] = useState('')
-  const [sshPassphrase, setSshPassphrase] = useState('')
   const selectedAction = actions.find((item) => item.id === action)
 
   function selectProject(id: string) {
@@ -63,8 +61,6 @@ export function RetrievePage({
         const result = await api.clone({
           remoteUrl,
           destination,
-          ...(sshKeyPath.trim() ? { sshKeyPath } : {}),
-          ...(sshPassphrase ? { sshPassphrase } : {}),
         })
         setCloneResult(result.project.path)
       }
@@ -147,11 +143,6 @@ export function RetrievePage({
           </dl>
           {action === 'clone' ? <>
             <label className="plain-field spaced-field"><span>管理员提供的项目下载地址</span><input aria-label="管理员提供的项目下载地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="粘贴管理员发给你的地址" value={remoteUrl} /></label>
-            <details className="advanced-connection">
-              <summary>高级连接设置（通常不用填写）</summary>
-              <label className="plain-field spaced-field"><span>已有电脑身份钥匙的位置</span><span className="path-input"><input aria-label="已有电脑身份钥匙的位置" onChange={(event) => setSshKeyPath(event.target.value)} placeholder="没有就留空" value={sshKeyPath} />{desktopDialogClient.available() ? <button aria-label="选择已有电脑身份钥匙" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setSshKeyPath(path) })} title="选择已有电脑身份钥匙" type="button"><FolderOpen size={17} /></button> : null}</span></label>
-              <label className="plain-field spaced-field"><span>电脑身份钥匙密码（没有可留空）</span><input aria-label="电脑身份钥匙密码（没有可留空）" autoComplete="off" onChange={(event) => setSshPassphrase(event.target.value)} type="password" value={sshPassphrase} /></label>
-            </details>
           </> : null}
           <label className="plain-field spaced-field">
             <span>{action === 'pull' ? '更新这个本地文件夹' : '保存到这个文件夹'}</span>

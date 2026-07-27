@@ -54,3 +54,21 @@ it('runs a confirmed safe update and shows the number of received versions', asy
   expect(screen.getByText('本次获取了 2 个新版本。')).toBeVisible()
   expect(pull).toHaveBeenCalledOnce()
 })
+
+it('uses the saved computer identity without asking for a key path', () => {
+  const repository = getDemoRepository()
+  render(
+    <MemoryRouter>
+      <RetrievePage
+        onSelect={() => undefined}
+        projects={[{ id: repository.id, repository, connected: true, lastOpened: '刚刚' }]}
+        selectedId={repository.id}
+      />
+    </MemoryRouter>,
+  )
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: /把云端项目下载到这台电脑/ }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  expect(screen.queryByText(/高级连接设置/)).not.toBeInTheDocument()
+  expect(screen.queryByLabelText(/身份钥匙的位置/)).not.toBeInTheDocument()
+})

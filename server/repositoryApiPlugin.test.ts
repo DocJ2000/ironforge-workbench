@@ -34,6 +34,52 @@ function jsonRequest(url: string, value: unknown) {
 }
 
 describe('createRepositoryMiddleware', () => {
+  it('uses computer credentials for downloads without accepting secrets from the page', async () => {
+    const clone = vi.fn().mockResolvedValue({ path: 'C:\\downloaded' })
+    const credentials = vi.fn().mockResolvedValue({
+      baseUrl: 'https://gitlfs.lab.tp',
+      token: 'stored-token',
+      sshKeyPath: 'C:\\keys\\id_ed25519',
+      sshPassphrase: 'stored-passphrase',
+    })
+    const registry = {
+      list: vi.fn(),
+      add: vi.fn().mockResolvedValue({ id: 'downloaded', path: 'C:\\downloaded' }),
+      remove: vi.fn(),
+      resolve: vi.fn(),
+    }
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\legacy',
+      registry,
+      clone,
+      credentials,
+    })
+    const result = responseDouble()
+    await middleware(
+      jsonRequest('/api/gitlab/clone', {
+        input: {
+          remoteUrl: 'git@gitlfs.lab.tp:rockteam/project.git',
+          destination: 'C:\\downloaded',
+        },
+        confirmed: true,
+      }),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(credentials).toHaveBeenCalledWith('computer')
+    expect(clone).toHaveBeenCalledWith(
+      {
+        remoteUrl: 'git@gitlfs.lab.tp:rockteam/project.git',
+        destination: 'C:\\downloaded',
+      },
+      expect.objectContaining({
+        sshKeyPath: 'C:\\keys\\id_ed25519',
+        sshPassphrase: 'stored-passphrase',
+      }),
+    )
+  })
+
   it('lists registered projects and rejects unknown project IDs before scanning', async () => {
     const scan = vi.fn()
     const registry = {

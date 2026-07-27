@@ -153,12 +153,14 @@ describe('deliveryApi', () => {
     await deliveryApi.clone({
       remoteUrl: 'git@gitlfs.lab.tp:rockteam/new.git',
       destination: 'D:\\Projects\\new',
-      sshKeyPath: 'C:\\Users\\engineer\\.ssh\\id_ed25519',
     })
 
     expect(fetcher).toHaveBeenCalledWith(
       '/api/gitlab/clone',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.not.stringContaining('sshKeyPath'),
+      }),
     )
   })
 
