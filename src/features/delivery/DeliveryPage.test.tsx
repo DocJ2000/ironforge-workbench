@@ -211,7 +211,7 @@ describe('DeliveryPage', () => {
     )
     await waitFor(() => expect(api.syncGitLab).toHaveBeenCalledOnce())
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /胡庆磊/ }))
+    expect(screen.getByRole('checkbox', { name: /胡庆磊/ })).toBeChecked()
     fireEvent.click(screen.getByRole('button', { name: '提交发布审核' }))
 
     await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledOnce())

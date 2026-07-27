@@ -102,6 +102,13 @@ export function DeliveryPage({
         setSelectedPackageIds(
           new Set(overview.packages.map((item) => item.id)),
         )
+        setSelectedReviewerIds(
+          new Set(
+            overview.reviewers
+              .filter((reviewer) => reviewer.recommended)
+              .map((reviewer) => reviewer.id),
+          ),
+        )
       })
       .catch((cause) => {
         if (!cancelled) {

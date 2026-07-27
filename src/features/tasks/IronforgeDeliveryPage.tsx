@@ -38,6 +38,11 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi, onRefresh
       setPackages(result.packages)
       setReviewers(result.reviewers)
       setSelectedPackages(new Set(result.packages.map((item) => item.id)))
+      setSelectedReviewers(new Set(
+        result.reviewers
+          .filter((reviewer) => reviewer.recommended)
+          .map((reviewer) => reviewer.id),
+      ))
     }).catch((cause) => active && setError(cause instanceof Error ? cause.message : '读取交付包失败'))
     return () => { active = false }
   }, [api])

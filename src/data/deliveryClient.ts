@@ -21,7 +21,7 @@ export class FriendlyOperationError extends Error {
 
 export function friendlyErrorFrom(cause: unknown): FriendlyError {
   if (cause instanceof FriendlyOperationError) return cause.friendly
-  return { code: 'unknown_error', title: '操作没有完成', detail: cause instanceof Error ? cause.message : '发生了未知问题', filesSafe: true, nextAction: '重试一次；如果仍然失败，请把页面提示发给技术同事。' }
+  return { code: 'unknown_error', title: '操作没有完成', detail: cause instanceof Error ? cause.message : '发生了未知问题', filesSafe: true, nextAction: '重试一次；如果仍然失败，请展开“专业显示”并把内容发给支持人员。' }
 }
 
 export interface DeliveryOverview {

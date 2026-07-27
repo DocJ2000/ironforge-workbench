@@ -30,7 +30,7 @@ it('syncs a free-form tag then creates an MR', async () => {
     }),
   )
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  fireEvent.click(screen.getByRole('checkbox', { name: '选择审核人 胡庆磊' }))
+  expect(screen.getByRole('checkbox', { name: '选择审核人 胡庆磊' })).toBeChecked()
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '创建审核单' }))
   await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({ reviewerIds: [7], title: '更新 T2 设变零件' })))
