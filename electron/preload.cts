@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('ironforgeDesktop', {
     chooseDirectory: () => ipcRenderer.invoke('dialog:directory'),
     chooseSshKey: () => ipcRenderer.invoke('dialog:ssh-key'),
   },
+  ironforge: {
+    open: (url: string) => ipcRenderer.invoke('ironforge:open', url),
+  },
   identity: {
     status: (projectId: string) =>
       ipcRenderer.invoke('identity:status', projectId),

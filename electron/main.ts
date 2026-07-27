@@ -54,6 +54,30 @@ function registerIdentityHandlers(service: IdentityKeyService) {
   }))
 }
 
+function registerIronforgeHandlers() {
+  ipcMain.handle('ironforge:open', (_event, url: string) => {
+    const target = new URL(url)
+    if (target.protocol !== 'https:' && target.protocol !== 'http:') {
+      throw new Error('交付平台地址必须是网页地址')
+    }
+    const window = new BrowserWindow({
+      width: 1280,
+      height: 820,
+      minWidth: 900,
+      minHeight: 640,
+      title: '铁炉堡',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        partition: 'persist:ironforge',
+      },
+    })
+    void window.loadURL(target.toString())
+    return true
+  })
+}
+
 let productionOrigin: string | null = null
 
 function createWindow() {
@@ -115,6 +139,7 @@ app.whenReady().then(async () => {
   )
   registerCredentialHandlers(vault)
   registerFileDialogHandlers()
+  registerIronforgeHandlers()
   registerIdentityHandlers(
     new IdentityKeyService(
       join(userDataPath, 'identities'),

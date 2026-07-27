@@ -1,4 +1,4 @@
-import { ExternalLink, Eye, EyeOff, FolderOpen, KeyRound, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, FolderOpen, KeyRound, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { credentialClient } from '../../data/credentialClient'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
@@ -121,23 +121,6 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
       </section>
       </details>
 
-      <section className="connection-section">
-        <header>
-          <span className="connection-icon connection-icon--ironforge">IF</span>
-          <div><h2>铁炉堡</h2><p>使用公司的统一登录页面，登录状态由浏览器管理。</p></div>
-          <span className="connection-status connection-status--browser">公司统一登录</span>
-        </header>
-        <div className="ironforge-account-copy">
-          <p>管理员批准交付审核单后，系统会自动开始铁炉堡发布，不需要在软件里重复填写铁炉堡密码。</p>
-          <p>如需查看或下载已发布图纸，请在浏览器完成公司统一登录。</p>
-        </div>
-        <footer>
-          <a className="button button--primary" href={ironforgeUrl} rel="noreferrer" target="_blank">
-            打开铁炉堡并登录
-            <ExternalLink size={16} />
-          </a>
-        </footer>
-      </section>
       {showClear ? <ClearConnectionDialog busy={busy} onCancel={() => setShowClear(false)} onConfirm={() => { setBusy(true); void credentialClient.clear(computerAccountId).then(() => { setConfigured(false); setShowClear(false) }).finally(() => setBusy(false)) }} /> : null}
     </div>
   )

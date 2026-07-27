@@ -6,15 +6,12 @@ describe('App', () => {
   it('shows the simplified delivery navigation', () => {
     render(<App />)
 
-    expect(screen.getByRole('link', { name: '开始' })).toBeVisible()
-    expect(screen.getByRole('link', { name: '上传项目' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '项目' })).toHaveAttribute(
       'href',
-      '/workspace/upload',
+      '/workspace',
     )
-    expect(screen.getByRole('link', { name: '获取项目和图纸' })).toHaveAttribute(
-      'href',
-      '/workspace/retrieve',
-    )
+    expect(screen.queryByRole('link', { name: '上传项目' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '获取项目和图纸' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: '历史记录' })).toBeVisible()
     expect(screen.getByRole('link', { name: /账户与连接/ })).toHaveAttribute(
       'href',

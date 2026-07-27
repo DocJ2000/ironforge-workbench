@@ -1,25 +1,17 @@
 import {
-  Download,
   History,
-  House,
+  FolderKanban,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  UploadCloud,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 const navigation = [
-  { to: '/workspace', label: '开始', icon: House, end: true },
-  { to: '/workspace/upload', label: '上传项目', icon: UploadCloud },
-  {
-    to: '/workspace/retrieve',
-    label: '获取项目和图纸',
-    icon: Download,
-  },
+  { to: '/workspace', label: '项目', icon: FolderKanban, end: true },
   { to: '/history', label: '历史记录', icon: History },
 ]
 

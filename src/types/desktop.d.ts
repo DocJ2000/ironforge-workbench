@@ -26,6 +26,9 @@ interface Window {
       chooseDirectory: () => Promise<string | null>
       chooseSshKey: () => Promise<string | null>
     }
+    ironforge?: {
+      open: (url: string) => Promise<boolean>
+    }
     identity?: {
       status: (projectId: string) => Promise<{
         configured: boolean

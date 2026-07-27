@@ -12,6 +12,7 @@ import { IronforgeDeliveryPage } from '../features/tasks/IronforgeDeliveryPage'
 import { RetrievePage } from '../features/tasks/RetrievePage'
 import { ProjectUnavailable } from '../features/tasks/ProjectUnavailable'
 import { UploadEntryPage } from '../features/tasks/UploadEntryPage'
+import { ProjectActionsPage } from '../features/tasks/ProjectActionsPage'
 import { AccountPage } from '../features/account/AccountPage'
 import { CredentialGate } from '../features/account/CredentialGate'
 import { createDeliveryApi } from '../data/deliveryClient'
@@ -55,6 +56,7 @@ export function AppRoutes() {
           }
         />
         <Route path="/workspace/legacy" element={<DeliveryPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} />} />
+        <Route path="/workspace/project" element={<ProjectActionsPage repository={repository} />} />
         <Route path="/workspace/upload" element={<UploadEntryPage onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
         <Route path="/workspace/upload/gitlab" element={operationReady ? <CredentialGate projectId={selectedProjectId}><ProjectUploadPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></CredentialGate> : <ProjectUnavailable repository={repository} />} />
         <Route path="/workspace/upload/ironforge" element={operationReady ? <CredentialGate projectId={selectedProjectId}><IronforgeDeliveryPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></CredentialGate> : <ProjectUnavailable repository={repository} />} />
