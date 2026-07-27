@@ -9,12 +9,14 @@ import {
 } from 'lucide-react'
 import type { RegisteredProject } from '../../data/repositoryContext'
 import { summarizeRepository } from '../../domain/repository'
+import { summarizeProjectStatus } from '../../domain/projectStatus'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import './tasks.css'
 import './projectCenter.css'
 import './addProject.css'
+import { FirstRunChecklist } from './FirstRunChecklist'
 
 interface Props {
   projects: RegisteredProject[]
@@ -95,12 +97,14 @@ export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
           <span>有本地文件未上传，或云端存在新内容。</span>
         </div>
       ) : null}
+      <FirstRunChecklist connected={projects.some((project) => project.connected)} projectAdded={projects.length > 0} />
 
       <div className="project-list">
         {projects.map((project) => {
           const { repository } = project
           const current = project.id === selectedId
           const sync = summarizeRepository(repository)
+          const business = summarizeProjectStatus(repository)
           return (
             <article className={`project-row${current ? ' project-row--current' : ''}`} key={project.id}>
               <div className="project-row__identity">
@@ -114,6 +118,7 @@ export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
                 <span><GitBranch size={14} />{repository.branch}</span>
                 <span>{repository.changes.length} 个本地改动</span>
                 <span className={`project-state project-state--${sync.syncTone}`}>{sync.syncLabel}</span>
+                <span className={`project-state project-state--${business.tone}`}>{business.label}</span>
                 {!project.connected ? <span className="project-state project-state--neutral">尚未连接</span> : null}
               </div>
               <div className="project-row__action">
@@ -126,6 +131,7 @@ export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
                 >
                   {current ? <><CheckCircle2 size={16} />当前项目</> : '设为当前项目'}
                 </button>
+                {current ? <Link className="button button--primary" to={business.route}>{business.action}</Link> : null}
               </div>
             </article>
           )

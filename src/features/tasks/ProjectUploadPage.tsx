@@ -7,6 +7,7 @@ import { CreateBranchDialog } from '../delivery/CreateBranchDialog'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './wizardForms.css'
 import './projectUpload.css'
+import { onboardingClient } from '../../data/onboardingClient'
 
 interface Props { repository: RepositorySnapshot; api?: DeliveryApi; onRefresh?: () => Promise<void> }
 const steps = ['确认项目', '选择工作版本', '核对文件', '填写标题', '安全检查', '确认上传']
@@ -44,6 +45,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
         branch,
       })
       setResult(execution); await onRefresh?.()
+      onboardingClient.update({ firstUpload: true })
     } catch (cause) { setError(cause instanceof Error ? cause.message : '上传到 GitLab 失败') }
     finally { setBusy(false) }
   }

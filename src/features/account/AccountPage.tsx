@@ -4,6 +4,7 @@ import { credentialClient } from '../../data/credentialClient'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { ConnectionWizard } from './ConnectionWizard'
 import { FieldHelp } from './FieldHelp'
+import { ClearConnectionDialog } from './ClearConnectionDialog'
 import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
@@ -20,6 +21,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
   const [configured, setConfigured] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showClear, setShowClear] = useState(false)
   const desktopStorage = credentialClient.available()
   const complete = Boolean(gitlabUrl.trim() && token.trim() && keyPath.trim())
 
@@ -95,7 +97,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         <div className="connection-note"><ShieldCheck size={16} /><span>{desktopStorage ? 'Token 和私钥密码将由 Windows 系统加密保存，页面无法读取回明文。' : '浏览器预览只在内存中检查填写内容，刷新页面后会清空；桌面版才会安全保存。'}</span></div>
         {error ? <p className="credential-error">{error}</p> : null}
         <footer>
-          {configured ? <button className="button button--secondary" disabled={busy} onClick={() => void credentialClient.clear(computerAccountId).then(() => setConfigured(false))} type="button">清除这台电脑的连接</button> : null}
+          {configured ? <button className="button button--secondary" disabled={busy} onClick={() => setShowClear(true)} type="button">清除这台电脑的连接</button> : null}
           <button className="button button--primary" disabled={!complete || busy} onClick={() => void saveCredentials()} type="button">{desktopStorage ? busy ? '正在安全保存' : '安全保存' : '检查填写内容'}</button>
         </footer>
       </section>
@@ -118,6 +120,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
           </a>
         </footer>
       </section>
+      {showClear ? <ClearConnectionDialog busy={busy} onCancel={() => setShowClear(false)} onConfirm={() => { setBusy(true); void credentialClient.clear(computerAccountId).then(() => { setConfigured(false); setShowClear(false) }).finally(() => setBusy(false)) }} /> : null}
     </div>
   )
 }
