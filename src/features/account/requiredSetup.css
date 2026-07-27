@@ -1,0 +1,30 @@
+.required-setup-notice {
+  margin-bottom: 16px;
+  padding: 18px 20px;
+  color: var(--ink);
+  border: 1px solid var(--amber);
+  background: var(--amber-soft);
+}
+
+.required-setup-notice h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.required-setup-notice p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.required-setup-notice ol {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.required-setup-notice li.done {
+  color: var(--green);
+  text-decoration: line-through;
+}

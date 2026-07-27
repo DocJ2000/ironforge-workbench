@@ -15,7 +15,7 @@ const forbidden = [
   /\bdragon\b/i,
   /lens-mechanics/i,
   /huqinglei/i,
-  /胡庆磊|蒋成|蒋枨/,
+  /蒋/,
   /BaiduSyncdisk/i,
   /场旋框|导轴/,
   /github_pat_[A-Za-z0-9_]+|ghp_[A-Za-z0-9]+/,

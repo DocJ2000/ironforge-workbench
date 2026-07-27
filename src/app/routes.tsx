@@ -16,6 +16,7 @@ import { IronforgePortalPage } from '../features/tasks/IronforgePortalPage'
 import { CloneProjectPage } from '../features/tasks/CloneProjectPage'
 import { AccountPage } from '../features/account/AccountPage'
 import { CredentialGate } from '../features/account/CredentialGate'
+import { RequiredSetupGate } from '../features/account/RequiredSetupGate'
 import { createDeliveryApi } from '../data/deliveryClient'
 
 export function AppRoutes() {
@@ -34,6 +35,11 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
+        <Route
+          path="/account"
+          element={<AccountPage checkProjectId={selectedProjectId} />}
+        />
+        <Route element={<RequiredSetupGate />}>
         <Route index element={<Navigate replace to="/workspace" />} />
         <Route
           path="/overview"
@@ -69,10 +75,7 @@ export function AppRoutes() {
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
         <Route path="/history" element={operationReady ? <HistoryPage repository={repository} /> : <ProjectUnavailable repository={repository} />} />
-        <Route
-          path="/account"
-          element={<AccountPage checkProjectId={selectedProjectId} />}
-        />
+        </Route>
       </Route>
     </Routes>
   )

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { AccountPage } from './AccountPage'
 
 afterEach(() => {
@@ -14,7 +15,7 @@ it('keeps advanced secrets hidden and has no project selector', () => {
       ironforgeUrl: 'https://delivery.example.com/projects',
     }),
   )
-  render(<AccountPage />)
+  render(<MemoryRouter><AccountPage /></MemoryRouter>)
   expect(screen.queryByLabelText('为哪个项目设置连接')).not.toBeInTheDocument()
   const token = screen.getByLabelText('GitLab Token', { selector: 'input' })
   expect(token).toHaveAttribute('type', 'password')

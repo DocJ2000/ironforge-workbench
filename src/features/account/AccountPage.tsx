@@ -1,5 +1,6 @@
 import { Eye, EyeOff, FolderOpen, KeyRound, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { credentialClient } from '../../data/credentialClient'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { ConnectionWizard } from './ConnectionWizard'
@@ -9,15 +10,20 @@ import { organizationClient } from '../../data/organizationClient'
 import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
+import './requiredSetup.css'
 import { SoftwareUpdatePanel } from './SoftwareUpdatePanel'
 
 const computerAccountId = 'computer'
 
 export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
+  const location = useLocation()
+  const setupRequired = Boolean(
+    (location.state as { setupRequired?: boolean } | null)?.setupRequired,
+  )
   const initialOrganization = organizationClient.load()
   const [gitlabUrl, setGitlabUrl] = useState(initialOrganization.gitlabUrl)
   const [ironforgeUrl, setIronforgeUrl] = useState(initialOrganization.ironforgeUrl)
-  const [organizationSaved, setOrganizationSaved] = useState(Boolean(initialOrganization.gitlabUrl && initialOrganization.ironforgeUrl))
+  const [organizationSaved, setOrganizationSaved] = useState(Boolean(initialOrganization.gitlabUrl))
   const [token, setToken] = useState('')
   const [keyPath, setKeyPath] = useState('')
   const [passphrase, setPassphrase] = useState('')
@@ -77,6 +83,17 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         <p>管理公司项目服务器和铁炉堡的连接。密码与身份钥匙不会放进工程文件。</p>
       </header>
 
+      {setupRequired && (!organizationSaved || !configured) ? (
+        <section className="required-setup-notice" role="status">
+          <h2>请先完成必填设置</h2>
+          <p>完成下面两项后，才能进入 GitLab 项目页面。</p>
+          <ol>
+            <li className={organizationSaved ? 'done' : ''}>填写并保存公司服务器地址</li>
+            <li className={configured ? 'done' : ''}>完成“个人连接公司 GitLab”</li>
+          </ol>
+        </section>
+      ) : null}
+
       <section className="connection-section">
         <header>
           <span className="connection-icon connection-icon--gitlab">1</span>
@@ -87,7 +104,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
           <label className="plain-field"><span className="field-label-row">公司项目服务器地址<FieldHelp label="公司项目服务器地址"><strong>这是公司 GitLab 登录页面的开头部分。</strong><ol><li>打开公司 GitLab 登录页面。</li><li>复制浏览器地址中域名部分，例如 https://gitlab.example.com。</li><li>不要复制项目后面的长路径。</li><li>不确定时询问管理员。</li></ol></FieldHelp></span><input aria-label="公司项目服务器地址" onChange={(event) => { setGitlabUrl(event.target.value); setOrganizationSaved(false) }} placeholder="例如：https://gitlab.example.com" value={gitlabUrl} /></label>
           <label className="plain-field"><span className="field-label-row">交付平台地址<FieldHelp label="交付平台地址"><strong>这是浏览器中打开交付平台项目列表时的完整地址。</strong><ol><li>在浏览器中打开公司的交付平台。</li><li>进入项目列表页面。</li><li>复制浏览器顶部的完整地址并粘贴到这里。</li><li>不确定时询问管理员。</li></ol></FieldHelp></span><input aria-label="交付平台地址" onChange={(event) => { setIronforgeUrl(event.target.value); setOrganizationSaved(false) }} placeholder="例如：https://delivery.example.com/projects" value={ironforgeUrl} /></label>
         </div>
-        <footer><button className="button button--primary" disabled={!gitlabUrl.trim() || !ironforgeUrl.trim()} onClick={() => { const saved = organizationClient.save({ gitlabUrl, ironforgeUrl }); setGitlabUrl(saved.gitlabUrl); setIronforgeUrl(saved.ironforgeUrl); setOrganizationSaved(true) }} type="button">保存公司地址</button></footer>
+        <footer><button className="button button--primary" disabled={!gitlabUrl.trim()} onClick={() => { const saved = organizationClient.save({ gitlabUrl, ironforgeUrl }); setGitlabUrl(saved.gitlabUrl); setIronforgeUrl(saved.ironforgeUrl); setOrganizationSaved(true) }} type="button">保存公司地址</button></footer>
       </section>
 
       <ConnectionWizard

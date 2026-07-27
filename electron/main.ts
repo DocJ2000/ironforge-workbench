@@ -5,7 +5,6 @@ import { CredentialVault, type GitLabCredentialInput } from './credentialVault.j
 import { startLocalServer } from './localServer.js'
 import { createRepositoryMiddleware } from '../server/repositoryApiPlugin.js'
 import { ProjectRegistry } from '../server/projectRegistry.js'
-import { homedir } from 'node:os'
 import { access, mkdir, writeFile } from 'node:fs/promises'
 import { IdentityKeyService } from './identityKeyService.js'
 import electronUpdater from 'electron-updater'
@@ -13,6 +12,13 @@ import { UpdateCoordinator } from './updateCoordinator.js'
 import { createUpdateBackup } from './updateBackup.js'
 
 const { autoUpdater } = electronUpdater
+app.setPath(
+  'userData',
+  join(
+    app.getPath('appData'),
+    app.isPackaged ? 'ironforge-workbench-data' : 'ironforge-workbench-dev',
+  ),
+)
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
 
 function registerCredentialHandlers(vault: CredentialVault) {
@@ -125,11 +131,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   const userDataPath = app.getPath('userData')
-  const projectRegistryPath = join(
-    homedir(),
-    '.ironforge-workbench',
-    'projects.json',
-  )
+  const projectRegistryPath = join(userDataPath, 'projects.json')
   registerUpdateHandlers(
     new UpdateCoordinator({
       updater: autoUpdater,

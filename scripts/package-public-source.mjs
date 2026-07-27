@@ -4,7 +4,7 @@ import { extname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const stage = join(root, 'artifacts', 'public-source')
-const archive = join(root, 'artifacts', 'engineering-delivery-workbench-source.zip')
+const archive = join(root, 'artifacts', 'ironforge-workbench-source.zip')
 const textExtensions = new Set([
   '.cjs', '.css', '.cts', '.html', '.js', '.json', '.md', '.mjs', '.ts', '.tsx',
 ])
@@ -15,6 +15,7 @@ const forbidden = [
   /ironforge\.holo\.tp/i,
   /\brockteam\b/i,
   /lens-mechanics/i,
+  /蒋/,
   /BaiduSyncdisk/i,
   /github_pat_[A-Za-z0-9_]+|ghp_[A-Za-z0-9]+/,
   /-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----/,

@@ -1,0 +1,44 @@
+.project-center__empty-actions {
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  padding: 48px 24px;
+  text-align: center;
+  border: 1px dashed var(--line);
+  background: var(--surface);
+}
+
+.project-center__empty-actions h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.project-center__empty-actions p {
+  margin: 8px 0 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.project-center__empty-actions > div {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.project-center__empty-actions .button {
+  justify-content: center;
+  min-width: 190px;
+  min-height: 52px;
+  font-size: 15px;
+}
+
+@media (max-width: 520px) {
+  .project-center__empty-actions > div {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .project-center__empty-actions .button {
+    width: 100%;
+  }
+}

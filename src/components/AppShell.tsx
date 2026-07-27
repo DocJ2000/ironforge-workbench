@@ -5,6 +5,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  UserRound,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -72,7 +73,7 @@ export function AppShell() {
 
         <NavLink className="sidebar__profile" to="/account">
           <div className="avatar" aria-hidden="true">
-            蒋
+            <UserRound size={18} />
           </div>
           <div>
             <strong>本机用户</strong>

@@ -7,7 +7,7 @@ if (!owner || !repo) {
 
 module.exports = {
   appId: 'com.ironforge.workbench',
-  productName: '工程交付助手',
+  productName: 'ironforge-workbench',
   asar: true,
   directories: { output: process.env.RELEASE_OUTPUT_DIR || 'release' },
   files: ['dist/**/*', 'dist-electron/**/*', 'package.json'],
@@ -16,7 +16,7 @@ module.exports = {
   win: {
     target: ['nsis'],
     icon: 'build/icon.png',
-    artifactName: 'Engineering-Delivery-Workbench-Setup.${ext}',
+    artifactName: 'ironforge-workbench-Setup.${ext}',
   },
   nsis: {
     oneClick: false,

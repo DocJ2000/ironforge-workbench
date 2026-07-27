@@ -9,6 +9,7 @@ import './tasks.css'
 import './projectCenter.css'
 import './projectCommands.css'
 import './addProject.css'
+import './projectEmpty.css'
 
 interface Props {
   projects: RegisteredProject[]
@@ -29,22 +30,34 @@ export function TaskHomePage({ projects, onSelect, onAdd }: Props) {
     navigate('/workspace/project')
   }
 
+  const projectActions = (
+    <>
+      <button className="button button--secondary" onClick={() => setShowAdd((value) => !value)} type="button">
+        <FolderPlus size={17} />
+        找到本机已有项目
+      </button>
+      <Link className="button button--secondary" to="/workspace/download-new">下载新项目</Link>
+    </>
+  )
+
   return (
-    <div className="task-page project-center">
+    <div className={`task-page project-center${projects.length === 0 ? ' project-center--empty' : ''}`}>
       <header className="project-center__header">
         <div>
           <span className="task-eyebrow">GitLab</span>
           <h1>选择一个项目</h1>
           <p>点击项目后，再选择上传、下载或查看历史。</p>
         </div>
-        <div className="project-center__commands">
-          <button className="button button--secondary" onClick={() => setShowAdd((value) => !value)} type="button">
-            <FolderPlus size={17} />
-            找到本机已有项目
-          </button>
-          <Link className="button button--secondary" to="/workspace/download-new">下载新项目</Link>
-        </div>
+        {projects.length > 0 ? <div className="project-center__commands">{projectActions}</div> : null}
       </header>
+
+      {projects.length === 0 ? (
+        <section className="project-center__empty-actions">
+          <h2>这台电脑还没有项目</h2>
+          <p>选择一种方式，把第一个项目放进来。</p>
+          <div>{projectActions}</div>
+        </section>
+      ) : null}
 
       {showAdd ? (
         <section className="add-project-panel">
