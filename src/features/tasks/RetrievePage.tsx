@@ -146,21 +146,22 @@ export function RetrievePage({
           </dl>
           {action === 'clone' ? <>
             <label className="plain-field spaced-field">
-              <span className="field-label-row">管理员发给你的项目地址
-                <FieldHelp label="项目地址">
-                  <strong>这串地址需要向项目管理员索取，不是浏览器顶部的网址。</strong>
+              <span className="field-label-row">项目的 SSH
+                <FieldHelp label="项目的 SSH">
+                  <strong>这是从 GitLab 项目页面复制的下载地址，不是浏览器顶部的网址。</strong>
                   <ol>
-                    <li>在飞书里联系该项目的管理员。</li>
-                    <li>发送：“我要在新电脑上下载完整项目，请把这个项目的 SSH 克隆地址发给我。”</li>
-                    <li>管理员通常会发来一串以 git@ 开头、以 .git 结尾的文字。</li>
-                    <li>正确示例：git@gitlfs.lab.tp:rockteam/dragon.git。</li>
-                    <li>复制整串地址，不要漏掉开头或结尾。</li>
-                    <li>回到本软件，点击下面的输入框并粘贴。</li>
-                    <li>如果收到的是以 http 开头的网页链接，请让管理员重新发送“SSH 克隆地址”。</li>
+                    <li>请向管理员确认你有该项目的权限。</li>
+                    <li>登录 GitLab，并打开需要下载的项目页面。</li>
+                    <li>点击项目页面右上方的“Code”按钮。</li>
+                    <li>在弹出的菜单中找到“Clone with SSH”或“SSH”。</li>
+                    <li>点击 SSH 地址旁边的复制按钮。</li>
+                    <li>地址通常以 git@ 开头、以 .git 结尾，例如：git@gitlfs.lab.tp:hardware/dwarf-mini/mainboard.git。</li>
+                    <li>回到本软件，点击下面的输入框并粘贴完整地址。</li>
+                    <li>如果看不到项目或“Code”按钮，请联系管理员确认权限。</li>
                   </ol>
                 </FieldHelp>
               </span>
-              <input aria-label="管理员发给你的项目地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlfs.lab.tp:rockteam/dragon.git" value={remoteUrl} />
+              <input aria-label="项目的 SSH" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlfs.lab.tp:hardware/dwarf-mini/mainboard.git" value={remoteUrl} />
             </label>
           </> : null}
           <label className="plain-field spaced-field">
