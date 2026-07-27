@@ -21,10 +21,12 @@ import type {
   RepositoryCommitPreview,
   RepositoryCommitRequest,
 } from './repositoryCommit.js'
+import { inspectUploadRisks } from './projectRiskService.js'
 
 interface RepositoryIdentity {
   branch: string
   gitlabPath: string
+  behind?: number
 }
 
 interface CommitResult {
@@ -133,6 +135,9 @@ export async function syncGitLab(
   assertConfirmed(request.confirmed, '同步到 GitLab')
   const { draft } = request
   assertValid(validateGitLabSyncDraft(draft))
+  const repository = await dependencies.scanRepository(repositoryPath)
+  const risks = inspectUploadRisks(repository, draft)
+  if (risks.length) throw new Error(risks.map((risk) => `${risk.title}：${risk.nextAction}`).join('；'))
 
   if (draft.tag) {
     await dependencies.assertTagAvailable(repositoryPath, draft.tag.name)

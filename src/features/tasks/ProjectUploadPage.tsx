@@ -9,7 +9,7 @@ import './wizardForms.css'
 import './projectUpload.css'
 
 interface Props { repository: RepositorySnapshot; api?: DeliveryApi; onRefresh?: () => Promise<void> }
-const steps = ['确认项目', '选择工作版本', '核对文件', '填写标题', '确认上传']
+const steps = ['确认项目', '选择工作版本', '核对文件', '填写标题', '安全检查', '确认上传']
 
 export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: Props) {
   const [step, setStep] = useState(0)
@@ -48,16 +48,16 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     finally { setBusy(false) }
   }
 
-  const nextDisabled = (step === 1 && !branch) || (step === 2 && !repository.changes.length) || (step === 3 && !title.trim()) || busy
+  const nextDisabled = (step === 1 && !branch) || (step === 2 && !repository.changes.length) || (step === 3 && !title.trim()) || (step === 4 && (repository.behind > 0 || branch !== repository.branch)) || busy
   return (
     <>
       <GuidedWorkflow
         currentStep={step}
         description="把这台电脑上的工程改动上传到公司项目服务器（GitLab）。"
         nextDisabled={nextDisabled}
-        nextLabel={step === 4 ? (busy ? '正在上传' : '确认上传') : '下一步'}
+        nextLabel={step === 5 ? (busy ? '正在上传' : '确认上传') : '下一步'}
         onBack={step > 0 && !result ? () => setStep((current) => current - 1) : undefined}
-        onNext={result ? undefined : step === 4 ? () => void upload() : () => setStep((current) => current + 1)}
+        onNext={result ? undefined : step === 5 ? () => void upload() : () => setStep((current) => current + 1)}
         steps={steps}
         title="上传整个工程"
       >
@@ -67,7 +67,8 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
         {!result && step === 1 ? <div><Intro title="这次要上传到哪个工作版本？">工作版本用于隔开不同阶段的修改，例如 T1 和 T2。</Intro><div className="choice-row"><label className="plain-field"><span>工作版本</span><select aria-label="上传到哪个工作版本" onChange={(e) => setBranch(e.target.value)} value={branch}>{branches.map((item) => <option key={item}>{item}</option>)}</select></label><button aria-label="创建新工作版本" className="button button--secondary branch-action-button" onClick={() => { setStartPoint(branch); setShowCreateBranch(true) }} type="button"><Plus size={17} />新建工作版本</button></div></div> : null}
         {!result && step === 2 ? <div><Intro title="核对本次上传的文件">共 {repository.changes.length} 个新增、修改或删除的文件。</Intro><ul className="simple-file-list">{repository.changes.map((change) => <li key={change.id}><FileText size={16} /><span>{change.path}</span><small className={`file-status file-status--${change.kind}`}>{change.kind === 'untracked' ? '新增' : change.kind === 'modified' ? '已修改' : '已删除'}</small></li>)}</ul></div> : null}
         {!result && step === 3 ? <div><Intro title="给本次更新起一个标题">让同事一眼看懂你改了什么，例如“更新 T2 场旋框图纸”。</Intro><label className="plain-field"><span>本次更新标题</span><input aria-label="本次更新标题" autoFocus onChange={(e) => setTitle(e.target.value)} placeholder="例如：更新 T2 场旋框图纸" value={title} /></label></div> : null}
-        {!result && step === 4 ? <div><Intro title="确认上传">请核对下面的信息。点击确认后才会真正上传。</Intro><dl className="confirm-list"><div><dt>本次操作项目</dt><dd>{repository.displayName}</dd></div><div><dt>这台电脑上的文件夹</dt><dd>{repository.path}</dd></div><div><dt><GitBranch size={16} />工作版本</dt><dd>{branch}</dd></div><div><dt><FileText size={16} />文件数量</dt><dd>{repository.changes.length} 个</dd></div><div><dt><UploadCloud size={16} />本次更新标题</dt><dd>{title}</dd></div></dl></div> : null}
+        {!result && step === 4 ? <div><Intro title="上传前安全检查">这里只检查，不会改动文件。</Intro><dl className="confirm-list"><div><dt>本地文件</dt><dd>{repository.changes.length ? '有内容需要上传' : '没有改动'}</dd></div><div><dt>公司服务器</dt><dd>{repository.behind ? `有 ${repository.behind} 个新版本，请先获取` : '没有待获取的新版本'}</dd></div><div><dt>工作版本</dt><dd>{branch === repository.branch ? '选择正确' : '与当前版本不一致'}</dd></div></dl></div> : null}
+        {!result && step === 5 ? <div><Intro title="确认上传">请核对下面的信息。点击确认后才会真正上传。</Intro><dl className="confirm-list"><div><dt>本次操作项目</dt><dd>{repository.displayName}</dd></div><div><dt>这台电脑上的文件夹</dt><dd>{repository.path}</dd></div><div><dt><GitBranch size={16} />工作版本</dt><dd>{branch}</dd></div><div><dt><FileText size={16} />文件数量</dt><dd>{repository.changes.length} 个</dd></div><div><dt><UploadCloud size={16} />本次更新标题</dt><dd>{title}</dd></div></dl></div> : null}
       </GuidedWorkflow>
       {showCreateBranch ? <CreateBranchDialog branchName={newBranch} branches={branches} busy={busy} onBranchNameChange={setNewBranch} onCancel={() => setShowCreateBranch(false)} onConfirm={() => void createBranch()} onStartPointChange={setStartPoint} startPoint={startPoint} /> : null}
     </>
