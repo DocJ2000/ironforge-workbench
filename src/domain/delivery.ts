@@ -121,7 +121,7 @@ export function validateMergeRequestDraft(draft: MergeRequestDraft) {
   if (
     draft.feishuLinks.some((link) => {
       try {
-        return new URL(link).hostname !== 'tinyphoton.feishu.cn'
+        return new URL(link).protocol !== 'https:'
       } catch {
         return true
       }

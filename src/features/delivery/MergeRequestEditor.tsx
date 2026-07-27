@@ -58,12 +58,12 @@ export function MergeRequestEditor({
     <div className="mr-editor">
       <label className="delivery-field">
         <span className="field-label-row">给管理员看的审核标题
-          <FieldHelp label="审核标题"><strong>管理员会先看到这句话。</strong><ol><li>写清楚项目、阶段和交付内容。</li><li>正确示例：“Dragon T2 全部 BOM 交付包”。</li><li>不要只写“请审核”“交付”或日期。</li><li>标题只用于说明，不会自动提交。</li></ol></FieldHelp>
+          <FieldHelp label="审核标题"><strong>管理员会先看到这句话。</strong><ol><li>写清楚项目、阶段和交付内容。</li><li>正确示例：“示例项目 T2 全部交付包”。</li><li>不要只写“请审核”“交付”或日期。</li><li>标题只用于说明，不会自动提交。</li></ol></FieldHelp>
         </span>
         <input
           aria-label="本次交付标题"
           onChange={(event) => onTitleChange(event.target.value)}
-          placeholder="例如：提交 Dragon T2 BOM 交付包"
+          placeholder="例如：提交示例项目 T2 交付包"
           value={title}
         />
       </label>
@@ -126,7 +126,7 @@ export function MergeRequestEditor({
       <div className="mr-editor__resources">
         <div>
           <strong className="field-label-row">相关飞书文档（可以不填）
-            <FieldHelp label="飞书文档链接"><strong>把与本次交付有关的飞书文档附给管理员。</strong><ol><li>在飞书中打开需要附上的文档。</li><li>点击右上角“分享”。</li><li>点击“复制链接”。</li><li>回到这里，点击“添加飞书链接”并粘贴。</li><li>地址应该以 https://tinyphoton.feishu.cn/ 开头。</li><li>没有相关文档就不添加。</li></ol></FieldHelp>
+            <FieldHelp label="飞书文档链接"><strong>把与本次交付有关的在线文档附给管理员。</strong><ol><li>在浏览器或办公软件中打开需要附上的文档。</li><li>点击右上角“分享”。</li><li>点击“复制链接”。</li><li>回到这里，点击“添加文档链接”并粘贴。</li><li>地址应该以 https:// 开头。</li><li>没有相关文档就不添加。</li></ol></FieldHelp>
           </strong>
           {feishuLinks.map((link, index) => (
             <div className="resource-row" key={`feishu-${index}`}>
@@ -139,7 +139,7 @@ export function MergeRequestEditor({
                     ),
                   )
                 }
-                placeholder="https://tinyphoton.feishu.cn/docx/..."
+                placeholder="https://docs.example.com/..."
                 value={link}
               />
               <button

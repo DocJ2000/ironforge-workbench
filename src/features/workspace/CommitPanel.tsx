@@ -40,7 +40,7 @@ export function CommitPanel({
         <span>这次改了什么？</span>
         <textarea
           onChange={(event) => onMessageChange(event.target.value)}
-          placeholder="例如：调整场旋框盖结构，解决近焦遮挡问题"
+          placeholder="例如：调整示例零件结构"
           rows={5}
           value={commitMessage}
         />

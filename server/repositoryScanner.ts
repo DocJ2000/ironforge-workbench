@@ -232,7 +232,7 @@ export async function scanRepository(repositoryPath: string): Promise<Repository
   return {
     id: name,
     name,
-    displayName: name === 'lens-mechanics' ? 'Dragon Lens Mechanics' : name,
+    displayName: name,
     path: root,
     gitlabPath: await optionalGit(root, ['remote', 'get-url', 'origin']),
     branch,

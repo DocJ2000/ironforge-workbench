@@ -193,7 +193,7 @@ export function createRepositoryMiddleware({
     const gitLab = createGitLabClient({
       baseUrl: projectCredentials.baseUrl,
       token: projectCredentials.token,
-      recommendedReviewers: ['huqinglei'],
+      recommendedReviewers: [],
     })
     const remoteCredentials = {
       sshKeyPath: projectCredentials.sshKeyPath,
@@ -261,7 +261,7 @@ export function createRepositoryMiddleware({
       const gitLab = createGitLabClient({
         baseUrl: projectCredentials.baseUrl,
         token: projectCredentials.token,
-        recommendedReviewers: ['huqinglei'],
+        recommendedReviewers: [],
       })
       return gitLab.uploadMarkdownFile(
         gitLabProjectPath(repository.gitlabPath),
@@ -557,7 +557,7 @@ export function createRepositoryMiddleware({
           const gitLab = createGitLabClient({
             baseUrl: projectCredentials.baseUrl,
             token: projectCredentials.token,
-            recommendedReviewers: ['huqinglei'],
+            recommendedReviewers: [],
           })
           const reviewers = await gitLab.listReviewers(
             gitLabProjectPath(repository.gitlabPath),

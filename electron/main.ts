@@ -75,9 +75,7 @@ function createWindow() {
   window.once('ready-to-show', () => window.show())
   window.webContents.setWindowOpenHandler(({ url }) => {
     const target = new URL(url)
-    const allowed =
-      target.protocol === 'https:' ||
-      (target.protocol === 'http:' && target.hostname === 'ironforge.holo.tp')
+    const allowed = target.protocol === 'https:' || target.protocol === 'http:'
     if (allowed) void shell.openExternal(url)
     return { action: 'deny' }
   })

@@ -2,8 +2,8 @@
   "name": "ironforge-workbench",
   "private": true,
   "version": "0.1.0",
-  "description": "TinyPhoton engineering delivery workbench for GitLab and Ironforge",
-  "author": "TinyPhoton",
+  "description": "Engineering delivery workbench for GitLab and delivery platforms",
+  "author": "Ironforge Workbench Contributors",
   "type": "module",
   "main": "dist-electron/electron/main.js",
   "scripts": {
@@ -14,9 +14,11 @@
     "test:e2e": "playwright test",
     "preview": "vite preview",
     "build:desktop": "npm run build && node -e \"require('fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p tsconfig.electron.json",
+    "audit:public-release": "npm run build:desktop && node scripts/audit-public-release.mjs",
+    "audit:public-artifacts": "node scripts/audit-public-release.mjs",
     "desktop": "npm run build:desktop && electron .",
     "stage:git": "node scripts/stage-git-runtime.mjs",
-    "package:win": "npm run build:desktop && npm run stage:git && electron-builder --win nsis"
+    "package:win": "npm run build:desktop && npm run audit:public-artifacts && npm run stage:git && electron-builder --win nsis"
   },
   "dependencies": {
     "busboy": "^1.6.0",
@@ -44,7 +46,7 @@
     "vitest": "^4.1.10"
   },
   "build": {
-    "appId": "com.tinyphoton.ironforge.workbench",
+    "appId": "com.ironforge.workbench",
     "productName": "Ironforge Workbench",
     "asar": true,
     "directories": {

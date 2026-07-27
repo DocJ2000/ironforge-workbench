@@ -14,7 +14,7 @@ export function loadGitLabConfig(
     baseUrl: baseUrl.replace(/\/+$/, ''),
     token,
     recommendedReviewers: (
-      environment.GITLAB_RECOMMENDED_REVIEWERS ?? 'huqinglei'
+      environment.GITLAB_RECOMMENDED_REVIEWERS ?? ''
     )
       .split(',')
       .map((value) => value.trim().toLowerCase())

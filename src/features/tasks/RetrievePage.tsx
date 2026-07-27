@@ -5,6 +5,7 @@ import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/del
 import type { FriendlyError } from '../../domain/connection'
 import { FriendlyErrorNotice } from '../errors/FriendlyErrorNotice'
 import { FieldHelp } from '../account/FieldHelp'
+import { organizationClient } from '../../data/organizationClient'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './retrieve.css'
@@ -46,6 +47,7 @@ export function RetrievePage({
   const [cloneResult, setCloneResult] = useState<string | null>(null)
   const [remoteUrl, setRemoteUrl] = useState('')
   const selectedAction = actions.find((item) => item.id === action)
+  const ironforgeUrl = organizationClient.load().ironforgeUrl
 
   function selectProject(id: string) {
     onSelect(id)
@@ -155,13 +157,13 @@ export function RetrievePage({
                     <li>点击项目页面右上方的“Code”按钮。</li>
                     <li>在弹出的菜单中找到“Clone with SSH”或“SSH”。</li>
                     <li>点击 SSH 地址旁边的复制按钮。</li>
-                    <li>地址通常以 git@ 开头、以 .git 结尾，例如：git@gitlfs.lab.tp:hardware/dwarf-mini/mainboard.git。</li>
+                    <li>地址通常以 git@ 开头、以 .git 结尾，例如：git@gitlab.example.com:group/sample-project.git。</li>
                     <li>回到本软件，点击下面的输入框并粘贴完整地址。</li>
                     <li>如果看不到项目或“Code”按钮，请联系管理员确认权限。</li>
                   </ol>
                 </FieldHelp>
               </span>
-              <input aria-label="项目的 SSH" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlfs.lab.tp:hardware/dwarf-mini/mainboard.git" value={remoteUrl} />
+              <input aria-label="项目的 SSH" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlab.example.com:group/sample-project.git" value={remoteUrl} />
             </label>
           </> : null}
           <label className="plain-field spaced-field">
@@ -170,7 +172,7 @@ export function RetrievePage({
                 <strong>这是项目在你电脑上的存放位置。</strong>
                 <ol>
                   <li>{action === 'pull' ? '软件已经找到当前项目文件夹，不需要修改。' : '点击输入框右侧的文件夹图标。'}</li>
-                  <li>{action === 'pull' ? '这里只用于确认位置，不会把文件放到别处。' : '选择一个容易找到的位置，例如 D:\\Projects\\Dragon。'}</li>
+                  <li>{action === 'pull' ? '这里只用于确认位置，不会把文件放到别处。' : '选择一个容易找到的位置，例如 D:\\Projects\\sample-project。'}</li>
                   <li>{action === 'pull' ? '获取成功后，新内容会出现在这个文件夹中。' : '请选择空文件夹；已有其他文件的文件夹不能使用。'}</li>
                   <li>不要选择桌面、下载目录或其他项目正在使用的文件夹。</li>
                 </ol>
@@ -178,9 +180,9 @@ export function RetrievePage({
             </span>
             <span className={action === 'clone' && desktopDialogClient.available() ? 'path-input' : undefined}><input aria-label="本地保存位置" onChange={(event) => setDestination(event.target.value)} readOnly={action === 'pull'} value={destination} />{action === 'clone' && desktopDialogClient.available() ? <button aria-label="选择本地保存位置" onClick={() => void desktopDialogClient.chooseDirectory().then((path) => { if (path) setDestination(path) })} title="选择本地保存位置" type="button"><FolderOpen size={17} /></button> : null}</span>
           </label>
-          {action === 'ironforge' ? (
-            <a className="button button--secondary ironforge-link" href="http://ironforge.holo.tp/projects" rel="noreferrer" target="_blank">
-              打开铁炉堡项目
+          {action === 'ironforge' && ironforgeUrl ? (
+            <a className="button button--secondary ironforge-link" href={ironforgeUrl} rel="noreferrer" target="_blank">
+              打开交付平台
             </a>
           ) : null}
           </> : null}

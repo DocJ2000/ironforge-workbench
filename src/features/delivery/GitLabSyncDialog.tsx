@@ -151,7 +151,7 @@ export function GitLabSyncDialog({
                 <input
                   aria-label="交付标签说明"
                   onChange={(event) => onTagMessageChange(event.target.value)}
-                  placeholder="例如：Dragon T2 第一版交付存档"
+                  placeholder="例如：示例项目 T2 第一版交付存档"
                   value={tagMessage}
                 />
               </label>

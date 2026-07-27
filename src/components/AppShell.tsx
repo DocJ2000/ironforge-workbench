@@ -83,7 +83,7 @@ export function AppShell() {
             蒋
           </div>
           <div>
-            <strong>蒋成</strong>
+            <strong>本机用户</strong>
             <span>账户与连接</span>
           </div>
           <Settings aria-hidden="true" size={16} />

@@ -16,6 +16,7 @@ import './connectionWizard.css'
 interface Props {
   projectId: string
   checkProjectId?: string
+  gitlabUrl?: string
   onConfigured: () => void
 }
 
@@ -39,7 +40,7 @@ function connectionError(cause: unknown) {
   return message || '连接没有完成。请按页面步骤重试。'
 }
 
-export function ConnectionWizard({ projectId, checkProjectId, onConfigured }: Props) {
+export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', onConfigured }: Props) {
   const [step, setStep] = useState(0)
   const [token, setToken] = useState('')
   const [passphrase, setPassphrase] = useState('')
@@ -83,7 +84,7 @@ export function ConnectionWizard({ projectId, checkProjectId, onConfigured }: Pr
       })
       await credentialClient.save({
         projectId,
-        baseUrl: 'https://gitlfs.lab.tp',
+        baseUrl: gitlabUrl,
         token,
         sshKeyPath: generated.pathHint,
         ...(passphrase ? { sshPassphrase: passphrase } : {}),
@@ -128,7 +129,7 @@ export function ConnectionWizard({ projectId, checkProjectId, onConfigured }: Pr
             <h2>让软件连接公司 GitLab</h2>
             <p>先创建一个只给本软件使用的访问码。它不是你的登录密码。</p>
           </div>
-          <a className="button button--secondary connection-wizard__link" href="https://gitlfs.lab.tp/-/user_settings/personal_access_tokens" rel="noreferrer" target="_blank">
+          <a className="button button--secondary connection-wizard__link" href={`${gitlabUrl}/-/user_settings/personal_access_tokens`} rel="noreferrer" target="_blank">
             打开 GitLab 创建访问码 <ExternalLink size={15} />
           </a>
           <label className="plain-field connection-wizard__field">
@@ -203,7 +204,7 @@ export function ConnectionWizard({ projectId, checkProjectId, onConfigured }: Pr
           <code className="public-key-output">{publicKey}</code>
           <div className="connection-wizard__actions">
             <button className="button button--secondary" onClick={() => void copyPublicKey()} type="button">{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? '已复制' : '复制电脑登记码'}</button>
-            <a className="button button--primary" href="https://gitlfs.lab.tp/-/user_settings/ssh_keys" rel="noreferrer" target="_blank">打开 GitLab 添加身份钥匙 <ExternalLink size={15} /></a>
+            <a className="button button--primary" href={`${gitlabUrl}/-/user_settings/ssh_keys`} rel="noreferrer" target="_blank">打开 GitLab 添加身份钥匙 <ExternalLink size={15} /></a>
           </div>
         </div>
       ) : null}

@@ -74,7 +74,7 @@ export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
             <span className="path-input"><input
               aria-label="这台电脑上的项目文件夹"
               onChange={(event) => setPath(event.target.value)}
-              placeholder="例如：D:\Projects\Dragon\lens-mechanics"
+              placeholder="例如：D:\Projects\sample-project"
               value={path}
             />{desktopDialogClient.available() ? <button aria-label="选择本地项目文件夹" onClick={() => void desktopDialogClient.chooseDirectory().then((selected) => { if (selected) setPath(selected) })} title="选择本地项目文件夹" type="button"><FolderOpen size={17} /></button> : null}</span>
           </label>

@@ -130,9 +130,7 @@ export function createGitLabClient(
           username: member.username,
           avatarUrl: member.avatar_url ?? undefined,
           role: roleFromAccessLevel(member.access_level),
-          recommended:
-            recommended.has(member.username.toLowerCase()) ||
-            member.name === '胡庆磊',
+          recommended: recommended.has(member.username.toLowerCase()),
         }))
         .sort(
           (left, right) =>

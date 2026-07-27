@@ -106,7 +106,7 @@ describe('split GitLab actions', () => {
     ).toContain('请填写交付标签说明')
   })
 
-  it('rejects non-Feishu links in the Feishu document list', () => {
+  it('accepts secure document links from the service used by the company', () => {
     expect(
       validateMergeRequestDraft({
         sourceBranch: 'dev/T2',
@@ -115,6 +115,20 @@ describe('split GitLab actions', () => {
         description: '',
         reviewerIds: [42],
         feishuLinks: ['https://example.com/not-feishu'],
+        attachmentMarkdown: [],
+      }),
+    ).toEqual([])
+  })
+
+  it('rejects insecure document links', () => {
+    expect(
+      validateMergeRequestDraft({
+        sourceBranch: 'dev/T2',
+        targetBranch: 'main',
+        title: '提交 BOM 交付包',
+        description: '',
+        reviewerIds: [42],
+        feishuLinks: ['http://example.com/document'],
         attachmentMarkdown: [],
       }),
     ).toContain('请填写有效的飞书云文档链接')

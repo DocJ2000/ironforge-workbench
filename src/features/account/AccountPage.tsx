@@ -5,6 +5,7 @@ import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { ConnectionWizard } from './ConnectionWizard'
 import { FieldHelp } from './FieldHelp'
 import { ClearConnectionDialog } from './ClearConnectionDialog'
+import { organizationClient } from '../../data/organizationClient'
 import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
@@ -12,7 +13,10 @@ import './credentialFields.css'
 const computerAccountId = 'computer'
 
 export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
-  const [gitlabUrl, setGitlabUrl] = useState('https://gitlfs.lab.tp')
+  const initialOrganization = organizationClient.load()
+  const [gitlabUrl, setGitlabUrl] = useState(initialOrganization.gitlabUrl)
+  const [ironforgeUrl, setIronforgeUrl] = useState(initialOrganization.ironforgeUrl)
+  const [organizationSaved, setOrganizationSaved] = useState(Boolean(initialOrganization.gitlabUrl && initialOrganization.ironforgeUrl))
   const [token, setToken] = useState('')
   const [keyPath, setKeyPath] = useState('')
   const [passphrase, setPassphrase] = useState('')
@@ -34,7 +38,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
     if (!desktopStorage) return
     void credentialClient.status(computerAccountId).then((status) => {
       setConfigured(status.configured)
-      setGitlabUrl(status.baseUrl ?? 'https://gitlfs.lab.tp')
+      setGitlabUrl((current) => current || status.baseUrl || '')
       setKeyPath(status.sshKeyPath ?? '')
     })
   }, [desktopStorage])
@@ -72,11 +76,25 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         <p>管理公司项目服务器和铁炉堡的连接。密码与身份钥匙不会放进工程文件。</p>
       </header>
 
-      <ConnectionWizard
+      <section className="connection-section">
+        <header>
+          <span className="connection-icon connection-icon--gitlab">1</span>
+          <div><h2>公司服务器地址</h2><p>第一次使用时填写一次，软件升级不会清除。</p></div>
+          <span className={`connection-status connection-status--${organizationSaved ? 'ready' : 'pending'}`}>{organizationSaved ? '已保存' : '需要填写'}</span>
+        </header>
+        <div className="connection-form">
+          <label className="plain-field"><span className="field-label-row">公司项目服务器地址<FieldHelp label="公司项目服务器地址"><strong>这是公司 GitLab 登录页面的开头部分。</strong><ol><li>打开公司 GitLab 登录页面。</li><li>复制浏览器地址中域名部分，例如 https://gitlab.example.com。</li><li>不要复制项目后面的长路径。</li><li>不确定时询问管理员。</li></ol></FieldHelp></span><input aria-label="公司项目服务器地址" onChange={(event) => { setGitlabUrl(event.target.value); setOrganizationSaved(false) }} placeholder="例如：https://gitlab.example.com" value={gitlabUrl} /></label>
+          <label className="plain-field"><span className="field-label-row">交付平台地址<FieldHelp label="交付平台地址"><strong>这是浏览器中打开交付平台项目列表时的完整地址。</strong><ol><li>在浏览器中打开公司的交付平台。</li><li>进入项目列表页面。</li><li>复制浏览器顶部的完整地址并粘贴到这里。</li><li>不确定时询问管理员。</li></ol></FieldHelp></span><input aria-label="交付平台地址" onChange={(event) => { setIronforgeUrl(event.target.value); setOrganizationSaved(false) }} placeholder="例如：https://delivery.example.com/projects" value={ironforgeUrl} /></label>
+        </div>
+        <footer><button className="button button--primary" disabled={!gitlabUrl.trim() || !ironforgeUrl.trim()} onClick={() => { const saved = organizationClient.save({ gitlabUrl, ironforgeUrl }); setGitlabUrl(saved.gitlabUrl); setIronforgeUrl(saved.ironforgeUrl); setOrganizationSaved(true) }} type="button">保存公司地址</button></footer>
+      </section>
+
+      {organizationSaved ? <ConnectionWizard
         onConfigured={() => setConfigured(true)}
         projectId={computerAccountId}
         checkProjectId={checkProjectId}
-      />
+        gitlabUrl={gitlabUrl}
+      /> : null}
 
       <details className="advanced-connection">
         <summary>高级设置</summary>
@@ -114,7 +132,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
           <p>如需查看或下载已发布图纸，请在浏览器完成公司统一登录。</p>
         </div>
         <footer>
-          <a className="button button--primary" href="http://ironforge.holo.tp/projects" rel="noreferrer" target="_blank">
+          <a className="button button--primary" href={ironforgeUrl} rel="noreferrer" target="_blank">
             打开铁炉堡并登录
             <ExternalLink size={16} />
           </a>

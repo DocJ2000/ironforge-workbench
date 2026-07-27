@@ -33,7 +33,7 @@ describe('WorkspacePage', () => {
     )
 
     fireEvent.click(view.getByRole('checkbox', { name: '选择 charge.json' }))
-    fireEvent.change(view.getByPlaceholderText(/调整场旋框盖结构/), {
+    fireEvent.change(view.getByPlaceholderText(/调整示例零件结构/), {
       target: { value: '更新配置' },
     })
     fireEvent.click(view.getByRole('button', { name: '保存设计版本' }))

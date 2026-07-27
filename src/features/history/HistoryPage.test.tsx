@@ -7,8 +7,8 @@ describe('HistoryPage', () => {
   it('links saved work, approval, and publication records', () => {
     render(<HistoryPage repository={getDemoRepository()} />)
 
-    expect(screen.getAllByText('审核单 #28')[0]).toBeVisible()
-    expect(screen.getByText('铁炉堡尚未开始发布')).toBeVisible()
+    expect(screen.getAllByText('审核单 #1')[0]).toBeVisible()
+    expect(screen.getByText('尚未开始发布')).toBeVisible()
     expect(screen.getByText('专业显示')).toBeVisible()
   })
 
