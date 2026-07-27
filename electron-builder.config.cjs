@@ -7,7 +7,7 @@ if (!owner || !repo) {
 
 module.exports = {
   appId: 'com.ironforge.workbench',
-  productName: 'Engineering Delivery Workbench',
+  productName: '工程交付助手',
   asar: true,
   directories: { output: process.env.RELEASE_OUTPUT_DIR || 'release' },
   files: ['dist/**/*', 'dist-electron/**/*', 'package.json'],
