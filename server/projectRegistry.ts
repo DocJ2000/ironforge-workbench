@@ -104,7 +104,11 @@ export class ProjectRegistry {
 
   async add(candidatePath: string) {
     if (!candidatePath.trim()) throw new Error('请选择本地 Git 项目文件夹')
-    const candidate = await this.record(candidatePath)
+    const candidate = await this.record(candidatePath).catch(() => {
+      throw new Error(
+        '这个文件夹还不是可用的 GitLab 项目。若项目来自公司服务器，请返回并选择“下载新项目”；若这是本机已有项目，请让技术同事确认文件夹中包含 Git 记录。',
+      )
+    })
     const projects = await this.load()
     const existing = projects.find((project) => project.id === candidate.id)
     if (existing) return existing

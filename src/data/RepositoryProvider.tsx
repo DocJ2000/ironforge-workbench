@@ -87,8 +87,9 @@ export function RepositoryProvider({ children }: PropsWithChildren) {
 
   const addProject = useCallback(
     async (path: string) => {
-      await projectClient.add(path)
+      const { project } = await projectClient.add(path)
       await loadProjects()
+      setSelectedProjectId(project.id)
     },
     [loadProjects],
   )

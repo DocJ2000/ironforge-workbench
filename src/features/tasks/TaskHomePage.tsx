@@ -40,7 +40,7 @@ export function TaskHomePage({ projects, onSelect, onAdd }: Props) {
         <div className="project-center__commands">
           <button className="button button--secondary" onClick={() => setShowAdd((value) => !value)} type="button">
             <FolderPlus size={17} />
-            添加本机项目
+            找到本机已有项目
           </button>
           <Link className="button button--secondary" to="/workspace/download-new">下载新项目</Link>
         </div>
@@ -49,14 +49,19 @@ export function TaskHomePage({ projects, onSelect, onAdd }: Props) {
       {showAdd ? (
         <section className="add-project-panel">
           <label className="plain-field">
-            <span className="field-label-row">项目文件夹
+            <span className="field-label-row">本机已有项目的文件夹
               <FieldHelp label="项目文件夹">
-                <strong>请选择整个项目最外层的文件夹。</strong>
-                <p>软件只登记位置，不会移动、删除或上传文件。选择项目后，仍需明确点击上传。</p>
+                <strong>这里只适合以前已经在这台电脑上使用过的 GitLab 项目。</strong>
+                <ol>
+                  <li>如果项目是从公司服务器下载过的，选择整个项目最外层文件夹。</li>
+                  <li>如果是新电脑，或者项目还不在这台电脑上，请返回并点击“下载新项目”。</li>
+                  <li>普通文件夹不能直接添加；软件不会偷偷把普通文件夹上传到公司。</li>
+                  <li>添加只会记住位置，不会移动、删除或上传任何文件。</li>
+                </ol>
               </FieldHelp>
             </span>
             <span className="path-input">
-              <input aria-label="这台电脑上的项目文件夹" onChange={(event) => setPath(event.target.value)} placeholder="选择项目所在的文件夹" value={path} />
+              <input aria-label="这台电脑上的项目文件夹" onChange={(event) => setPath(event.target.value)} placeholder="选择以前使用过的项目文件夹" value={path} />
               {desktopDialogClient.available() ? <button aria-label="选择本地项目文件夹" onClick={() => void desktopDialogClient.chooseDirectory().then((selected) => { if (selected) setPath(selected) })} title="选择文件夹" type="button"><FolderOpen size={17} /></button> : null}
             </span>
           </label>
@@ -64,7 +69,7 @@ export function TaskHomePage({ projects, onSelect, onAdd }: Props) {
             setAdding(true)
             setAddError(null)
             void onAdd(path).then(() => { setPath(''); setShowAdd(false) }).catch((cause) => setAddError(cause instanceof Error ? cause.message : '添加项目失败')).finally(() => setAdding(false))
-          }} type="button">{adding ? '正在检查' : '添加这个项目'}</button>
+          }} type="button">{adding ? '正在检查' : '确认这是已有项目'}</button>
           {addError ? <p className="add-project-error">{addError}</p> : null}
         </section>
       ) : null}

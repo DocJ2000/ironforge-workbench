@@ -62,4 +62,12 @@ describe('ProjectRegistry', () => {
 
     await expect(registry.list()).resolves.toEqual([])
   })
+
+  it('explains that an ordinary folder must be downloaded or prepared first', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'ironforge-ordinary-folder-'))
+    roots.push(root)
+    const registry = new ProjectRegistry(join(root, 'projects.json'))
+
+    await expect(registry.add(root)).rejects.toThrow('下载新项目')
+  })
 })
