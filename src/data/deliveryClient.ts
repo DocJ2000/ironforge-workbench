@@ -9,7 +9,20 @@ import type {
   MergeRequestResult,
   OutputPackageCandidate,
 } from '../domain/delivery'
-import type { ConnectionCheckResult } from '../domain/connection'
+import type { ConnectionCheckResult, FriendlyError } from '../domain/connection'
+
+export class FriendlyOperationError extends Error {
+  readonly friendly: FriendlyError
+  constructor(friendly: FriendlyError) {
+    super(friendly.detail)
+    this.friendly = friendly
+  }
+}
+
+export function friendlyErrorFrom(cause: unknown): FriendlyError {
+  if (cause instanceof FriendlyOperationError) return cause.friendly
+  return { code: 'unknown_error', title: '操作没有完成', detail: cause instanceof Error ? cause.message : '发生了未知问题', filesSafe: true, nextAction: '重试一次；如果仍然失败，请把页面提示发给技术同事。' }
+}
 
 export interface DeliveryOverview {
   packages: OutputPackageCandidate[]
@@ -27,9 +40,10 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
     },
     cache: 'no-store',
   })
-  const payload = (await response.json()) as T & { error?: string }
+  const payload = (await response.json()) as T & { error?: string | FriendlyError }
   if (!response.ok) {
-    throw new Error(payload.error ?? `交付操作失败 (${response.status})`)
+    if (payload.error && typeof payload.error === 'object') throw new FriendlyOperationError(payload.error)
+    throw new FriendlyOperationError({ code: 'unknown_error', title: '操作没有完成', detail: payload.error ?? `服务器返回 ${response.status}`, filesSafe: true, nextAction: '按照页面提示检查后重试。' })
   }
   return payload
 }

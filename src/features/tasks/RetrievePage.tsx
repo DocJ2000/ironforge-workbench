@@ -1,7 +1,9 @@
 import { ArrowRight, Download, FolderDown, FolderOpen, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import type { RegisteredProject } from '../../data/repositoryContext'
-import { deliveryApi, type DeliveryApi } from '../../data/deliveryClient'
+import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
+import type { FriendlyError } from '../../domain/connection'
+import { FriendlyErrorNotice } from '../errors/FriendlyErrorNotice'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './retrieve.css'
@@ -35,7 +37,7 @@ export function RetrievePage({
     selectedProject?.repository.path ?? '',
   )
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyError | null>(null)
   const [pullResult, setPullResult] = useState<{
     updated: boolean
     receivedCommits: number
@@ -66,7 +68,7 @@ export function RetrievePage({
       }
       await onRefresh?.()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '获取云端改动失败')
+      setError(friendlyErrorFrom(cause))
     } finally {
       setBusy(false)
     }
@@ -124,7 +126,7 @@ export function RetrievePage({
       ) : null}
       {step === 2 && selectedAction && selectedProject ? (
         <div>
-          {error ? <div className="delivery-alert delivery-alert--error">{error}</div> : null}
+          {error ? <FriendlyErrorNotice error={error} /> : null}
           {pullResult ? (
             <div className="wizard-success">
               <h2>{pullResult.updated ? '已获取同事上传的改动' : '本地已经是最新版本'}</h2>
