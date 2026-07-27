@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { credentialClient } from '../../data/credentialClient'
 import type { RegisteredProject } from '../../data/repositoryContext'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
+import { ConnectionWizard } from './ConnectionWizard'
 import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
@@ -92,6 +93,13 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
         <p>{selectedProject?.repository.path ?? '请先添加本地项目'}</p>
       </section>
 
+      <ConnectionWizard
+        onConfigured={() => setConfigured(true)}
+        projectId={selectedId}
+      />
+
+      <details className="advanced-connection">
+        <summary>高级设置</summary>
       <section className="connection-section">
         <header>
           <span className="connection-icon connection-icon--gitlab"><KeyRound size={21} /></span>
@@ -113,6 +121,7 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
           <button className="button button--primary" disabled={!complete || busy} onClick={() => void saveCredentials()} type="button">{desktopStorage ? busy ? '正在安全保存' : '安全保存' : '检查填写内容'}</button>
         </footer>
       </section>
+      </details>
 
       <section className="connection-section">
         <header>
