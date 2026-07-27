@@ -1,10 +1,10 @@
-# 工程交付助手
+# ironforge-workbench
 
 一款面向普通工程师的中文 Windows 桌面工具。它把 GitLab 项目上传、下载和工程交付整理成逐步引导，尽量避免要求用户理解复杂的 Git 命令。
 
 ## 下载最新版
 
-[点击这里下载最新版 Windows 安装包](https://github.com/DocJ2000/engineering-delivery-workbench/releases/latest/download/Engineering-Delivery-Workbench-Setup.exe)
+[点击这里下载最新版 Windows 安装包](https://github.com/DocJ2000/ironforge-workbench/releases/latest/download/ironforge-workbench-Setup.exe)
 
 这是尚未进行代码签名的公开测试版本。Windows 第一次运行安装包时可能显示安全提醒，请确认下载地址来自本仓库。
 
@@ -21,7 +21,7 @@
 
 ## 第一次使用
 
-1. 下载并安装“工程交付助手”。
+1. 下载并安装 `ironforge-workbench`。
 2. 打开“账户与链接”，填写自己单位提供的服务器地址。
 3. 按字段旁边的问号查看访问码和 SSH 身份的详细获取步骤。
 4. 在 GitLab 页面添加项目。
@@ -88,7 +88,7 @@ npm.cmd run audit:public-release
 
 ```powershell
 $env:GH_OWNER='你的 GitHub 用户名'
-$env:GH_REPO='engineering-delivery-workbench'
+$env:GH_REPO='ironforge-workbench'
 npm.cmd run package:win
 ```
 
