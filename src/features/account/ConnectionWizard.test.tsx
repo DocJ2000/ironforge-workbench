@@ -30,7 +30,7 @@ function desktopBridge() {
 }
 
 it('starts with plain-language access-code guidance', () => {
-  render(<ConnectionWizard onConfigured={vi.fn()} projectId="project-one" />)
+  render(<ConnectionWizard gitlabUrl="https://git.example.com" onConfigured={vi.fn()} projectId="project-one" />)
   expect(
     screen.getByRole('heading', { name: '让软件连接公司 GitLab' }),
   ).toBeVisible()
@@ -40,7 +40,7 @@ it('starts with plain-language access-code guidance', () => {
 
 it('generates a computer identity and saves the connection', async () => {
   const { save } = desktopBridge()
-  render(<ConnectionWizard onConfigured={vi.fn()} projectId="project-one" />)
+  render(<ConnectionWizard gitlabUrl="https://git.example.com" onConfigured={vi.fn()} projectId="project-one" />)
   await waitFor(() =>
     expect(screen.queryByText('正在读取连接状态')).not.toBeInTheDocument(),
   )
@@ -68,7 +68,7 @@ it('turns technical connection failures into a next action', async () => {
   window.ironforgeDesktop!.identity!.generate = vi
     .fn()
     .mockRejectedValue(new Error('connect ETIMEDOUT'))
-  render(<ConnectionWizard onConfigured={vi.fn()} projectId="project-one" />)
+  render(<ConnectionWizard gitlabUrl="https://git.example.com" onConfigured={vi.fn()} projectId="project-one" />)
   await waitFor(() =>
     expect(screen.queryByText('正在读取连接状态')).not.toBeInTheDocument(),
   )

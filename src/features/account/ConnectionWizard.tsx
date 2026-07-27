@@ -49,6 +49,7 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const serverReady = Boolean(gitlabUrl.trim())
 
   useEffect(() => {
     setStep(0)
@@ -129,7 +130,7 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
             <h2>让软件连接公司 GitLab</h2>
             <p>先创建一个只给本软件使用的访问码。它不是你的登录密码。</p>
           </div>
-          <a className="button button--secondary connection-wizard__link" href={`${gitlabUrl}/-/user_settings/personal_access_tokens`} rel="noreferrer" target="_blank">
+          <a aria-disabled={!serverReady} className="button button--secondary connection-wizard__link" href={serverReady ? `${gitlabUrl}/-/user_settings/personal_access_tokens` : undefined} rel="noreferrer" target="_blank">
             打开 GitLab 创建访问码 <ExternalLink size={15} />
           </a>
           <label className="plain-field connection-wizard__field">
@@ -151,7 +152,7 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
             </span>
             <input aria-label="软件访问码" autoComplete="off" onChange={(event) => setToken(event.target.value)} placeholder="创建后粘贴到这里" type="password" value={token} />
           </label>
-          <button className="button button--primary connection-wizard__next" disabled={!token.trim()} onClick={() => setStep(1)} type="button">下一步</button>
+          <button className="button button--primary connection-wizard__next" disabled={!serverReady || !token.trim()} onClick={() => setStep(1)} type="button">下一步</button>
         </div>
       ) : null}
 

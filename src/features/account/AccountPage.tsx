@@ -89,15 +89,15 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         <footer><button className="button button--primary" disabled={!gitlabUrl.trim() || !ironforgeUrl.trim()} onClick={() => { const saved = organizationClient.save({ gitlabUrl, ironforgeUrl }); setGitlabUrl(saved.gitlabUrl); setIronforgeUrl(saved.ironforgeUrl); setOrganizationSaved(true) }} type="button">保存公司地址</button></footer>
       </section>
 
-      {organizationSaved ? <ConnectionWizard
+      <ConnectionWizard
         onConfigured={() => setConfigured(true)}
         projectId={computerAccountId}
         checkProjectId={checkProjectId}
         gitlabUrl={gitlabUrl}
-      /> : null}
+      />
 
       <details className="advanced-connection">
-        <summary>高级设置</summary>
+        <summary>专业显示：手动使用已有的电脑身份钥匙</summary>
       <section className="connection-section">
         <header>
           <span className="connection-icon connection-icon--gitlab"><KeyRound size={21} /></span>
