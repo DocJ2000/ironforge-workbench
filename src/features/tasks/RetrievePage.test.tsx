@@ -23,7 +23,7 @@ it('offers explicit retrieval actions before choosing a local path', () => {
   fireEvent.click(screen.getByRole('button', { name: /获取同事刚上传的改动/ }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   expect(screen.getByLabelText('本地保存位置')).toHaveValue(repository.path)
-  expect(screen.getByText('更新这个本地文件夹')).toBeVisible()
+  expect(screen.getByText('项目所在的电脑文件夹')).toBeVisible()
 })
 
 it('runs a confirmed safe update and shows the number of received versions', async () => {
@@ -71,4 +71,7 @@ it('uses the saved computer identity without asking for a key path', () => {
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   expect(screen.queryByText(/高级连接设置/)).not.toBeInTheDocument()
   expect(screen.queryByLabelText(/身份钥匙的位置/)).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '项目地址是什么' })).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: '项目地址是什么' }))
+  expect(screen.getByText(/SSH 克隆地址发给我/)).toBeVisible()
 })

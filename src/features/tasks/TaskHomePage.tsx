@@ -17,6 +17,7 @@ import './tasks.css'
 import './projectCenter.css'
 import './addProject.css'
 import { FirstRunChecklist } from './FirstRunChecklist'
+import { FieldHelp } from '../account/FieldHelp'
 
 interface Props {
   projects: RegisteredProject[]
@@ -58,7 +59,18 @@ export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
       {showAdd ? (
         <section className="add-project-panel">
           <label className="plain-field">
-            <span>这台电脑上的项目文件夹</span>
+            <span className="field-label-row">项目在这台电脑上的文件夹
+              <FieldHelp label="项目文件夹">
+                <strong>请选择包含整个工程的最外层文件夹。</strong>
+                <ol>
+                  <li>点击输入框右侧的文件夹图标。</li>
+                  <li>找到平时打开工程文件的位置。</li>
+                  <li>选择同时包含 output、charge.json 等内容的最外层文件夹。</li>
+                  <li>不要只选择 output，也不要选择某一个零件的小文件夹。</li>
+                  <li>软件只会登记位置，不会移动、删除或上传文件。</li>
+                </ol>
+              </FieldHelp>
+            </span>
             <span className="path-input"><input
               aria-label="这台电脑上的项目文件夹"
               onChange={(event) => setPath(event.target.value)}

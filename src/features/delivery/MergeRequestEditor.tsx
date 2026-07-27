@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { FieldHelp } from '../account/FieldHelp'
 
 interface MergeRequestEditorProps {
   attachments: File[]
@@ -56,7 +57,9 @@ export function MergeRequestEditor({
   return (
     <div className="mr-editor">
       <label className="delivery-field">
-        <span>本次交付标题</span>
+        <span className="field-label-row">给管理员看的审核标题
+          <FieldHelp label="审核标题"><strong>管理员会先看到这句话。</strong><ol><li>写清楚项目、阶段和交付内容。</li><li>正确示例：“Dragon T2 全部 BOM 交付包”。</li><li>不要只写“请审核”“交付”或日期。</li><li>标题只用于说明，不会自动提交。</li></ol></FieldHelp>
+        </span>
         <input
           aria-label="本次交付标题"
           onChange={(event) => onTitleChange(event.target.value)}
@@ -98,7 +101,9 @@ export function MergeRequestEditor({
             ))}
           </div>
           <label className="delivery-field">
-            <span>交付补充说明（可选）</span>
+            <span className="field-label-row">还有什么需要告诉管理员（可以不填）
+              <FieldHelp label="补充说明"><strong>只有管理员需要特别注意某些内容时才填写。</strong><ol><li>可以说明本次改了哪些零件。</li><li>可以注明需要重点检查的尺寸或风险。</li><li>可以说明哪些旧文件已删除。</li><li>没有额外内容就保持空白。</li></ol></FieldHelp>
+            </span>
             <textarea
               aria-label="交付补充说明（可选）"
               onChange={(event) => onDescriptionChange(event.target.value)}
@@ -120,7 +125,9 @@ export function MergeRequestEditor({
       )}
       <div className="mr-editor__resources">
         <div>
-          <strong>飞书云文档</strong>
+          <strong className="field-label-row">相关飞书文档（可以不填）
+            <FieldHelp label="飞书文档链接"><strong>把与本次交付有关的飞书文档附给管理员。</strong><ol><li>在飞书中打开需要附上的文档。</li><li>点击右上角“分享”。</li><li>点击“复制链接”。</li><li>回到这里，点击“添加飞书链接”并粘贴。</li><li>地址应该以 https://tinyphoton.feishu.cn/ 开头。</li><li>没有相关文档就不添加。</li></ol></FieldHelp>
+          </strong>
           {feishuLinks.map((link, index) => (
             <div className="resource-row" key={`feishu-${index}`}>
               <input
@@ -158,7 +165,9 @@ export function MergeRequestEditor({
           </button>
         </div>
         <div>
-          <strong>PDF / 图片附件</strong>
+          <strong className="field-label-row">相关 PDF 或图片（可以不填）
+            <FieldHelp label="审核附件"><strong>只添加管理员审核时必须查看、但不在交付包里的资料。</strong><ol><li>点击“选择附件”。</li><li>选择 PDF、PNG、JPG 或 WebP 文件。</li><li>可一次选择多个文件。</li><li>单个文件不能超过 20 MB。</li><li>附件会在最后点击“创建审核单”后才上传。</li></ol></FieldHelp>
+          </strong>
           <label className="attachment-picker">
             <Paperclip aria-hidden="true" size={16} />
             选择附件

@@ -4,6 +4,7 @@ import type { RegisteredProject } from '../../data/repositoryContext'
 import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
 import type { FriendlyError } from '../../domain/connection'
 import { FriendlyErrorNotice } from '../errors/FriendlyErrorNotice'
+import { FieldHelp } from '../account/FieldHelp'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './retrieve.css'
@@ -144,10 +145,36 @@ export function RetrievePage({
             {action !== 'clone' ? <div><dt>公司服务器上的项目</dt><dd>{selectedProject.repository.gitlabPath}</dd></div> : null}
           </dl>
           {action === 'clone' ? <>
-            <label className="plain-field spaced-field"><span>管理员提供的项目下载地址</span><input aria-label="管理员提供的项目下载地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="粘贴管理员发给你的地址" value={remoteUrl} /></label>
+            <label className="plain-field spaced-field">
+              <span className="field-label-row">管理员发给你的项目地址
+                <FieldHelp label="项目地址">
+                  <strong>这串地址需要向项目管理员索取，不是浏览器顶部的网址。</strong>
+                  <ol>
+                    <li>在飞书里联系该项目的管理员。</li>
+                    <li>发送：“我要在新电脑上下载完整项目，请把这个项目的 SSH 克隆地址发给我。”</li>
+                    <li>管理员通常会发来一串以 git@ 开头、以 .git 结尾的文字。</li>
+                    <li>正确示例：git@gitlfs.lab.tp:rockteam/dragon.git。</li>
+                    <li>复制整串地址，不要漏掉开头或结尾。</li>
+                    <li>回到本软件，点击下面的输入框并粘贴。</li>
+                    <li>如果收到的是以 http 开头的网页链接，请让管理员重新发送“SSH 克隆地址”。</li>
+                  </ol>
+                </FieldHelp>
+              </span>
+              <input aria-label="管理员发给你的项目地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlfs.lab.tp:rockteam/dragon.git" value={remoteUrl} />
+            </label>
           </> : null}
           <label className="plain-field spaced-field">
-            <span>{action === 'pull' ? '更新这个本地文件夹' : '保存到这个文件夹'}</span>
+            <span className="field-label-row">{action === 'pull' ? '项目所在的电脑文件夹' : '下载后放在哪个文件夹'}
+              <FieldHelp label="电脑文件夹">
+                <strong>这是项目在你电脑上的存放位置。</strong>
+                <ol>
+                  <li>{action === 'pull' ? '软件已经找到当前项目文件夹，不需要修改。' : '点击输入框右侧的文件夹图标。'}</li>
+                  <li>{action === 'pull' ? '这里只用于确认位置，不会把文件放到别处。' : '选择一个容易找到的位置，例如 D:\\Projects\\Dragon。'}</li>
+                  <li>{action === 'pull' ? '获取成功后，新内容会出现在这个文件夹中。' : '请选择空文件夹；已有其他文件的文件夹不能使用。'}</li>
+                  <li>不要选择桌面、下载目录或其他项目正在使用的文件夹。</li>
+                </ol>
+              </FieldHelp>
+            </span>
             <span className={action === 'clone' && desktopDialogClient.available() ? 'path-input' : undefined}><input aria-label="本地保存位置" onChange={(event) => setDestination(event.target.value)} readOnly={action === 'pull'} value={destination} />{action === 'clone' && desktopDialogClient.available() ? <button aria-label="选择本地保存位置" onClick={() => void desktopDialogClient.chooseDirectory().then((path) => { if (path) setDestination(path) })} title="选择本地保存位置" type="button"><FolderOpen size={17} /></button> : null}</span>
           </label>
           {action === 'ironforge' ? (
