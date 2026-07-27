@@ -8,10 +8,11 @@ import { ProjectRegistry } from '../server/projectRegistry.js'
 import { homedir } from 'node:os'
 import { access, mkdir, writeFile } from 'node:fs/promises'
 import { IdentityKeyService } from './identityKeyService.js'
-import { autoUpdater } from 'electron-updater'
+import electronUpdater from 'electron-updater'
 import { UpdateCoordinator } from './updateCoordinator.js'
 import { createUpdateBackup } from './updateBackup.js'
 
+const { autoUpdater } = electronUpdater
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
 
 function registerCredentialHandlers(vault: CredentialVault) {

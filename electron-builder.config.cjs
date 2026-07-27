@@ -15,7 +15,8 @@ module.exports = {
   publish: [{ provider: 'github', owner, repo }],
   win: {
     target: ['nsis'],
-    artifactName: 'Engineering-Delivery-Workbench-${version}-Setup.${ext}',
+    icon: 'build/icon.png',
+    artifactName: 'Engineering-Delivery-Workbench-Setup.${ext}',
   },
   nsis: {
     oneClick: false,
