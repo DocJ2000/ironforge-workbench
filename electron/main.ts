@@ -7,6 +7,7 @@ import { createRepositoryMiddleware } from '../server/repositoryApiPlugin.js'
 import { ProjectRegistry } from '../server/projectRegistry.js'
 import { homedir } from 'node:os'
 import { access, mkdir, writeFile } from 'node:fs/promises'
+import { IdentityKeyService } from './identityKeyService.js'
 
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
 
@@ -37,6 +38,20 @@ function registerFileDialogHandlers() {
     })
     return result.canceled ? null : result.filePaths[0] ?? null
   })
+}
+
+function registerIdentityHandlers(service: IdentityKeyService) {
+  ipcMain.handle('identity:status', (_event, projectId: string) =>
+    service.status(projectId),
+  )
+  ipcMain.handle(
+    'identity:generate',
+    (_event, input: { projectId: string; passphrase?: string }) =>
+      service.generate(input),
+  )
+  ipcMain.handle('identity:public-key', async (_event, projectId: string) => ({
+    publicKey: await service.publicKey(projectId),
+  }))
 }
 
 let productionOrigin: string | null = null
@@ -77,10 +92,22 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   const userDataPath = app.getPath('userData')
+  let sshKeygenExecutable = 'ssh-keygen'
   if (app.isPackaged) {
     const bundledGit = join(process.resourcesPath, 'git', 'cmd', 'git.exe')
     const bundledSsh = join(process.resourcesPath, 'git', 'usr', 'bin', 'ssh.exe')
-    await Promise.all([access(bundledGit), access(bundledSsh)])
+    sshKeygenExecutable = join(
+      process.resourcesPath,
+      'git',
+      'usr',
+      'bin',
+      'ssh-keygen.exe',
+    )
+    await Promise.all([
+      access(bundledGit),
+      access(bundledSsh),
+      access(sshKeygenExecutable),
+    ])
     process.env.IRONFORGE_GIT_EXECUTABLE = bundledGit
     process.env.IRONFORGE_SSH_EXECUTABLE = bundledSsh
   }
@@ -90,6 +117,12 @@ app.whenReady().then(async () => {
   )
   registerCredentialHandlers(vault)
   registerFileDialogHandlers()
+  registerIdentityHandlers(
+    new IdentityKeyService(
+      join(userDataPath, 'identities'),
+      sshKeygenExecutable,
+    ),
+  )
   if (!process.env.VITE_DEV_SERVER_URL) {
     const helperDirectory = join(userDataPath, 'helpers')
     const sshAskPassPath = join(helperDirectory, 'ssh-askpass.cmd')

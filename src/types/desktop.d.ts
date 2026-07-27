@@ -26,5 +26,20 @@ interface Window {
       chooseDirectory: () => Promise<string | null>
       chooseSshKey: () => Promise<string | null>
     }
+    identity?: {
+      status: (projectId: string) => Promise<{
+        configured: boolean
+        pathHint?: string
+      }>
+      generate: (input: {
+        projectId: string
+        passphrase?: string
+      }) => Promise<{
+        configured: boolean
+        publicKey: string
+        pathHint: string
+      }>
+      publicKey: (projectId: string) => Promise<{ publicKey: string }>
+    }
   }
 }
