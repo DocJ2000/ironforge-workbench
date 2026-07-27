@@ -166,7 +166,7 @@ export function DeliveryPage({
       setShowSyncDialog(false)
       await onRefresh?.()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'GitLab 同步失败')
+      setError(cause instanceof Error ? cause.message : '上传到公司项目服务器失败')
     } finally {
       setBusy(false)
     }
@@ -189,7 +189,7 @@ export function DeliveryPage({
       setShowCreateBranch(false)
       await onRefresh?.()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '创建分支失败')
+      setError(cause instanceof Error ? cause.message : '创建工作版本失败')
     } finally {
       setBusy(false)
     }
@@ -217,7 +217,7 @@ export function DeliveryPage({
       setResult({ iid: mergeRequest.iid, url: mergeRequest.webUrl })
       setMergeRequestStatus('waiting')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'MR 创建失败')
+      setError(cause instanceof Error ? cause.message : '创建管理员审核单失败')
     } finally {
       setBusy(false)
     }
@@ -230,8 +230,8 @@ export function DeliveryPage({
           <span className="delivery-kicker">Engineer delivery</span>
           <h1>准备本次交付</h1>
           <p>
-            系统已扫描本地工程。核对文件、选择交付包和同步分支，先同步到
-            GitLab；同步成功后再选择 MR 审核人。
+            系统已扫描这台电脑上的工程。核对文件、选择交付图纸和工作版本，先上传到
+            公司项目服务器；上传成功后再选择管理员审核人。
           </p>
         </div>
         <div className="delivery-header__actions">
@@ -254,10 +254,10 @@ export function DeliveryPage({
       {result ? (
         <div className="delivery-alert delivery-alert--success">
           <CheckCircle2 aria-hidden="true" size={18} />
-          已创建 MR !{result.iid}，正在等待管理员审核。
+          已创建管理员审核单 #{result.iid}，正在等待管理员审核。
           {result.url ? (
             <a href={result.url} rel="noreferrer" target="_blank">
-              打开 MR
+              打开管理员审核单
             </a>
           ) : null}
         </div>
@@ -267,8 +267,8 @@ export function DeliveryPage({
         <div className="delivery-step__content">
           <header>
             <div>
-              <h2>同步到 GitLab</h2>
-              <p>将全部有效工程改动 Commit 并 Push 到所选分支。</p>
+              <h2>上传到公司项目服务器</h2>
+              <p>将全部有效工程改动保存并上传到所选工作版本。</p>
             </div>
             <span className="status-pill status-pill--ready">已扫描</span>
           </header>
@@ -289,7 +289,7 @@ export function DeliveryPage({
             <button className="summary-button" type="button">
               <CheckCircle2 aria-hidden="true" size={19} />
               <span>
-                <strong>charge.json 自动更新</strong>
+                <strong>铁炉堡交付清单自动更新</strong>
                 <small>跟随下方交付包选择</small>
               </span>
             </button>
@@ -305,15 +305,15 @@ export function DeliveryPage({
           <div className="delivery-subsection">
             <div className="delivery-subsection__heading">
               <div>
-                <h3>同步分支</h3>
-                <p>选择本次 Commit 和 Push 所在的分支。</p>
+                <h3>工作版本</h3>
+                <p>选择本次修改要上传到哪个工作版本。</p>
               </div>
             </div>
             <div className="branch-control">
               <label className="branch-select">
-                <span>同步分支</span>
+                <span>工作版本</span>
                 <select
-                  aria-label="同步分支"
+                  aria-label="工作版本"
                   onChange={(event) => setSelectedBranch(event.target.value)}
                   value={selectedBranch}
                 >
@@ -326,13 +326,13 @@ export function DeliveryPage({
                 </select>
               </label>
               <button
-                aria-label="创建新分支"
+                aria-label="创建新工作版本"
                 className="delivery-icon-button delivery-icon-button--bordered branch-create-button"
                 onClick={() => {
                   setNewBranchStart(selectedBranch)
                   setShowCreateBranch(true)
                 }}
-                title="创建新分支"
+                title="创建新工作版本"
                 type="button"
               >
                 <Plus aria-hidden="true" size={18} />
@@ -343,8 +343,8 @@ export function DeliveryPage({
           <div className="delivery-subsection">
             <div className="delivery-subsection__heading">
               <div>
-                <h3>Ironforge 交付包</h3>
-                <p>勾选本次需要发布的 output 包，系统将自动更新 charge.json。</p>
+                <h3>铁炉堡交付图纸</h3>
+                <p>勾选本次需要发布的交付图纸文件夹，系统将自动更新交付清单。</p>
               </div>
               <span>{selectedPackageIds.size} 个已选</span>
             </div>
@@ -357,7 +357,7 @@ export function DeliveryPage({
           </div>
 
           <div className="delivery-action-row">
-            <span>点击后填写同步注释并进行最终确认</span>
+            <span>点击后填写本次更新标题并进行最终确认</span>
             <button
               className="button button--primary"
               disabled={!canSync}
@@ -365,7 +365,7 @@ export function DeliveryPage({
               type="button"
             >
               <Send aria-hidden="true" size={17} />
-              同步到 GitLab
+              上传工程
             </button>
           </div>
 
@@ -377,8 +377,8 @@ export function DeliveryPage({
         <div className="delivery-step__content">
           <header>
             <div>
-              <h2>提交 Ironforge 发布审核</h2>
-              <p>选择管理员并创建 GitLab MR；MR 合并后即完成发布。</p>
+              <h2>提交铁炉堡发布审核</h2>
+              <p>选择管理员并创建审核单；管理员批准后即完成发布。</p>
             </div>
             <span
               className={`status-pill${
@@ -397,7 +397,7 @@ export function DeliveryPage({
           <div className="delivery-subsection">
             <div className="delivery-subsection__heading">
               <div>
-                <h3>MR 内容</h3>
+                <h3>管理员审核单内容</h3>
                 <p>说明本次发布内容，并按需附上飞书文档、PDF 或图片。</p>
               </div>
             </div>
@@ -415,8 +415,8 @@ export function DeliveryPage({
           <div className="delivery-subsection">
             <div className="delivery-subsection__heading">
               <div>
-                <h3>MR 审核人</h3>
-                <p>审核人将在 GitLab MR 中检查并批准本次 Ironforge 发布。</p>
+                <h3>管理员审核人</h3>
+                <p>审核人将在公司项目服务器检查并批准本次铁炉堡发布。</p>
               </div>
               <span>{selectedReviewerIds.size} 位已选</span>
             </div>
@@ -432,8 +432,8 @@ export function DeliveryPage({
           <div className="mr-action">
             <span>
               {syncResult
-                ? `已同步 ${syncResult.commit} 到 ${syncResult.branch}`
-                : '请先同步到 GitLab'}
+                ? `已上传，保存编号 ${syncResult.commit}，工作版本 ${syncResult.branch}`
+                : '请先上传工程'}
             </span>
             <button
               className="button button--secondary"

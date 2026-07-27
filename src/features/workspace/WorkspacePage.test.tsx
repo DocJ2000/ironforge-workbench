@@ -39,10 +39,10 @@ describe('WorkspacePage', () => {
     fireEvent.click(view.getByRole('button', { name: '保存设计版本' }))
 
     await waitFor(() => expect(preview).toHaveBeenCalled())
-    expect(view.getByRole('dialog', { name: '确认本地 Commit' })).toBeVisible()
+    expect(view.getByRole('dialog', { name: '确认保存本次修改' })).toBeVisible()
     expect(commit).not.toHaveBeenCalled()
 
-    fireEvent.click(view.getByRole('button', { name: '确认本地 Commit' }))
+    fireEvent.click(view.getByRole('button', { name: '确认保存' }))
 
     await waitFor(() => expect(commit).toHaveBeenCalled())
     expect(await screen.findByText('已保存为 abc1234')).toBeVisible()

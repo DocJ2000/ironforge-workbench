@@ -1,17 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
-import { getDemoRepository } from '../../data/demoRepository'
 import { AccountPage } from './AccountPage'
 
-it('keeps GitLab secrets hidden and links to Ironforge SSO', () => {
-  const repository = getDemoRepository()
-  render(
-    <AccountPage
-      onSelect={() => undefined}
-      projects={[{ id: repository.id, repository, connected: true, lastOpened: '刚刚' }]}
-      selectedId={repository.id}
-    />,
-  )
+it('keeps advanced secrets hidden and has no project selector', () => {
+  render(<AccountPage />)
+  expect(screen.queryByLabelText('为哪个项目设置连接')).not.toBeInTheDocument()
   const token = screen.getByLabelText('GitLab Token', { selector: 'input' })
   expect(token).toHaveAttribute('type', 'password')
   fireEvent.click(screen.getByRole('button', { name: '显示 Token' }))

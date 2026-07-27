@@ -24,11 +24,11 @@ const eventIcons: Record<HistoryEvent['type'], typeof GitCommitHorizontal> = {
 }
 
 const eventTerms: Record<HistoryEvent['type'], string> = {
-  commit: 'Commit',
-  push: 'Push',
-  merge_request: 'Merge Request',
-  merge: 'Merge',
-  publish: 'Ironforge',
+  commit: '保存修改',
+  push: '上传项目',
+  merge_request: '提交管理员审核',
+  merge: '管理员批准',
+  publish: '发布到铁炉堡',
 }
 
 export function HistoryPage({ repository }: HistoryPageProps) {
@@ -36,10 +36,10 @@ export function HistoryPage({ repository }: HistoryPageProps) {
     <div className="page page--history">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Traceability · 可追溯历史</p>
+          <p className="eyebrow">项目记录</p>
           <h1>从设计修改到供应商交付</h1>
           <p className="page-header__path">
-            每一次操作都能回到 branch、commit、MR 和发布任务。
+            每次保存、上传、审核和发布都会留下记录。
           </p>
         </div>
         <StatusBadge tone="info">{repository.history.length} 条记录</StatusBadge>
@@ -47,7 +47,7 @@ export function HistoryPage({ repository }: HistoryPageProps) {
 
       <section className="history-summary">
         <div>
-          <span>当前分支</span>
+          <span>当前工作版本</span>
           <strong>{repository.branch}</strong>
         </div>
         <div>
@@ -55,8 +55,8 @@ export function HistoryPage({ repository }: HistoryPageProps) {
           <strong>{repository.latestCommit}</strong>
         </div>
         <div>
-          <span>审核请求</span>
-          <strong>MR !{repository.mergeRequest.id}</strong>
+          <span>管理员审核单</span>
+          <strong>#{repository.mergeRequest.id}</strong>
         </div>
         <div>
           <span>发布任务</span>
@@ -68,12 +68,12 @@ export function HistoryPage({ repository }: HistoryPageProps) {
         <div className="history-toolbar">
           <div>
             <h2>操作时间线</h2>
-            <p>按发生顺序展示 Git 与 Ironforge 状态。</p>
+            <p>按发生顺序展示项目保存、审核和铁炉堡发布状态。</p>
           </div>
           <div className="history-toolbar__tools">
             <label className="search-field">
               <Search aria-hidden="true" size={15} />
-              <input aria-label="搜索历史" placeholder="搜索 commit、MR 或说明" />
+              <input aria-label="搜索历史" placeholder="搜索保存编号、审核单或说明" />
             </label>
             <button className="icon-button-light" title="筛选历史" type="button">
               <Filter size={17} />

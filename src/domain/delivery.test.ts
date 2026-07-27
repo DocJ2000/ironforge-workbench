@@ -20,7 +20,7 @@ describe('validateDeliveryDraft', () => {
     ).toEqual([
       '没有需要提交的文件',
       '请填写本次改动说明',
-      '请填写 MR 标题',
+      '请填写管理员审核单标题',
       '至少选择一位审核人',
     ])
   })
@@ -50,7 +50,7 @@ describe('validateDeliveryDraft', () => {
         targetBranch: ' ',
         mrTitle: '更新结构设计',
       }),
-    ).toContain('请选择目标分支')
+    ).toContain('请选择要交付到的正式版本')
   })
 })
 
@@ -76,7 +76,7 @@ describe('split GitLab actions', () => {
         selectedPackageIds: [],
         branch: '',
       }),
-    ).toContain('请选择同步分支')
+    ).toContain('请选择工作版本')
   })
 
   it('requires a reviewer only when creating an MR', () => {
@@ -103,7 +103,7 @@ describe('split GitLab actions', () => {
         branch: 'dev/T2',
         tag: { name: 'T2-v1', message: '' },
       }),
-    ).toContain('请填写 Tag 说明')
+    ).toContain('请填写交付标签说明')
   })
 
   it('rejects non-Feishu links in the Feishu document list', () => {

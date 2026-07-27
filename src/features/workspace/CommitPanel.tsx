@@ -27,12 +27,12 @@ export function CommitPanel({
         </span>
         <div>
           <h2>保存设计版本</h2>
-          <code>git commit</code>
+          <code>只保存在这台电脑</code>
         </div>
       </div>
 
       <div className="commit-panel__branch">
-        <span>保存到分支</span>
+        <span>保存到工作版本</span>
         <code>{branch}</code>
       </div>
 
@@ -44,7 +44,7 @@ export function CommitPanel({
           rows={5}
           value={commitMessage}
         />
-        <small>提交说明会永久显示在 GitLab 的版本历史中。</small>
+        <small>这段说明会显示在项目的版本历史中。</small>
       </label>
 
       <div className="commit-panel__selection">
@@ -55,8 +55,7 @@ export function CommitPanel({
       <div className="commit-panel__note">
         <Info aria-hidden="true" size={15} />
         <p>
-          Commit 只保存到本地。完成后还需要 <strong>Push</strong>，GitLab
-          才能看到。
+          这一步只保存在当前电脑。稍后还要点击上传，公司项目服务器和同事才能看到。
         </p>
       </div>
 

@@ -65,7 +65,7 @@ export function UploadEntryPage({ projects, selectedId, onSelect }: Props) {
         <div>
           <div className="wizard-panel__intro">
             <h2>上传后还要提交图纸审核吗？</h2>
-            <p>两种方式都会先把当前项目保存并上传到 GitLab。</p>
+            <p>两种方式都会先把当前项目保存到公司项目服务器（GitLab）。</p>
           </div>
           <div className="upload-goals">
             <button
@@ -74,7 +74,7 @@ export function UploadEntryPage({ projects, selectedId, onSelect }: Props) {
               type="button"
             >
               <UploadCloud size={23} />
-              <span><strong>只保存工程到 GitLab</strong><small>保存工程进度，不创建审核单。</small></span>
+              <span><strong>只上传工程</strong><small>保存工程进度，不提交管理员审核。</small></span>
             </button>
             <button
               aria-pressed={goal === 'ironforge'}
@@ -82,7 +82,7 @@ export function UploadEntryPage({ projects, selectedId, onSelect }: Props) {
               type="button"
             >
               <GitMerge size={23} />
-              <span><strong>保存工程并提交图纸审核</strong><small>继续选择 OUTPUT 包、审核人并创建 MR。</small></span>
+              <span><strong>上传工程并提交图纸审核</strong><small>继续选择交付图纸、审核人并创建管理员审核单。</small></span>
             </button>
           </div>
         </div>

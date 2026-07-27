@@ -24,7 +24,7 @@ export function ChangeSummary({ changes, onClose }: ChangeSummaryProps) {
         <header className="delivery-drawer__header">
           <div>
             <span className="delivery-kicker">只读核对</span>
-            <h2 id="change-summary-title">本次同步文件</h2>
+            <h2 id="change-summary-title">本次上传文件</h2>
           </div>
           <button
             aria-label="关闭文件清单"

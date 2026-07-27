@@ -1,7 +1,6 @@
 import { ExternalLink, Eye, EyeOff, FolderOpen, KeyRound, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { credentialClient } from '../../data/credentialClient'
-import type { RegisteredProject } from '../../data/repositoryContext'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { ConnectionWizard } from './ConnectionWizard'
 import { FieldHelp } from './FieldHelp'
@@ -9,13 +8,9 @@ import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
 
-interface Props {
-  projects: RegisteredProject[]
-  selectedId: string
-  onSelect: (id: string) => void
-}
+const computerAccountId = 'computer'
 
-export function AccountPage({ projects, selectedId, onSelect }: Props) {
+export function AccountPage() {
   const [gitlabUrl, setGitlabUrl] = useState('https://gitlfs.lab.tp')
   const [token, setToken] = useState('')
   const [keyPath, setKeyPath] = useState('')
@@ -27,7 +22,6 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
   const [error, setError] = useState<string | null>(null)
   const desktopStorage = credentialClient.available()
   const complete = Boolean(gitlabUrl.trim() && token.trim() && keyPath.trim())
-  const selectedProject = projects.find((project) => project.id === selectedId)
 
   useEffect(() => {
     setToken('')
@@ -35,13 +29,13 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
     setChecked(false)
     setConfigured(false)
     setError(null)
-    if (!desktopStorage || !selectedId) return
-    void credentialClient.status(selectedId).then((status) => {
+    if (!desktopStorage) return
+    void credentialClient.status(computerAccountId).then((status) => {
       setConfigured(status.configured)
       setGitlabUrl(status.baseUrl ?? 'https://gitlfs.lab.tp')
       setKeyPath(status.sshKeyPath ?? '')
     })
-  }, [desktopStorage, selectedId])
+  }, [desktopStorage])
 
   async function saveCredentials() {
     if (!desktopStorage) {
@@ -52,7 +46,7 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
     setError(null)
     try {
       const status = await credentialClient.save({
-        projectId: selectedId,
+        projectId: computerAccountId,
         baseUrl: gitlabUrl,
         token,
         sshKeyPath: keyPath,
@@ -73,30 +67,12 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
       <header className="account-header">
         <span className="task-eyebrow">设置</span>
         <h1>账户与连接</h1>
-        <p>管理 GitLab 文件传输和铁炉堡网页登录。密码与密钥不会放进工程文件。</p>
+        <p>管理公司项目服务器和铁炉堡的连接。密码与身份钥匙不会放进工程文件。</p>
       </header>
-
-      <section className="account-project">
-        <label className="plain-field">
-          <span>为哪个项目设置连接</span>
-          <select
-            aria-label="为哪个项目设置连接"
-            onChange={(event) => onSelect(event.target.value)}
-            value={selectedId}
-          >
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.repository.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p>{selectedProject?.repository.path ?? '请先添加本地项目'}</p>
-      </section>
 
       <ConnectionWizard
         onConfigured={() => setConfigured(true)}
-        projectId={selectedId}
+        projectId={computerAccountId}
       />
 
       <details className="advanced-connection">
@@ -118,7 +94,7 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
         <div className="connection-note"><ShieldCheck size={16} /><span>{desktopStorage ? 'Token 和私钥密码将由 Windows 系统加密保存，页面无法读取回明文。' : '浏览器预览只在内存中检查填写内容，刷新页面后会清空；桌面版才会安全保存。'}</span></div>
         {error ? <p className="credential-error">{error}</p> : null}
         <footer>
-          {configured ? <button className="button button--secondary" disabled={busy} onClick={() => void credentialClient.clear(selectedId).then(() => setConfigured(false))} type="button">清除此项目的 GitLab 登录</button> : null}
+          {configured ? <button className="button button--secondary" disabled={busy} onClick={() => void credentialClient.clear(computerAccountId).then(() => setConfigured(false))} type="button">清除这台电脑的连接</button> : null}
           <button className="button button--primary" disabled={!complete || busy} onClick={() => void saveCredentials()} type="button">{desktopStorage ? busy ? '正在安全保存' : '安全保存' : '检查填写内容'}</button>
         </footer>
       </section>
@@ -127,12 +103,12 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
       <section className="connection-section">
         <header>
           <span className="connection-icon connection-icon--ironforge">IF</span>
-          <div><h2>铁炉堡</h2><p>通过公司 SSO 登录，登录会话由浏览器管理。</p></div>
-          <span className="connection-status connection-status--browser">浏览器 SSO</span>
+          <div><h2>铁炉堡</h2><p>使用公司的统一登录页面，登录状态由浏览器管理。</p></div>
+          <span className="connection-status connection-status--browser">公司统一登录</span>
         </header>
         <div className="ironforge-account-copy">
-          <p>提交发布由 GitLab MR 合并触发，不需要在软件里重复填写铁炉堡密码。</p>
-          <p>如需查看或下载已发布图纸，请在浏览器完成公司 SSO 登录。</p>
+          <p>管理员批准交付审核单后，系统会自动开始铁炉堡发布，不需要在软件里重复填写铁炉堡密码。</p>
+          <p>如需查看或下载已发布图纸，请在浏览器完成公司统一登录。</p>
         </div>
         <footer>
           <a className="button button--primary" href="http://ironforge.holo.tp/projects" rel="noreferrer" target="_blank">

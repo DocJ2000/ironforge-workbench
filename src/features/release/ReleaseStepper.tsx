@@ -8,11 +8,11 @@ import {
 } from 'lucide-react'
 
 const steps = [
-  { label: '选择交付物', term: 'output', icon: PackageCheck, state: 'complete' },
-  { label: '自动校验', term: 'forge + charge', icon: FileCheck2, state: 'current' },
-  { label: '保存并推送', term: 'Commit + Push', icon: CloudUpload, state: 'upcoming' },
-  { label: '提交审核', term: 'Merge Request', icon: Send, state: 'upcoming' },
-  { label: '跟踪发布', term: 'Merge + Ironforge', icon: GitMerge, state: 'upcoming' },
+  { label: '选择交付物', term: '交付图纸', icon: PackageCheck, state: 'complete' },
+  { label: '自动检查', term: '交付清单', icon: FileCheck2, state: 'current' },
+  { label: '上传项目', term: '公司服务器', icon: CloudUpload, state: 'upcoming' },
+  { label: '提交审核', term: '管理员审核单', icon: Send, state: 'upcoming' },
+  { label: '跟踪发布', term: '发布到铁炉堡', icon: GitMerge, state: 'upcoming' },
 ]
 
 export function ReleaseStepper() {

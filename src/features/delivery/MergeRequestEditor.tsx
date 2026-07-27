@@ -164,7 +164,7 @@ export function MergeRequestEditor({
             选择附件
             <input
               accept=".pdf,image/png,image/jpeg,image/webp"
-              aria-label="选择 MR 附件"
+              aria-label="选择审核单附件"
               multiple
               onChange={(event) =>
                 onAttachmentsChange([

@@ -4,10 +4,10 @@ import { getDemoRepository } from '../../data/demoRepository'
 import { ReleasePage } from './ReleasePage'
 
 describe('ReleasePage', () => {
-  it('shows GitLab merge as mandatory before Ironforge publication', () => {
+  it('shows administrator approval as mandatory before publication', () => {
     render(<ReleasePage repository={getDemoRepository()} />)
 
-    expect(screen.getByText('等待管理员在 GitLab 审核并 Merge')).toBeVisible()
-    expect(screen.getByText('Ironforge 尚未触发')).toBeVisible()
+    expect(screen.getByText('等待管理员检查并批准')).toBeVisible()
+    expect(screen.getByText('铁炉堡尚未开始发布')).toBeVisible()
   })
 })

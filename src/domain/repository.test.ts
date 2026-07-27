@@ -9,14 +9,14 @@ describe('summarizeRepository', () => {
         behind: 0,
       }),
     ).toEqual({
-      syncLabel: '有 1 个本地版本待推送',
+      syncLabel: '有 1 个本地版本待上传',
       syncTone: 'warning',
     })
   })
 
   it('warns when local and remote branches diverge', () => {
     expect(summarizeRepository({ ahead: 2, behind: 1 })).toEqual({
-      syncLabel: '本地与远程已分叉，需要人工处理',
+      syncLabel: '电脑和公司服务器都有新修改，需要同事协助处理',
       syncTone: 'danger',
     })
   })

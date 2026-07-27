@@ -20,10 +20,10 @@ export function StagesPage({ repository }: StagesPageProps) {
     <div className="page page--stages">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Branch · 版本阶段</p>
+          <p className="eyebrow">工作版本</p>
           <h1>管理 T1、T2 和正式主线</h1>
           <p className="page-header__path">
-            分支是一条独立的设计演进路线，不是空文件夹。
+            T1、T2 是同一项目在不同阶段的工作版本，不是不同文件夹。
           </p>
         </div>
         <button className="button button--primary" type="button">
@@ -35,10 +35,10 @@ export function StagesPage({ repository }: StagesPageProps) {
       <aside className="stage-explainer">
         <Info aria-hidden="true" size={19} />
         <div>
-          <strong>新分支创建时会继承基础分支已经提交的文件</strong>
+          <strong>新工作版本会先复制所选已有版本的全部内容</strong>
           <p>
-            例如从 dev/T1 创建 dev/T2，刚创建时两边内容完全相同。之后各自 Commit，
-            差异才会出现。
+            例如从 dev/T1 创建 dev/T2，刚创建时两边内容完全相同。之后修改和保存的内容不同，
+            两个版本才会出现差异。
           </p>
         </div>
       </aside>
@@ -47,9 +47,9 @@ export function StagesPage({ repository }: StagesPageProps) {
         <div className="section-heading">
           <div>
             <h2>项目版本路线</h2>
-            <p>当前工作位于 dev/T2，正式内容通过 MR 合入 main。</p>
+            <p>当前工作位于 dev/T2；管理员批准审核单后，内容会进入正式版本 main。</p>
           </div>
-          <StatusBadge tone="info">{repository.branches.length} 条分支</StatusBadge>
+          <StatusBadge tone="info">{repository.branches.length} 个工作版本</StatusBadge>
         </div>
 
         <div className="branch-flow">
@@ -92,17 +92,17 @@ export function StagesPage({ repository }: StagesPageProps) {
       <section className="branch-list-section">
         <div className="section-heading">
           <div>
-            <h2>全部分支</h2>
-            <p>本地和 GitLab 远程状态并排显示。</p>
+            <h2>全部工作版本</h2>
+            <p>同时显示这台电脑和公司项目服务器上的状态。</p>
           </div>
         </div>
 
         <div className="branch-list">
           <div className="branch-list__header">
-            <span>阶段 / 分支</span>
+            <span>阶段 / 工作版本</span>
             <span>最新版本</span>
             <span>更新时间</span>
-            <span>远程状态</span>
+            <span>公司服务器状态</span>
             <span aria-hidden="true" />
           </div>
           {repository.branches.map((branch) => (
@@ -122,7 +122,7 @@ export function StagesPage({ repository }: StagesPageProps) {
               </div>
               <span>{branch.updatedAt}</span>
               <StatusBadge tone={branch.remote ? 'success' : 'warning'}>
-                {branch.remote ? 'GitLab 已存在' : '仅本地'}
+                {branch.remote ? '公司服务器已有' : '只在这台电脑'}
               </StatusBadge>
               <button
                 aria-label={`查看 ${branch.name}`}

@@ -28,10 +28,10 @@ export function CommitConfirmationDialog({
           </span>
           <div>
             <p className="eyebrow">最终确认</p>
-            <h2 id="commit-dialog-title">确认本地 Commit</h2>
+            <h2 id="commit-dialog-title">确认保存本次修改</h2>
           </div>
           <button
-            aria-label="关闭 Commit 预览"
+            aria-label="关闭保存预览"
             className="icon-button-light"
             disabled={busy}
             onClick={onCancel}
@@ -43,7 +43,7 @@ export function CommitConfirmationDialog({
 
         <dl className="commit-dialog__summary">
           <div>
-            <dt>分支</dt>
+            <dt>工作版本</dt>
             <dd>{preview.branch}</dd>
           </div>
           <div>
@@ -53,7 +53,7 @@ export function CommitConfirmationDialog({
         </dl>
 
         <div className="commit-dialog__message">
-          <span>提交说明</span>
+          <span>本次更新标题</span>
           <strong>{preview.message}</strong>
         </div>
 
@@ -86,7 +86,7 @@ export function CommitConfirmationDialog({
             onClick={onConfirm}
             type="button"
           >
-            {busy ? '正在保存' : '确认本地 Commit'}
+            {busy ? '正在保存' : '确认保存'}
           </button>
         </footer>
       </section>

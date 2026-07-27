@@ -81,12 +81,12 @@ describe('DeliveryPage', () => {
       }),
     )
     expect(
-      screen.getByRole('dialog', { name: '本次同步文件' }),
+      screen.getByRole('dialog', { name: '本次上传文件' }),
     ).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: '关闭文件清单' }))
 
     expect(
-      screen.getByRole('button', { name: '同步到 GitLab' }),
+      screen.getByRole('button', { name: '上传工程' }),
     ).toBeEnabled()
   })
 
@@ -94,16 +94,16 @@ describe('DeliveryPage', () => {
     const api = createApi()
     render(<DeliveryPage api={api} repository={getDemoRepository()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '同步到 GitLab' }))
+    fireEvent.click(screen.getByRole('button', { name: '上传工程' }))
 
-    const dialog = screen.getByRole('dialog', { name: '确认同步到 GitLab' })
+    const dialog = screen.getByRole('dialog', { name: '确认上传到公司项目服务器' })
     expect(dialog).toBeVisible()
     const confirm = screen.getByRole('button', {
-      name: '确认同步到 GitLab',
+      name: '确认上传',
     })
     expect(confirm).toBeDisabled()
 
-    fireEvent.change(screen.getByLabelText('同步注释'), {
+    fireEvent.change(screen.getByLabelText('本次更新标题'), {
       target: { value: '提交所有的BOM交付包' },
     })
     expect(confirm).toBeEnabled()
@@ -122,20 +122,20 @@ describe('DeliveryPage', () => {
     const api = createApi()
     render(<DeliveryPage api={api} repository={getDemoRepository()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '同步到 GitLab' }))
-    fireEvent.change(screen.getByLabelText('同步注释'), {
+    fireEvent.click(screen.getByRole('button', { name: '上传工程' }))
+    fireEvent.change(screen.getByLabelText('本次更新标题'), {
       target: { value: '同步 T2 图纸' },
     })
-    fireEvent.click(screen.getByRole('checkbox', { name: '保存为版本 Tag' }))
-    fireEvent.change(screen.getByLabelText('Tag 版本'), {
+    fireEvent.click(screen.getByRole('checkbox', { name: '添加本次交付标签' }))
+    fireEvent.change(screen.getByLabelText('交付标签版本'), {
       target: { value: 'v3' },
     })
-    fireEvent.change(screen.getByLabelText('Tag 说明'), {
+    fireEvent.change(screen.getByLabelText('交付标签说明'), {
       target: { value: 'Dragon T2 第三版存档' },
     })
     expect(screen.getByText('T2-v3')).toBeVisible()
     fireEvent.click(
-      screen.getByRole('button', { name: '确认同步到 GitLab' }),
+      screen.getByRole('button', { name: '确认上传' }),
     )
 
     await waitFor(() =>
@@ -155,13 +155,13 @@ describe('DeliveryPage', () => {
     const repository = getDemoRepository()
     render(<DeliveryPage api={api} repository={repository} />)
 
-    fireEvent.change(screen.getByLabelText('同步分支'), {
+    fireEvent.change(screen.getByLabelText('工作版本'), {
       target: { value: 'dev/T1' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '同步到 GitLab' }))
+    fireEvent.click(screen.getByRole('button', { name: '上传工程' }))
     expect(
       within(
-        screen.getByRole('dialog', { name: '确认同步到 GitLab' }),
+        screen.getByRole('dialog', { name: '确认上传到公司项目服务器' }),
       ).getByText('dev/T1'),
     ).toBeVisible()
   })
@@ -170,8 +170,8 @@ describe('DeliveryPage', () => {
     const api = createApi()
     render(<DeliveryPage api={api} repository={getDemoRepository()} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '创建新分支' }))
-    fireEvent.change(screen.getByLabelText('新分支名称'), {
+    fireEvent.click(screen.getByRole('button', { name: '创建新工作版本' }))
+    fireEvent.change(screen.getByLabelText('新工作版本名称'), {
       target: { value: 'dev/T3' },
     })
     fireEvent.click(screen.getByRole('button', { name: '创建并选中' }))
@@ -182,7 +182,7 @@ describe('DeliveryPage', () => {
         startPoint: 'dev/T2',
       }),
     )
-    expect(screen.getByLabelText('同步分支')).toHaveValue('dev/T3')
+    expect(screen.getByLabelText('工作版本')).toHaveValue('dev/T3')
   })
 
   it('selects packages and opens their file list', async () => {
@@ -202,12 +202,12 @@ describe('DeliveryPage', () => {
     render(<DeliveryPage api={api} repository={getDemoRepository()} />)
     await screen.findByRole('checkbox', { name: '选择 五金件' })
 
-    fireEvent.click(screen.getByRole('button', { name: '同步到 GitLab' }))
-    fireEvent.change(screen.getByLabelText('同步注释'), {
+    fireEvent.click(screen.getByRole('button', { name: '上传工程' }))
+    fireEvent.change(screen.getByLabelText('本次更新标题'), {
       target: { value: '提交所有的 BOM 交付包' },
     })
     fireEvent.click(
-      screen.getByRole('button', { name: '确认同步到 GitLab' }),
+      screen.getByRole('button', { name: '确认上传' }),
     )
     await waitFor(() => expect(api.syncGitLab).toHaveBeenCalledOnce())
 

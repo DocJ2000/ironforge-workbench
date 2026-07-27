@@ -89,7 +89,7 @@ export function WorkspacePage({
     try {
       setPreview(await commitApi.preview(commitRequest()))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '无法生成 Commit 预览')
+      setError(cause instanceof Error ? cause.message : '无法预览本次保存内容')
     } finally {
       setBusy(false)
     }
@@ -107,7 +107,7 @@ export function WorkspacePage({
       setSuccess(`已保存为 ${result.commit}`)
       await onRepositoryRefresh?.()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '本地 Commit 失败')
+      setError(cause instanceof Error ? cause.message : '保存本次修改失败')
     } finally {
       setBusy(false)
     }
@@ -117,10 +117,10 @@ export function WorkspacePage({
     <div className="page page--workspace">
       <header className="page-header">
         <div>
-          <p className="eyebrow">Working tree · 本地工作区</p>
+          <p className="eyebrow">这台电脑上的修改</p>
           <h1>检查本地修改</h1>
           <p className="page-header__path">
-            这些文件还只存在于你的电脑，GitLab 尚未收到。
+            这些文件还只存在于你的电脑，公司项目服务器尚未收到。
           </p>
         </div>
         <button className="button button--secondary" type="button">
@@ -133,7 +133,7 @@ export function WorkspacePage({
         <AlertTriangle aria-hidden="true" size={19} />
         <div>
           <strong>删除的 CAD 文件需要逐项确认</strong>
-          <p>Git 无法判断删除是设计意图还是误操作，因此不会自动选择。</p>
+          <p>软件无法判断删除是设计意图还是误操作，因此不会自动选择。</p>
         </div>
         <StatusBadge tone="danger">
           {deletedCadIds.size} 个文件

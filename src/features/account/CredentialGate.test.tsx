@@ -32,7 +32,7 @@ it('guides desktop users to configure the selected project', async () => {
     </MemoryRouter>,
   )
 
-  await waitFor(() => expect(screen.getByText('先连接这个项目')).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText('先连接这台电脑')).toBeInTheDocument())
   expect(screen.queryByText('联网操作')).not.toBeInTheDocument()
   expect(screen.getByRole('link', { name: '去设置连接' })).toHaveAttribute(
     'href',

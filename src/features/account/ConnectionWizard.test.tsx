@@ -52,7 +52,7 @@ it('generates a computer identity and saves the connection', async () => {
     screen.getByRole('button', { name: '创建这台电脑的身份钥匙' }),
   )
 
-  expect(await screen.findByRole('button', { name: '复制公钥' })).toBeVisible()
+  expect(await screen.findByRole('button', { name: '复制电脑登记码' })).toBeVisible()
   expect(screen.getByText(/ssh-ed25519 AAAA/)).toBeVisible()
   expect(save).toHaveBeenCalledWith(
     expect.objectContaining({

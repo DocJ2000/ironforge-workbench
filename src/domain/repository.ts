@@ -95,27 +95,27 @@ export function summarizeRepository(
 ): RepositorySyncSummary {
   if (state.ahead > 0 && state.behind > 0) {
     return {
-      syncLabel: '本地与远程已分叉，需要人工处理',
+      syncLabel: '电脑和公司服务器都有新修改，需要同事协助处理',
       syncTone: 'danger',
     }
   }
 
   if (state.behind > 0) {
     return {
-      syncLabel: `远程有 ${state.behind} 个新版本`,
+      syncLabel: `公司服务器有 ${state.behind} 个新版本`,
       syncTone: 'warning',
     }
   }
 
   if (state.ahead > 0) {
     return {
-      syncLabel: `有 ${state.ahead} 个本地版本待推送`,
+      syncLabel: `有 ${state.ahead} 个本地版本待上传`,
       syncTone: 'warning',
     }
   }
 
   return {
-    syncLabel: '已与远程同步',
+    syncLabel: '电脑和公司服务器内容一致',
     syncTone: 'success',
   }
 }

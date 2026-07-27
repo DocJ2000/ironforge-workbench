@@ -56,7 +56,7 @@ export function GitLabSyncDialog({
           </span>
           <div>
             <span className="delivery-kicker">最后确认</span>
-            <h2 id="gitlab-sync-title">确认同步到 GitLab</h2>
+            <h2 id="gitlab-sync-title">确认上传到公司项目服务器</h2>
           </div>
           <button
             aria-label="关闭同步确认"
@@ -70,7 +70,7 @@ export function GitLabSyncDialog({
         </header>
         <dl className="sync-summary">
           <div>
-            <dt>分支</dt>
+            <dt>工作版本</dt>
             <dd>{branch}</dd>
           </div>
           <div>
@@ -79,16 +79,16 @@ export function GitLabSyncDialog({
           </div>
         </dl>
         <label className="delivery-field">
-          <span>同步注释</span>
+          <span>本次更新标题</span>
           <textarea
-            aria-label="同步注释"
+            aria-label="本次更新标题"
             autoFocus
             onChange={(event) => onCommentChange(event.target.value)}
             placeholder="例如：提交所有的BOM交付包"
             rows={4}
             value={comment}
           />
-          <small>这段内容会成为本次 Git Commit 的说明。</small>
+          <small>同事可以在项目历史记录里看到这段说明。</small>
         </label>
         <div className="tag-editor">
           <label className="delivery-check-row">
@@ -97,14 +97,14 @@ export function GitLabSyncDialog({
               onChange={(event) => onTagEnabledChange(event.target.checked)}
               type="checkbox"
             />
-            <span>保存为版本 Tag</span>
+            <span>添加本次交付标签</span>
           </label>
           {tagEnabled ? (
             <div className="tag-editor__fields">
               <label className="delivery-field">
                 <span>阶段</span>
                 <select
-                  aria-label="Tag 阶段"
+                  aria-label="交付阶段"
                   onChange={(event) => onTagStageChange(event.target.value)}
                   value={tagStage}
                 >
@@ -116,9 +116,9 @@ export function GitLabSyncDialog({
               </label>
               {tagStage === 'custom' ? (
                 <label className="delivery-field">
-                  <span>自定义 Tag</span>
+                  <span>自定义交付标签</span>
                   <input
-                    aria-label="自定义 Tag"
+                    aria-label="自定义交付标签"
                     onChange={(event) => onTagVersionChange(event.target.value)}
                     placeholder="例如：T2-修模-v1"
                     value={tagVersion}
@@ -129,7 +129,7 @@ export function GitLabSyncDialog({
                   <label className="delivery-field">
                     <span>版本</span>
                     <input
-                      aria-label="Tag 版本"
+                      aria-label="交付标签版本"
                       disabled={tagFinal}
                       onChange={(event) => onTagVersionChange(event.target.value)}
                       placeholder="v1"
@@ -147,16 +147,16 @@ export function GitLabSyncDialog({
                 </>
               )}
               <label className="delivery-field tag-editor__message">
-                <span>Tag 说明</span>
+                <span>交付标签说明</span>
                 <input
-                  aria-label="Tag 说明"
+                  aria-label="交付标签说明"
                   onChange={(event) => onTagMessageChange(event.target.value)}
                   placeholder="例如：Dragon T2 第一版交付存档"
                   value={tagMessage}
                 />
               </label>
               <div className="tag-preview">
-                将创建：<strong>{tagName || '请填写 Tag'}</strong>
+                将创建交付标签：<strong>{tagName || '请填写标签'}</strong>
               </div>
             </div>
           ) : null}
@@ -176,7 +176,7 @@ export function GitLabSyncDialog({
             onClick={onConfirm}
             type="button"
           >
-            {busy ? '正在同步' : '确认同步到 GitLab'}
+            {busy ? '正在上传' : '确认上传'}
           </button>
         </footer>
       </section>

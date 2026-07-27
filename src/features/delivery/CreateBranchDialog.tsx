@@ -31,11 +31,11 @@ export function CreateBranchDialog({
       >
         <header className="delivery-modal__header">
           <div>
-            <span className="delivery-kicker">本地分支</span>
-            <h2 id="create-branch-title">创建新分支</h2>
+            <span className="delivery-kicker">新的工作版本</span>
+            <h2 id="create-branch-title">创建新工作版本</h2>
           </div>
           <button
-            aria-label="关闭创建分支"
+            aria-label="关闭创建工作版本"
             className="delivery-icon-button"
             disabled={busy}
             onClick={onCancel}
@@ -46,9 +46,9 @@ export function CreateBranchDialog({
         </header>
         <div className="delivery-modal__body">
           <label className="delivery-field">
-            <span>新分支名称</span>
+            <span>新工作版本名称</span>
             <input
-              aria-label="新分支名称"
+              aria-label="新工作版本名称"
               autoFocus
               onChange={(event) => onBranchNameChange(event.target.value)}
               placeholder="例如：dev/T3"
@@ -56,9 +56,9 @@ export function CreateBranchDialog({
             />
           </label>
           <label className="delivery-field">
-            <span>从这个分支创建</span>
+            <span>复制这个已有工作版本的内容</span>
             <select
-              aria-label="新分支起点"
+              aria-label="新工作版本的起点"
               onChange={(event) => onStartPointChange(event.target.value)}
               value={startPoint}
             >
@@ -70,7 +70,7 @@ export function CreateBranchDialog({
             </select>
           </label>
           <p className="delivery-form-note">
-            新分支先在本地创建，第一次同步到 GitLab 后才会出现在远端。
+            新工作版本会先出现在这台电脑上，第一次上传后才会出现在公司项目服务器。
           </p>
         </div>
         <footer className="delivery-modal__actions">

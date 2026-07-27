@@ -31,8 +31,8 @@ export function CredentialGate({ children, projectId }: Props) {
     return (
       <div className="task-page">
         <section className="wizard-panel blocking-notice">
-          <h2>正在检查项目连接</h2>
-          <p>正在确认这个项目使用的 GitLab 账户和 SSH Key。</p>
+          <h2>正在检查电脑连接</h2>
+          <p>正在确认这台电脑能否连接公司项目服务器。</p>
         </section>
       </div>
     )
@@ -40,8 +40,8 @@ export function CredentialGate({ children, projectId }: Props) {
   return (
     <div className="task-page">
       <section className="wizard-panel blocking-notice">
-        <h2>先连接这个项目</h2>
-        <p>上传文件前，需要为当前项目保存 GitLab Token 和 SSH 私钥。每个项目可以使用不同的 SSH Key。</p>
+        <h2>先连接这台电脑</h2>
+        <p>只需完成一次三步连接设置，之后这台电脑上的所有项目都可以使用。</p>
         <Link className="button button--primary" to="/account">去设置连接</Link>
       </section>
     </div>

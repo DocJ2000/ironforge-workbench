@@ -48,7 +48,7 @@ describe('MergeRequestEditor', () => {
     const pdf = new File(['PDF'], '评审资料.pdf', {
       type: 'application/pdf',
     })
-    fireEvent.change(screen.getByLabelText('选择 MR 附件'), {
+    fireEvent.change(screen.getByLabelText('选择审核单附件'), {
       target: { files: [pdf] },
     })
 

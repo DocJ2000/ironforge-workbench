@@ -28,7 +28,7 @@ function connectionError(cause: unknown) {
     return '访问码不可用。请重新创建一个，并确认权限选择了 api。'
   }
   if (/public key|公钥|身份钥匙|ssh/i.test(message)) {
-    return '身份钥匙还没有添加到 GitLab。请复制公钥并点击“打开 GitLab 添加”。'
+    return '这台电脑还没有登记到 GitLab。请复制电脑登记码并点击“打开 GitLab 添加”。'
   }
   if (/fetch|network|connect|timeout|网络|连接|服务器/i.test(message)) {
     return '暂时无法连接公司服务器。请确认已连接公司网络后重试。'
@@ -133,10 +133,15 @@ export function ConnectionWizard({ projectId, onConfigured }: Props) {
               <FieldHelp label="软件访问码">
                 <strong>它不是登录密码。</strong>
                 <ol>
-                  <li>点击上方按钮打开 GitLab。</li>
-                  <li>名称填写 Ironforge Workbench。</li>
-                  <li>权限勾选 api，然后创建。</li>
-                  <li>复制新访问码并粘贴到这里。它通常只显示一次。</li>
+                  <li>点击上方“打开 GitLab 创建访问码”。如果出现登录页面，先使用公司的账号完成登录。</li>
+                  <li>进入访问令牌页面后，点击页面右上角的“添加新令牌”。</li>
+                  <li>在“令牌名称”中填写 Ironforge Workbench，方便以后知道这个访问码是给本软件使用的。</li>
+                  <li>“描述”可以填写“工程文件上传和图纸审核”；不想填写也可以留空。</li>
+                  <li>按照公司要求选择“到期日期”。如果页面必须填写但你不确定，请先选择一个较近的日期，之后可以重新创建。</li>
+                  <li>找到“选择范围”或“权限”区域，只勾选 api。不要勾选与你工作无关的其他权限。</li>
+                  <li>检查名称和权限后，点击页面下方的“创建个人访问令牌”。</li>
+                  <li>创建成功后，立即复制页面显示的新令牌。这个完整令牌通常只显示一次，关闭页面后无法再次查看。</li>
+                  <li>回到本软件，把刚复制的内容粘贴到下面的“软件访问码”，再点击“下一步”。</li>
                 </ol>
               </FieldHelp>
             </span>
@@ -156,7 +161,7 @@ export function ConnectionWizard({ projectId, onConfigured }: Props) {
                 <p>软件会自动创建并保存在电脑的安全目录，不会放进工程，也不会把私钥上传到服务器。</p>
               </FieldHelp>
             </h2>
-            <p>软件会自动创建，不需要寻找文件或理解 SSH。</p>
+            <p>软件会自动创建，你不需要寻找任何文件，也不需要了解连接技术。</p>
           </div>
           <label className="plain-field connection-wizard__field">
             <span className="field-label-row">身份钥匙密码（可以留空）
@@ -180,16 +185,16 @@ export function ConnectionWizard({ projectId, onConfigured }: Props) {
           <span className="connection-wizard__icon connection-wizard__icon--success"><KeyRound size={24} /></span>
           <div>
             <h2 className="field-label-row">把这台电脑登记到 GitLab
-              <FieldHelp label="公钥">
-                <strong>公钥可以复制到 GitLab。</strong>
+              <FieldHelp label="电脑登记码">
+                <strong>电脑登记码可以复制到 GitLab。</strong>
                 <p>公钥只用于登记这台电脑，不能反推出私钥。不要把没有 .pub 后缀的私钥文件发送给任何人。</p>
               </FieldHelp>
             </h2>
-            <p>复制下面的公钥，再打开 GitLab 粘贴并保存。公钥可以公开，私钥不会离开这台电脑。</p>
+            <p>复制下面的电脑登记码，再打开 GitLab 粘贴并保存。登记码可以公开，电脑身份钥匙不会离开这台电脑。</p>
           </div>
           <code className="public-key-output">{publicKey}</code>
           <div className="connection-wizard__actions">
-            <button className="button button--secondary" onClick={() => void copyPublicKey()} type="button">{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? '已复制' : '复制公钥'}</button>
+            <button className="button button--secondary" onClick={() => void copyPublicKey()} type="button">{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? '已复制' : '复制电脑登记码'}</button>
             <a className="button button--primary" href="https://gitlfs.lab.tp/-/user_settings/ssh_keys" rel="noreferrer" target="_blank">打开 GitLab 添加身份钥匙 <ExternalLink size={15} /></a>
           </div>
         </div>

@@ -4,11 +4,11 @@ import { getDemoRepository } from '../../data/demoRepository'
 import { HistoryPage } from './HistoryPage'
 
 describe('HistoryPage', () => {
-  it('links a release to commit, MR, and Ironforge job', () => {
+  it('links saved work, approval, and publication records', () => {
     render(<HistoryPage repository={getDemoRepository()} />)
 
     expect(screen.getAllByText('879e5bf')[0]).toBeVisible()
-    expect(screen.getAllByText('MR !28')[0]).toBeVisible()
-    expect(screen.getByText('Ironforge 尚未触发')).toBeVisible()
+    expect(screen.getAllByText('审核单 #28')[0]).toBeVisible()
+    expect(screen.getByText('铁炉堡尚未开始发布')).toBeVisible()
   })
 })

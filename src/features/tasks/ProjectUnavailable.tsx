@@ -13,8 +13,8 @@ export function ProjectUnavailable({ repository }: { repository: RepositorySnaps
       </header>
       <section className="wizard-panel blocking-notice">
         <h2>这个项目尚未连接</h2>
-        <p>当前只展示项目切换效果。连接本地文件夹和 GitLab 后，才能执行上传与交付。</p>
-        <Link className="button button--primary" to="/workspace">返回选择项目</Link>
+        <p>软件还没有找到这个项目在电脑上的文件夹。重新添加项目文件夹后，才能上传工程和提交图纸。</p>
+        <Link className="button button--primary" to="/workspace">重新选择项目文件夹</Link>
       </section>
     </div>
   )

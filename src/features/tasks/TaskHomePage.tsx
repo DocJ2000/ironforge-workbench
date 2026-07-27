@@ -56,9 +56,9 @@ export function TaskHomePage({ projects, selectedId, onSelect, onAdd }: Props) {
       {showAdd ? (
         <section className="add-project-panel">
           <label className="plain-field">
-            <span>本地 Git 项目文件夹</span>
+            <span>这台电脑上的项目文件夹</span>
             <span className="path-input"><input
-              aria-label="本地 Git 项目文件夹"
+              aria-label="这台电脑上的项目文件夹"
               onChange={(event) => setPath(event.target.value)}
               placeholder="例如：D:\Projects\Dragon\lens-mechanics"
               value={path}

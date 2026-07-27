@@ -16,7 +16,7 @@ interface Props {
 }
 const actions = [
   { id: 'clone', title: '把云端项目下载到这台电脑', description: '适合新电脑，或者本地还没有这个项目。', icon: FolderDown },
-  { id: 'pull', title: '获取同事刚上传的改动', description: '本地已有项目，只把 GitLab 上的新内容更新下来。', icon: RefreshCw },
+  { id: 'pull', title: '获取同事刚上传的改动', description: '本地已有项目，只把公司项目服务器上的新内容更新下来。', icon: RefreshCw },
   { id: 'ironforge', title: '下载铁炉堡已发布图纸', description: '获取已经通过管理员审核的正式交付图纸。', icon: Download },
 ] as const
 type ActionId = typeof actions[number]['id']
@@ -132,7 +132,7 @@ export function RetrievePage({
           {pullResult ? (
             <div className="wizard-success">
               <h2>{pullResult.updated ? '已获取同事上传的改动' : '本地已经是最新版本'}</h2>
-              <p>{pullResult.updated ? `本次获取了 ${pullResult.receivedCommits} 个新版本。` : '云端没有比本地更新的内容。'}</p>
+              <p>{pullResult.updated ? `本次获取了 ${pullResult.receivedCommits} 个新版本。` : '公司项目服务器没有比这台电脑更新的内容。'}</p>
             </div>
           ) : null}
           {cloneResult ? <div className="wizard-success"><h2>云端项目已下载</h2><p>已保存到 {cloneResult}，并加入项目列表。</p></div> : null}
@@ -143,12 +143,15 @@ export function RetrievePage({
           </div>
           <dl className="confirm-list">
             <div><dt>本次操作项目</dt><dd>{selectedProject.repository.displayName}</dd></div>
-            {action !== 'clone' ? <div><dt>云端项目</dt><dd>{selectedProject.repository.gitlabPath}</dd></div> : null}
+            {action !== 'clone' ? <div><dt>公司服务器上的项目</dt><dd>{selectedProject.repository.gitlabPath}</dd></div> : null}
           </dl>
           {action === 'clone' ? <>
-            <label className="plain-field spaced-field"><span>GitLab 项目的 SSH 地址</span><input aria-label="GitLab 项目的 SSH 地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlfs.lab.tp:rockteam/project.git" value={remoteUrl} /></label>
-            <label className="plain-field spaced-field"><span>这次使用的 SSH 私钥路径</span><span className="path-input"><input aria-label="这次使用的 SSH 私钥路径" onChange={(event) => setSshKeyPath(event.target.value)} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={sshKeyPath} />{desktopDialogClient.available() ? <button aria-label="选择 SSH 私钥" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setSshKeyPath(path) })} title="选择 SSH 私钥" type="button"><FolderOpen size={17} /></button> : null}</span></label>
-            <label className="plain-field spaced-field"><span>SSH 私钥密码（没有可留空）</span><input aria-label="SSH 私钥密码（没有可留空）" autoComplete="off" onChange={(event) => setSshPassphrase(event.target.value)} type="password" value={sshPassphrase} /></label>
+            <label className="plain-field spaced-field"><span>管理员提供的项目下载地址</span><input aria-label="管理员提供的项目下载地址" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="粘贴管理员发给你的地址" value={remoteUrl} /></label>
+            <details className="advanced-connection">
+              <summary>高级连接设置（通常不用填写）</summary>
+              <label className="plain-field spaced-field"><span>已有电脑身份钥匙的位置</span><span className="path-input"><input aria-label="已有电脑身份钥匙的位置" onChange={(event) => setSshKeyPath(event.target.value)} placeholder="没有就留空" value={sshKeyPath} />{desktopDialogClient.available() ? <button aria-label="选择已有电脑身份钥匙" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setSshKeyPath(path) })} title="选择已有电脑身份钥匙" type="button"><FolderOpen size={17} /></button> : null}</span></label>
+              <label className="plain-field spaced-field"><span>电脑身份钥匙密码（没有可留空）</span><input aria-label="电脑身份钥匙密码（没有可留空）" autoComplete="off" onChange={(event) => setSshPassphrase(event.target.value)} type="password" value={sshPassphrase} /></label>
+            </details>
           </> : null}
           <label className="plain-field spaced-field">
             <span>{action === 'pull' ? '更新这个本地文件夹' : '保存到这个文件夹'}</span>

@@ -8,7 +8,7 @@ describe('StagesPage', () => {
     render(<StagesPage repository={getDemoRepository()} />)
 
     expect(
-      screen.getByText('新分支创建时会继承基础分支已经提交的文件'),
+      screen.getByText('新工作版本会先复制所选已有版本的全部内容'),
     ).toBeVisible()
   })
 })

@@ -47,7 +47,7 @@ it('stores encrypted credentials and returns only redacted status', async () => 
     token: 'top-secret-token',
   })
   expect(await vault.clear('project-one')).toEqual({ configured: false })
-  await expect(vault.get('project-one')).rejects.toThrow('尚未配置')
+  await expect(vault.get('project-one')).rejects.toThrow('尚未连接')
 })
 
 it('rejects a missing SSH private key before writing credentials', async () => {
@@ -93,4 +93,27 @@ it('keeps credentials isolated by project', async () => {
   await vault.clear('project-one')
   expect(await vault.status('project-one')).toEqual({ configured: false })
   expect(await vault.status('project-two')).toMatchObject({ configured: true })
+})
+
+it('uses one computer connection for every project', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ironforge-credentials-'))
+  roots.push(root)
+  const keyPath = join(root, 'computer-key')
+  await writeFile(keyPath, 'computer private key')
+  const vault = new CredentialVault(join(root, 'credentials.dat'), protector)
+
+  await vault.save({
+    projectId: 'computer',
+    baseUrl: 'https://gitlfs.lab.tp',
+    token: 'computer-token',
+    sshKeyPath: keyPath,
+  })
+
+  expect(await vault.status('project-one')).toMatchObject({
+    configured: true,
+    sshKeyPath: keyPath,
+  })
+  await expect(vault.get('project-two')).resolves.toMatchObject({
+    token: 'computer-token',
+  })
 })

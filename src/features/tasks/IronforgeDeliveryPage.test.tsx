@@ -19,7 +19,7 @@ it('syncs a free-form tag then creates an MR', async () => {
   fireEvent.change(screen.getByLabelText('本次更新标题'), { target: { value: '更新 T2 设变零件' } })
   fireEvent.change(screen.getByLabelText('本次交付标签'), { target: { value: 'T2设变零件' } })
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  fireEvent.click(screen.getByRole('button', { name: '同步图纸' }))
+  fireEvent.click(screen.getByRole('button', { name: '上传图纸' }))
   await waitFor(() => expect(api.syncGitLab).toHaveBeenCalledWith(expect.objectContaining({ tag: { name: 'T2设变零件', message: '更新 T2 设变零件' } })))
   expect(api.syncGitLab).toHaveBeenCalledWith(
     expect.objectContaining({

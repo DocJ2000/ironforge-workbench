@@ -22,6 +22,8 @@ export interface CredentialProtector {
   decryptString: (value: Buffer) => string
 }
 
+const computerCredentialId = 'computer'
+
 export class CredentialVault {
   private readonly filePath: string
   private readonly protector: CredentialProtector
@@ -44,7 +46,8 @@ export class CredentialVault {
   }
 
   async status(projectId: string): Promise<CredentialStatus> {
-    const credentials = (await this.read())[projectId]
+    const saved = await this.read()
+    const credentials = saved[computerCredentialId] ?? saved[projectId]
     return credentials
       ? {
           configured: true,
@@ -56,8 +59,9 @@ export class CredentialVault {
   }
 
   async get(projectId: string): Promise<GitLabCredentialInput> {
-    const credentials = (await this.read())[projectId]
-    if (!credentials) throw new Error('当前项目尚未配置 GitLab 登录')
+    const saved = await this.read()
+    const credentials = saved[computerCredentialId] ?? saved[projectId]
+    if (!credentials) throw new Error('这台电脑尚未连接公司项目服务器')
     return credentials
   }
 

@@ -8,9 +8,9 @@ describe('OverviewPage', () => {
     render(<OverviewPage repository={getDemoRepository()} />)
 
     expect(screen.getAllByText('保存设计版本')[0]).toBeVisible()
-    expect(screen.getAllByText('Commit')[0]).toBeVisible()
+    expect(screen.getAllByText('保存修改')[0]).toBeVisible()
     expect(screen.getAllByText('提交审核')[0]).toBeVisible()
-    expect(screen.getAllByText('Merge Request')[0]).toBeVisible()
+    expect(screen.getAllByText('管理员审核单')[0]).toBeVisible()
   })
 
   it('uses the real working-tree change count in its recommendation', () => {

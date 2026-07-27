@@ -13,7 +13,7 @@ const kindLabels: Record<WorkingTreeChange['kind'], string> = {
   modified: '已修改',
   added: '新增',
   deleted: '已删除',
-  untracked: '未跟踪',
+  untracked: '新增',
 }
 
 function ChangeIcon({ change }: { change: WorkingTreeChange }) {
@@ -35,7 +35,7 @@ export function ChangeTable({
         <span aria-hidden="true" />
         <span>文件</span>
         <span>状态</span>
-        <span>Git LFS</span>
+        <span>大文件管理</span>
         <span>大小</span>
       </div>
       {changes.map((change) => {
@@ -73,7 +73,7 @@ export function ChangeTable({
             </div>
             <div>
               <span className={change.lfsTracked ? 'lfs-ok' : 'lfs-note'}>
-                {change.lfsTracked ? '已管理' : '普通 Git'}
+                {change.lfsTracked ? '已管理' : '普通文件'}
               </span>
             </div>
             <div className="change-row__size">{change.size}</div>

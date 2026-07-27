@@ -16,7 +16,7 @@ it('selects a project and enters the combined Ironforge path', () => {
     </MemoryRouter>,
   )
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  fireEvent.click(screen.getByRole('button', { name: /保存工程并提交图纸审核/ }))
+  fireEvent.click(screen.getByRole('button', { name: /上传工程并提交图纸审核/ }))
   fireEvent.click(screen.getByRole('button', { name: '进入上传流程' }))
   expect(screen.getByText('combined delivery')).toBeVisible()
 })
