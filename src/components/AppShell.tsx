@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { useRepository } from '../data/repositoryContext'
 
 const navigation = [
   { to: '/workspace', label: '开始', icon: House, end: true },
@@ -27,8 +26,6 @@ const navigation = [
 export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const { repository } = useRepository()
-
   return (
     <div className={`app-shell${sidebarCollapsed ? ' app-shell--collapsed' : ''}`}>
       <aside
@@ -112,7 +109,6 @@ export function AppShell() {
           <Menu size={20} />
         </button>
         <strong>Ironforge</strong>
-        <span className="mobile-header__stage" title="当前项目">{repository.displayName}</span>
       </header>
 
       <main className="main-content">
