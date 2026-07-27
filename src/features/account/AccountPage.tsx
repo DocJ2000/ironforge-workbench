@@ -4,6 +4,7 @@ import { credentialClient } from '../../data/credentialClient'
 import type { RegisteredProject } from '../../data/repositoryContext'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { ConnectionWizard } from './ConnectionWizard'
+import { FieldHelp } from './FieldHelp'
 import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
@@ -110,9 +111,9 @@ export function AccountPage({ projects, selectedId, onSelect }: Props) {
         </header>
         <div className="connection-form">
           <label className="plain-field"><span>GitLab 地址</span><input aria-label="GitLab 地址" onChange={(event) => setGitlabUrl(event.target.value)} value={gitlabUrl} /></label>
-          <label className="plain-field"><span>GitLab Token</span><span className="secret-input"><input aria-label="GitLab Token" autoComplete="off" onChange={(event) => { setToken(event.target.value); setChecked(false) }} placeholder="粘贴个人访问令牌" type={showToken ? 'text' : 'password'} value={token} /><button aria-label={showToken ? '隐藏 Token' : '显示 Token'} onClick={() => setShowToken((value) => !value)} type="button">{showToken ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
-          <label className="plain-field"><span>SSH 私钥路径</span><span className="path-input"><input aria-label="SSH 私钥路径" onChange={(event) => { setKeyPath(event.target.value); setChecked(false) }} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={keyPath} />{desktopDialogClient.available() ? <button aria-label="选择 SSH 私钥" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setKeyPath(path) })} title="选择 SSH 私钥" type="button"><FolderOpen size={17} /></button> : null}</span></label>
-          <label className="plain-field"><span>SSH 私钥密码（可选）</span><input aria-label="SSH 私钥密码（可选）" autoComplete="off" onChange={(event) => setPassphrase(event.target.value)} type="password" value={passphrase} /></label>
+          <label className="plain-field"><span className="field-label-row">GitLab Token<FieldHelp label="GitLab Token"><strong>也就是软件访问码，不是登录密码。</strong><p>在 GitLab 的 Access Tokens 页面创建，权限选择 api。创建后通常只显示一次。</p></FieldHelp></span><span className="secret-input"><input aria-label="GitLab Token" autoComplete="off" onChange={(event) => { setToken(event.target.value); setChecked(false) }} placeholder="粘贴个人访问令牌" type={showToken ? 'text' : 'password'} value={token} /><button aria-label={showToken ? '隐藏 Token' : '显示 Token'} onClick={() => setShowToken((value) => !value)} type="button">{showToken ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
+          <label className="plain-field"><span className="field-label-row">SSH 私钥路径<FieldHelp label="SSH 私钥路径"><strong>选择没有 .pub 后缀的文件。</strong><p>常见位置是 C:\Users\用户名\.ssh\id_ed25519。带 .pub 的文件是可以添加到 GitLab 的公钥。</p></FieldHelp></span><span className="path-input"><input aria-label="SSH 私钥路径" onChange={(event) => { setKeyPath(event.target.value); setChecked(false) }} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={keyPath} />{desktopDialogClient.available() ? <button aria-label="选择 SSH 私钥" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setKeyPath(path) })} title="选择 SSH 私钥" type="button"><FolderOpen size={17} /></button> : null}</span></label>
+          <label className="plain-field"><span className="field-label-row">SSH 私钥密码（可选）<FieldHelp label="SSH 私钥密码"><strong>它不是 GitLab 密码。</strong><p>生成身份钥匙时没有设置密码就留空；忘记后无法找回，需要重新创建身份钥匙。</p></FieldHelp></span><input aria-label="SSH 私钥密码（可选）" autoComplete="off" onChange={(event) => setPassphrase(event.target.value)} type="password" value={passphrase} /></label>
         </div>
         <div className="connection-note"><ShieldCheck size={16} /><span>{desktopStorage ? 'Token 和私钥密码将由 Windows 系统加密保存，页面无法读取回明文。' : '浏览器预览只在内存中检查填写内容，刷新页面后会清空；桌面版才会安全保存。'}</span></div>
         {error ? <p className="credential-error">{error}</p> : null}

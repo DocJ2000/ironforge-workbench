@@ -47,7 +47,12 @@ export class IdentityKeyService {
     passphrase?: string
   }): Promise<IdentityKeyResult> {
     const paths = this.paths(input.projectId)
-    if ((await this.status(input.projectId)).configured) {
+    const pathExists = await Promise.all(
+      [paths.privateKey, paths.publicKey].map((path) =>
+        access(path).then(() => true).catch(() => false),
+      ),
+    )
+    if (pathExists.some(Boolean)) {
       throw new Error('这台电脑的身份钥匙已经创建')
     }
     await mkdir(this.rootPath, { recursive: true })

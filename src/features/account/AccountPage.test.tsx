@@ -12,7 +12,7 @@ it('keeps GitLab secrets hidden and links to Ironforge SSO', () => {
       selectedId={repository.id}
     />,
   )
-  const token = screen.getByLabelText('GitLab Token')
+  const token = screen.getByLabelText('GitLab Token', { selector: 'input' })
   expect(token).toHaveAttribute('type', 'password')
   fireEvent.click(screen.getByRole('button', { name: '显示 Token' }))
   expect(token).toHaveAttribute('type', 'text')

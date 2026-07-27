@@ -34,7 +34,7 @@ it('starts with plain-language access-code guidance', () => {
   expect(
     screen.getByRole('heading', { name: '让软件连接公司 GitLab' }),
   ).toBeVisible()
-  expect(screen.getByLabelText('软件访问码')).toHaveAttribute('type', 'password')
+  expect(screen.getByLabelText('软件访问码', { selector: 'input' })).toHaveAttribute('type', 'password')
   expect(screen.queryByText('SSH 私钥路径')).not.toBeInTheDocument()
 })
 
@@ -44,7 +44,7 @@ it('generates a computer identity and saves the connection', async () => {
   await waitFor(() =>
     expect(screen.queryByText('正在读取连接状态')).not.toBeInTheDocument(),
   )
-  fireEvent.change(screen.getByLabelText('软件访问码'), {
+  fireEvent.change(screen.getByLabelText('软件访问码', { selector: 'input' }), {
     target: { value: 'token-value' },
   })
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
@@ -61,4 +61,28 @@ it('generates a computer identity and saves the connection', async () => {
       sshKeyPath: 'C:\\identities\\project-one',
     }),
   )
+})
+
+it('turns technical connection failures into a next action', async () => {
+  desktopBridge()
+  window.ironforgeDesktop!.identity!.generate = vi
+    .fn()
+    .mockRejectedValue(new Error('connect ETIMEDOUT'))
+  render(<ConnectionWizard onConfigured={vi.fn()} projectId="project-one" />)
+  await waitFor(() =>
+    expect(screen.queryByText('正在读取连接状态')).not.toBeInTheDocument(),
+  )
+  fireEvent.change(screen.getByLabelText('软件访问码', { selector: 'input' }), {
+    target: { value: 'token-value' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(
+    screen.getByRole('button', { name: '创建这台电脑的身份钥匙' }),
+  )
+
+  expect(
+    await screen.findByText(
+      '暂时无法连接公司服务器。请确认已连接公司网络后重试。',
+    ),
+  ).toBeVisible()
 })

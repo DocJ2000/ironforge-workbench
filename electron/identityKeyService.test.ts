@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
@@ -38,6 +38,21 @@ it('does not overwrite an existing identity', async () => {
   await expect(
     service.generate({ projectId: 'project-one' }),
   ).rejects.toThrow('已经创建')
+})
+
+it('does not overwrite a partial identity left by an interrupted creation', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ironforge-identity-'))
+  roots.push(root)
+  const service = new IdentityKeyService(root, 'ssh-keygen')
+  const partialKey = join(root, 'identity-2212e088b07f70bc')
+  await writeFile(partialKey, 'do-not-overwrite')
+
+  await expect(
+    service.generate({ projectId: 'project-one' }),
+  ).rejects.toThrow('已经创建')
+  expect(await import('node:fs/promises').then(({ readFile }) =>
+    readFile(partialKey, 'utf8'),
+  )).toBe('do-not-overwrite')
 })
 
 it('returns only a redacted status for a generated identity', async () => {
