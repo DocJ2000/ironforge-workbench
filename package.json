@@ -16,17 +16,19 @@
     "build:desktop": "npm run build && node -e \"require('fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p tsconfig.electron.json",
     "audit:public-release": "npm run build:desktop && node scripts/audit-public-release.mjs",
     "audit:public-artifacts": "node scripts/audit-public-release.mjs",
+    "package:source": "node scripts/package-public-source.mjs",
     "desktop": "npm run build:desktop && electron .",
     "stage:git": "node scripts/stage-git-runtime.mjs",
-    "package:win": "npm run build:desktop && npm run audit:public-artifacts && npm run stage:git && electron-builder --win nsis"
+    "package:win": "npm run build:desktop && npm run audit:public-artifacts && npm run stage:git && node scripts/build-windows-installer.mjs"
   },
   "dependencies": {
     "busboy": "^1.6.0",
+    "electron-updater": "^6.6.2",
     "lucide-react": "^1.26.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.18.1"
+    "react-router-dom": "^7.11.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
@@ -45,35 +47,5 @@
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
   },
-  "build": {
-    "appId": "com.ironforge.workbench",
-    "productName": "Ironforge Workbench",
-    "asar": true,
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "dist-runtime/git",
-        "to": "git"
-      }
-    ],
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "artifactName": "Ironforge-Workbench-${version}-Setup.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false
-    }
-  }
+  "build": {}
 }

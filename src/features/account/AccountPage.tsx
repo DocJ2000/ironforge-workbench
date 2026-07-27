@@ -9,6 +9,7 @@ import { organizationClient } from '../../data/organizationClient'
 import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
+import { SoftwareUpdatePanel } from './SoftwareUpdatePanel'
 
 const computerAccountId = 'computer'
 
@@ -122,6 +123,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
       </details>
 
       {showClear ? <ClearConnectionDialog busy={busy} onCancel={() => setShowClear(false)} onConfirm={() => { setBusy(true); void credentialClient.clear(computerAccountId).then(() => { setConfigured(false); setShowClear(false) }).finally(() => setBusy(false)) }} /> : null}
+      <SoftwareUpdatePanel />
     </div>
   )
 }

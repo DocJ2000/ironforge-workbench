@@ -8,6 +8,9 @@ import { ProjectRegistry } from '../server/projectRegistry.js'
 import { homedir } from 'node:os'
 import { access, mkdir, writeFile } from 'node:fs/promises'
 import { IdentityKeyService } from './identityKeyService.js'
+import { autoUpdater } from 'electron-updater'
+import { UpdateCoordinator } from './updateCoordinator.js'
+import { createUpdateBackup } from './updateBackup.js'
 
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url))
 
@@ -78,6 +81,13 @@ function registerIronforgeHandlers() {
   })
 }
 
+function registerUpdateHandlers(coordinator: UpdateCoordinator) {
+  ipcMain.handle('updates:status', () => coordinator.status())
+  ipcMain.handle('updates:check', () => coordinator.check())
+  ipcMain.handle('updates:download', () => coordinator.download())
+  ipcMain.handle('updates:install', () => coordinator.install())
+}
+
 let productionOrigin: string | null = null
 
 function createWindow() {
@@ -114,6 +124,24 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   const userDataPath = app.getPath('userData')
+  const projectRegistryPath = join(
+    homedir(),
+    '.ironforge-workbench',
+    'projects.json',
+  )
+  registerUpdateHandlers(
+    new UpdateCoordinator({
+      updater: autoUpdater,
+      packaged: app.isPackaged,
+      currentVersion: app.getVersion(),
+      beforeInstall: () =>
+        createUpdateBackup({
+          userDataPath,
+          projectRegistryPath,
+          retention: 5,
+        }),
+    }),
+  )
   let sshKeygenExecutable = 'ssh-keygen'
   if (app.isPackaged) {
     const bundledGit = join(process.resourcesPath, 'git', 'cmd', 'git.exe')
@@ -157,7 +185,7 @@ app.whenReady().then(async () => {
     )
     const repositoryPath = app.getPath('documents')
     const registry = new ProjectRegistry(
-      join(homedir(), '.ironforge-workbench', 'projects.json'),
+      projectRegistryPath,
       repositoryPath,
     )
     const middleware = createRepositoryMiddleware({

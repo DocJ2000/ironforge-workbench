@@ -44,5 +44,26 @@ interface Window {
       }>
       publicKey: (projectId: string) => Promise<{ publicKey: string }>
     }
+    updates?: {
+      status: () => Promise<DesktopUpdateStatus>
+      check: () => Promise<DesktopUpdateStatus>
+      download: () => Promise<DesktopUpdateStatus>
+      install: () => Promise<DesktopUpdateStatus>
+    }
   }
+}
+
+interface DesktopUpdateStatus {
+  phase:
+    | 'unavailable'
+    | 'idle'
+    | 'checking'
+    | 'available'
+    | 'downloading'
+    | 'ready'
+    | 'error'
+  currentVersion: string
+  availableVersion?: string
+  progress?: number
+  message?: string
 }

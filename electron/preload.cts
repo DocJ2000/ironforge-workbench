@@ -31,4 +31,10 @@ contextBridge.exposeInMainWorld('ironforgeDesktop', {
     publicKey: (projectId: string) =>
       ipcRenderer.invoke('identity:public-key', projectId),
   },
+  updates: {
+    status: () => ipcRenderer.invoke('updates:status'),
+    check: () => ipcRenderer.invoke('updates:check'),
+    download: () => ipcRenderer.invoke('updates:download'),
+    install: () => ipcRenderer.invoke('updates:install'),
+  },
 })
