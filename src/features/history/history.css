@@ -176,6 +176,9 @@
 }
 
 @media (max-width: 620px) {
+  .history-project-picker {
+    grid-template-columns: 1fr;
+  }
   .history-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -191,4 +194,24 @@
   .history-toolbar {
     display: grid;
   }
+}
+.history-project-picker {
+  display: grid;
+  grid-template-columns: minmax(240px, 420px) minmax(0, 1fr);
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.history-project-picker p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.history-professional {
+  margin-top: 12px;
 }

@@ -63,7 +63,7 @@ export function AppRoutes() {
         <Route path="/workspace/retrieve" element={<RetrievePage api={projectDeliveryApi} onRefresh={refresh} onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
-        <Route path="/history" element={<HistoryPage repository={repository} />} />
+        <Route path="/history" element={<HistoryPage onSelect={selectProject} projects={projects} repository={repository} selectedId={selectedProjectId} />} />
         <Route
           path="/account"
           element={<AccountPage checkProjectId={selectedProjectId} />}

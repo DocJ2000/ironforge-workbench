@@ -112,7 +112,7 @@ export function AppShell() {
           <Menu size={20} />
         </button>
         <strong>Ironforge</strong>
-        <span className="mobile-header__stage">{repository.branch}</span>
+        <span className="mobile-header__stage" title="当前项目">{repository.displayName}</span>
       </header>
 
       <main className="main-content">
