@@ -29,7 +29,7 @@ describe('TaskHomePage', () => {
         selectedId={dragon.id}
       /><Location /></MemoryRouter>,
     )
-    expect(screen.getByText('你想去哪里？')).toBeVisible()
+    expect(screen.getByText('选择一个项目')).toBeVisible()
     expect(screen.getByText('Aurora Lens Mechanics')).toBeVisible()
     expect(screen.queryByRole('button', { name: '上传项目' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Aurora Lens Mechanics/ }))
@@ -37,17 +37,4 @@ describe('TaskHomePage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/workspace/project')
   })
 
-  it('keeps Ironforge separate from GitLab permissions', () => {
-    render(
-      <MemoryRouter><TaskHomePage
-        onAdd={vi.fn()}
-        onSelect={vi.fn()}
-        projects={[]}
-        selectedId=""
-      /></MemoryRouter>,
-    )
-    fireEvent.click(screen.getByRole('tab', { name: /铁炉堡/ }))
-    expect(screen.getByText('铁炉堡单独登录')).toBeVisible()
-    expect(screen.getByText(/不会拿走或保存你的登录信息/)).toBeVisible()
-  })
 })

@@ -1,5 +1,5 @@
 import {
-  History,
+  Factory,
   FolderKanban,
   Menu,
   PanelLeftClose,
@@ -11,8 +11,8 @@ import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 const navigation = [
-  { to: '/workspace', label: '项目', icon: FolderKanban, end: true },
-  { to: '/history', label: '历史记录', icon: History },
+  { to: '/workspace', label: 'GitLab', icon: FolderKanban, end: false },
+  { to: '/ironforge', label: '铁炉堡', icon: Factory, end: true },
 ]
 
 export function AppShell() {

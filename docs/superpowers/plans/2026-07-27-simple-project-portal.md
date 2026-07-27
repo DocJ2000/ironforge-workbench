@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a low-density project portal with separate GitLab and Ironforge areas and a select-project-before-action flow.
+**Goal:** Build a low-density workspace with separate GitLab and Ironforge navigation and a select-project-before-action flow.
 
-**Architecture:** Reuse the existing repository provider and upload/download routes. Refactor the project home into a two-tab portal and add a small project action route that forwards users into the existing guided workflows.
+**Architecture:** Reuse the existing repository provider and upload/download routes. Give GitLab and Ironforge independent top-level routes, then forward a selected GitLab project into upload, download, or project history.
 
 **Tech Stack:** React 19, React Router, TypeScript, Vitest, existing CSS variables and Lucide icons.
 
@@ -24,25 +24,32 @@
 - [ ] Update navigation to project portal and history only.
 - [ ] Run `npm.cmd test -- --run src/app/App.test.tsx`.
 
-### Task 2: Build the two-tab project portal
+### Task 2: Build the GitLab project portal
 
 **Files:** Modify `src/features/tasks/TaskHomePage.tsx`, `src/features/tasks/projectCenter.css`, and `src/features/tasks/TaskHomePage.test.tsx`.
 
-- [ ] Add GitLab/Ironforge tab state and accessible tab semantics.
 - [ ] Make each GitLab project row one click target with summary-only content.
-- [ ] Add an independent Ironforge login panel using the configured company URL.
-- [ ] Test tab switching and project selection.
+- [ ] Test project selection and navigation.
 
 ### Task 3: Add project action selection
 
 **Files:** Create `src/features/tasks/ProjectActionsPage.tsx`; modify `src/app/routes.tsx`; add `src/features/tasks/ProjectActionsPage.test.tsx`.
 
-- [ ] Show the selected project name and two plain choices.
+- [ ] Show the selected project name and three plain choices.
 - [ ] Route upload to `/workspace/upload/gitlab`.
 - [ ] Route download to `/workspace/retrieve`.
-- [ ] Test both destinations.
+- [ ] Route history to `/history`.
+- [ ] Test all destinations.
 
-### Task 4: Reduce account-page density
+### Task 4: Add the independent Ironforge page
+
+**Files:** Create `src/features/tasks/IronforgePortalPage.tsx` and `src/features/tasks/ironforgePortal.css`; modify `src/app/routes.tsx`.
+
+- [ ] Show software-window and browser choices using the configured company URL.
+- [ ] Keep login wording independent from GitLab credentials.
+- [ ] Test the missing-configuration state.
+
+### Task 5: Reduce account-page density
 
 **Files:** Modify `src/features/account/account.css`, `src/features/account/connectionWizard.css`, and account tests.
 
@@ -50,7 +57,7 @@
 - [ ] Keep detailed instructions in `FieldHelp`.
 - [ ] Keep manual identity-key inputs inside “专业显示”.
 
-### Task 5: Verify the release
+### Task 6: Verify the release
 
 **Files:** No product changes.
 

@@ -8,4 +8,5 @@ it('offers upload and download only after a project is selected', () => {
   render(<MemoryRouter><ProjectActionsPage repository={getDemoRepository()} /></MemoryRouter>)
   expect(screen.getByRole('link', { name: /上传我的修改/ })).toHaveAttribute('href', '/workspace/upload/gitlab')
   expect(screen.getByRole('link', { name: /下载服务器内容/ })).toHaveAttribute('href', '/workspace/retrieve')
+  expect(screen.getByRole('link', { name: /查看操作历史/ })).toHaveAttribute('href', '/history')
 })

@@ -1,4 +1,4 @@
-import { ArrowLeft, CloudDownload, UploadCloud } from 'lucide-react'
+import { ArrowLeft, CloudDownload, History, UploadCloud } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { RepositorySnapshot } from '../../domain/repository'
 import './projectActions.css'
@@ -23,6 +23,10 @@ export function ProjectActionsPage({ repository }: { repository: RepositorySnaps
         <Link to="/workspace/retrieve">
           <span className="project-action-choices__icon"><CloudDownload size={28} /></span>
           <span><strong>下载服务器内容</strong><small>把同事上传的新内容更新到这台电脑。</small></span>
+        </Link>
+        <Link to="/history">
+          <span className="project-action-choices__icon"><History size={28} /></span>
+          <span><strong>查看操作历史</strong><small>查看这个项目以前的上传、下载和审核记录。</small></span>
         </Link>
       </div>
     </div>
