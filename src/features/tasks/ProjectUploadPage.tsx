@@ -1,6 +1,7 @@
 import { CheckCircle2, FileText, GitBranch, Plus, UploadCloud } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { deliveryApi, type DeliveryApi } from '../../data/deliveryClient'
 import type { RepositorySnapshot } from '../../domain/repository'
 import { CreateBranchDialog } from '../delivery/CreateBranchDialog'
@@ -65,7 +66,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
         title="上传整个工程"
       >
         {error ? <div className="delivery-alert delivery-alert--error">{error}</div> : null}
-        {result ? <div className="wizard-success"><CheckCircle2 size={42} /><h2>工程已上传</h2><p>已上传到工作版本 <strong>{result.branch}</strong>，保存编号为 <strong>{result.commit.slice(0, 8)}</strong>。</p></div> : null}
+        {result ? <div className="wizard-success"><CheckCircle2 size={42} /><h2>工程已上传</h2><p>已上传到工作版本 <strong>{result.branch}</strong>，保存编号为 <strong>{result.commit.slice(0, 8)}</strong>。</p><Link className="button button--primary" to="/workspace/upload/ironforge">继续提交图纸审核</Link><Link className="button button--secondary" to="/workspace/project">返回项目操作</Link></div> : null}
         {!result && step === 0 ? <div><Intro title="确认本次上传的项目">后续选择的工作版本和文件都属于这个项目。</Intro><dl className="confirm-list"><div><dt>项目名称</dt><dd>{repository.displayName}</dd></div><div><dt>这台电脑上的文件夹</dt><dd>{repository.path}</dd></div><div><dt>公司服务器上的项目</dt><dd>{repository.gitlabPath}</dd></div></dl></div> : null}
         {!result && step === 1 ? <div><Intro title="这次属于哪个工程阶段？">软件已自动选择当前阶段，通常不用修改。</Intro><div className="choice-row"><label className="plain-field"><span className="field-label-row">本次工程阶段<FieldHelp label="本次工程阶段"><strong>通常保持软件自动选择的内容即可。</strong><ol><li>T1、T2 代表项目的不同阶段。</li><li>如果本次工作属于当前阶段，不要修改。</li><li>只有负责人明确要求换阶段时才选择其他项。</li><li>不确定时停止操作并询问项目负责人，不要新建。</li></ol></FieldHelp></span><select aria-label="上传到哪个工作版本" onChange={(e) => setBranch(e.target.value)} value={branch}>{branches.map((item) => <option key={item}>{item}</option>)}</select></label><button aria-label="创建新工作版本" className="button button--secondary branch-action-button" onClick={() => { setStartPoint(branch); setShowCreateBranch(true) }} type="button"><Plus size={17} />新建工作版本</button></div></div> : null}
         {!result && step === 2 ? <div><Intro title="核对本次上传的文件">共 {repository.changes.length} 个新增、修改或删除的文件。</Intro><ul className="simple-file-list">{repository.changes.map((change) => <li key={change.id}><FileText size={16} /><span>{change.path}</span><small className={`file-status file-status--${change.kind}`}>{change.kind === 'untracked' ? '新增' : change.kind === 'modified' ? '已修改' : '已删除'}</small></li>)}</ul></div> : null}

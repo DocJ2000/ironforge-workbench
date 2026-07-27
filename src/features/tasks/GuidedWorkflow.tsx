@@ -28,9 +28,9 @@ export function GuidedWorkflow({
   return (
     <div className="task-page">
       <header className="task-page__header">
-        <Link className="task-home-link" to="/workspace">
+        <Link className="task-home-link" to="/workspace/project">
           <House aria-hidden="true" size={17} />
-          返回开始
+          返回项目操作
         </Link>
         <div>
           <h1>{title}</h1>

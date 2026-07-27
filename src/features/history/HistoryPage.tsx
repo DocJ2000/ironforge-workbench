@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   CheckCircle2,
   CloudUpload,
   Filter,
@@ -7,16 +8,13 @@ import {
   PackageCheck,
   Search,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { StatusBadge } from '../../components/StatusBadge'
 import type { HistoryEvent, RepositorySnapshot } from '../../domain/repository'
-import type { RegisteredProject } from '../../data/repositoryContext'
 import './history.css'
 
 interface HistoryPageProps {
   repository: RepositorySnapshot
-  projects?: RegisteredProject[]
-  selectedId?: string
-  onSelect?: (id: string) => void
 }
 
 const eventIcons: Record<HistoryEvent['type'], typeof GitCommitHorizontal> = {
@@ -35,14 +33,13 @@ const eventTerms: Record<HistoryEvent['type'], string> = {
   publish: '发布到铁炉堡',
 }
 
-export function HistoryPage({
-  repository,
-  projects = [],
-  selectedId = repository.id,
-  onSelect,
-}: HistoryPageProps) {
+export function HistoryPage({ repository }: HistoryPageProps) {
   return (
     <div className="page page--history">
+      <Link className="project-actions__back" to="/workspace/project">
+        <ArrowLeft size={17} />
+        返回项目操作
+      </Link>
       <header className="page-header">
         <div>
           <p className="eyebrow">项目记录</p>
@@ -53,26 +50,6 @@ export function HistoryPage({
         </div>
         <StatusBadge tone="info">{repository.history.length} 条记录</StatusBadge>
       </header>
-
-      {projects.length ? (
-        <section className="history-project-picker">
-          <label className="plain-field">
-            <span>查看哪个项目的记录</span>
-            <select
-              aria-label="查看哪个项目的记录"
-              onChange={(event) => onSelect?.(event.target.value)}
-              value={selectedId}
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.repository.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p>下面只显示所选项目的保存、上传、审核和发布记录。</p>
-        </section>
-      ) : null}
 
       <section className="history-summary">
         <div>

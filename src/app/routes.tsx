@@ -11,9 +11,9 @@ import { ProjectUploadPage } from '../features/tasks/ProjectUploadPage'
 import { IronforgeDeliveryPage } from '../features/tasks/IronforgeDeliveryPage'
 import { RetrievePage } from '../features/tasks/RetrievePage'
 import { ProjectUnavailable } from '../features/tasks/ProjectUnavailable'
-import { UploadEntryPage } from '../features/tasks/UploadEntryPage'
 import { ProjectActionsPage } from '../features/tasks/ProjectActionsPage'
 import { IronforgePortalPage } from '../features/tasks/IronforgePortalPage'
+import { CloneProjectPage } from '../features/tasks/CloneProjectPage'
 import { AccountPage } from '../features/account/AccountPage'
 import { CredentialGate } from '../features/account/CredentialGate'
 import { createDeliveryApi } from '../data/deliveryClient'
@@ -58,16 +58,17 @@ export function AppRoutes() {
         />
         <Route path="/workspace/legacy" element={<DeliveryPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} />} />
         <Route path="/workspace/project" element={<ProjectActionsPage repository={repository} />} />
+        <Route path="/workspace/download-new" element={<CredentialGate projectId="computer"><CloneProjectPage api={projectDeliveryApi} onRefresh={refresh} /></CredentialGate>} />
         <Route path="/ironforge" element={<IronforgePortalPage />} />
-        <Route path="/workspace/upload" element={<UploadEntryPage onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
+        <Route path="/workspace/upload" element={<Navigate replace to="/workspace/project" />} />
         <Route path="/workspace/upload/gitlab" element={operationReady ? <CredentialGate projectId={selectedProjectId}><ProjectUploadPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></CredentialGate> : <ProjectUnavailable repository={repository} />} />
         <Route path="/workspace/upload/ironforge" element={operationReady ? <CredentialGate projectId={selectedProjectId}><IronforgeDeliveryPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></CredentialGate> : <ProjectUnavailable repository={repository} />} />
         <Route path="/workspace/project-upload" element={<Navigate replace to="/workspace/upload/gitlab" />} />
         <Route path="/workspace/ironforge-delivery" element={<Navigate replace to="/workspace/upload/ironforge" />} />
-        <Route path="/workspace/retrieve" element={<RetrievePage api={projectDeliveryApi} onRefresh={refresh} onSelect={selectProject} projects={projects} selectedId={selectedProjectId} />} />
+        <Route path="/workspace/retrieve" element={operationReady ? <CredentialGate projectId={selectedProjectId}><RetrievePage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></CredentialGate> : <ProjectUnavailable repository={repository} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
-        <Route path="/history" element={<HistoryPage onSelect={selectProject} projects={projects} repository={repository} selectedId={selectedProjectId} />} />
+        <Route path="/history" element={operationReady ? <HistoryPage repository={repository} /> : <ProjectUnavailable repository={repository} />} />
         <Route
           path="/account"
           element={<AccountPage checkProjectId={selectedProjectId} />}

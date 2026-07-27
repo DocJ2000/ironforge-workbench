@@ -1,12 +1,13 @@
 import { FolderOpen, FolderPlus, GitBranch, HardDrive } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type { RegisteredProject } from '../../data/repositoryContext'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { summarizeRepository } from '../../domain/repository'
 import { FieldHelp } from '../account/FieldHelp'
 import './tasks.css'
 import './projectCenter.css'
+import './projectCommands.css'
 import './addProject.css'
 
 interface Props {
@@ -36,10 +37,13 @@ export function TaskHomePage({ projects, onSelect, onAdd }: Props) {
           <h1>选择一个项目</h1>
           <p>点击项目后，再选择上传、下载或查看历史。</p>
         </div>
-        <button className="button button--secondary" onClick={() => setShowAdd((value) => !value)} type="button">
-          <FolderPlus size={17} />
-          添加项目
-        </button>
+        <div className="project-center__commands">
+          <button className="button button--secondary" onClick={() => setShowAdd((value) => !value)} type="button">
+            <FolderPlus size={17} />
+            添加本机项目
+          </button>
+          <Link className="button button--secondary" to="/workspace/download-new">下载新项目</Link>
+        </div>
       </header>
 
       {showAdd ? (

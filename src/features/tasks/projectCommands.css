@@ -1,0 +1,1 @@
+.project-center__header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.project-center__commands{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}@media(max-width:700px){.project-center__header{display:block}.project-center__commands{justify-content:flex-start;margin-top:15px}}

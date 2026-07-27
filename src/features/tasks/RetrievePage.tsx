@@ -1,74 +1,29 @@
-import { ArrowRight, Download, FolderDown, FolderOpen, RefreshCw } from 'lucide-react'
+import { CheckCircle2, CloudDownload, FolderOpen, GitBranch } from 'lucide-react'
 import { useState } from 'react'
-import type { RegisteredProject } from '../../data/repositoryContext'
 import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
 import type { FriendlyError } from '../../domain/connection'
+import type { RepositorySnapshot } from '../../domain/repository'
 import { FriendlyErrorNotice } from '../errors/FriendlyErrorNotice'
-import { FieldHelp } from '../account/FieldHelp'
-import { organizationClient } from '../../data/organizationClient'
-import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './retrieve.css'
-import './ironforgeLink.css'
 
 interface Props {
-  projects: RegisteredProject[]
-  selectedId: string
-  onSelect: (id: string) => void
+  repository: RepositorySnapshot
   api?: DeliveryApi
   onRefresh?: () => Promise<void>
 }
-const actions = [
-  { id: 'clone', title: '把云端项目下载到这台电脑', description: '适合新电脑，或者本地还没有这个项目。', icon: FolderDown },
-  { id: 'pull', title: '获取同事刚上传的改动', description: '本地已有项目，只把公司项目服务器上的新内容更新下来。', icon: RefreshCw },
-  { id: 'ironforge', title: '下载铁炉堡已发布图纸', description: '获取已经通过管理员审核的正式交付图纸。', icon: Download },
-] as const
-type ActionId = typeof actions[number]['id']
 
-export function RetrievePage({
-  projects,
-  selectedId,
-  onSelect,
-  api = deliveryApi,
-  onRefresh,
-}: Props) {
+export function RetrievePage({ repository, api = deliveryApi, onRefresh }: Props) {
   const [step, setStep] = useState(0)
-  const [action, setAction] = useState<ActionId | null>(null)
-  const selectedProject = projects.find((project) => project.id === selectedId)
-  const [destination, setDestination] = useState(
-    selectedProject?.repository.path ?? '',
-  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<FriendlyError | null>(null)
-  const [pullResult, setPullResult] = useState<{
-    updated: boolean
-    receivedCommits: number
-  } | null>(null)
-  const [cloneResult, setCloneResult] = useState<string | null>(null)
-  const [remoteUrl, setRemoteUrl] = useState('')
-  const selectedAction = actions.find((item) => item.id === action)
-  const ironforgeUrl = organizationClient.load().ironforgeUrl
-
-  function selectProject(id: string) {
-    onSelect(id)
-    const project = projects.find((item) => item.id === id)
-    if (project) setDestination(project.repository.path)
-  }
+  const [result, setResult] = useState<{ updated: boolean; receivedCommits: number } | null>(null)
 
   async function retrieve() {
-    if (action !== 'pull' && action !== 'clone') return
     setBusy(true)
     setError(null)
     try {
-      if (action === 'pull') {
-        setPullResult(await api.pull())
-      } else {
-        const result = await api.clone({
-          remoteUrl,
-          destination,
-        })
-        setCloneResult(result.project.path)
-      }
+      setResult(await api.pull())
       await onRefresh?.()
     } catch (cause) {
       setError(friendlyErrorFrom(cause))
@@ -80,112 +35,45 @@ export function RetrievePage({
   return (
     <GuidedWorkflow
       currentStep={step}
-      description="每次获取都先单独确认项目，再选择内容和保存位置。"
-      nextDisabled={
-        (step === 0 && !selectedProject) ||
-        (step === 1 && !action) ||
-        (step === 2 && (!destination.trim() || (action === 'clone' && !remoteUrl.trim()))) ||
-        busy
-      }
-      nextLabel={step === 2 && (action === 'pull' || action === 'clone') ? busy ? '正在处理' : action === 'pull' ? '确认获取' : '确认下载' : step === 2 ? '确认位置' : '下一步'}
-      onBack={step > 0 ? () => setStep((current) => current - 1) : undefined}
-      onNext={step < 2 ? () => setStep((current) => current + 1) : (action === 'pull' && !pullResult) || (action === 'clone' && !cloneResult) ? () => void retrieve() : undefined}
-      steps={['选择项目', '选择要获取的内容', '选择保存位置']}
-      title="获取项目和图纸"
+      description="把同事上传到公司服务器的新内容更新到当前项目。"
+      nextDisabled={busy}
+      nextLabel={step === 0 ? '下一步' : busy ? '正在下载' : '确认下载'}
+      onBack={step === 1 && !result ? () => setStep(0) : undefined}
+      onNext={result ? undefined : step === 0 ? () => setStep(1) : () => void retrieve()}
+      steps={['核对项目', '确认下载']}
+      title="下载服务器内容"
     >
-      {step === 0 ? (
-        <div>
-          <div className="wizard-panel__intro">
-            <h2>这次要获取哪个项目？</h2>
-            <p>这里的选择只影响本次获取操作。</p>
-          </div>
-          <div className="workflow-project-list">
-            {projects.map((project) => (
-              <button
-                aria-pressed={project.id === selectedId}
-                className="workflow-project-choice"
-                key={project.id}
-                onClick={() => selectProject(project.id)}
-                type="button"
-              >
-                <span><strong>{project.repository.displayName}</strong><small>{project.repository.path}</small></span>
-                <span>{project.repository.branch}</span>
-              </button>
-            ))}
-          </div>
+      {error ? <FriendlyErrorNotice error={error} /> : null}
+      {result ? (
+        <div className="wizard-success">
+          <CheckCircle2 size={42} />
+          <h2>{result.updated ? '已下载同事上传的新内容' : '这台电脑已经是最新版'}</h2>
+          <p>{result.updated ? `本次收到 ${result.receivedCommits} 个新版本。` : '公司服务器没有比这台电脑更新的内容。'}</p>
         </div>
       ) : null}
-      {step === 1 ? (
+      {!result && step === 0 ? (
         <div>
-          <div className="wizard-panel__intro"><h2>你要获取什么？</h2><p>请选择最符合当前情况的一项。</p></div>
-          <div className="retrieve-list">
-            {actions.map(({ id, title, description, icon: Icon }) => (
-              <button aria-pressed={action === id} className="retrieve-choice" key={id} onClick={() => { setAction(id); if (id === 'clone') setDestination('') }} type="button">
-                <Icon size={21} /><span><strong>{title}</strong><small>{description}</small></span><ArrowRight size={18} />
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {step === 2 && selectedAction && selectedProject ? (
-        <div>
-          {error ? <FriendlyErrorNotice error={error} /> : null}
-          {pullResult ? (
-            <div className="wizard-success">
-              <h2>{pullResult.updated ? '已获取同事上传的改动' : '本地已经是最新版本'}</h2>
-              <p>{pullResult.updated ? `本次获取了 ${pullResult.receivedCommits} 个新版本。` : '公司项目服务器没有比这台电脑更新的内容。'}</p>
-            </div>
-          ) : null}
-          {cloneResult ? <div className="wizard-success"><h2>云端项目已下载</h2><p>已保存到 {cloneResult}，并加入项目列表。</p></div> : null}
-          {!pullResult && !cloneResult ? <>
           <div className="wizard-panel__intro">
-            <h2>{selectedAction.title}</h2>
-            <p>确认项目和本地位置。</p>
+            <h2>确认当前项目</h2>
+            <p>这里只更新刚才选择的项目，不会影响其他项目。</p>
           </div>
           <dl className="confirm-list">
-            <div><dt>本次操作项目</dt><dd>{selectedProject.repository.displayName}</dd></div>
-            {action !== 'clone' ? <div><dt>公司服务器上的项目</dt><dd>{selectedProject.repository.gitlabPath}</dd></div> : null}
+            <div><dt>项目</dt><dd>{repository.displayName}</dd></div>
+            <div><dt><FolderOpen size={16} />这台电脑上的位置</dt><dd>{repository.path}</dd></div>
+            <div><dt><GitBranch size={16} />当前工作版本</dt><dd>{repository.branch}</dd></div>
           </dl>
-          {action === 'clone' ? <>
-            <label className="plain-field spaced-field">
-              <span className="field-label-row">项目的 SSH
-                <FieldHelp label="项目的 SSH">
-                  <strong>这是从 GitLab 项目页面复制的下载地址，不是浏览器顶部的网址。</strong>
-                  <ol>
-                    <li>请向管理员确认你有该项目的权限。</li>
-                    <li>登录 GitLab，并打开需要下载的项目页面。</li>
-                    <li>点击项目页面右上方的“Code”按钮。</li>
-                    <li>在弹出的菜单中找到“Clone with SSH”或“SSH”。</li>
-                    <li>点击 SSH 地址旁边的复制按钮。</li>
-                    <li>地址通常以 git@ 开头、以 .git 结尾，例如：git@gitlab.example.com:group/sample-project.git。</li>
-                    <li>回到本软件，点击下面的输入框并粘贴完整地址。</li>
-                    <li>如果看不到项目或“Code”按钮，请联系管理员确认权限。</li>
-                  </ol>
-                </FieldHelp>
-              </span>
-              <input aria-label="项目的 SSH" onChange={(event) => setRemoteUrl(event.target.value)} placeholder="例如：git@gitlab.example.com:group/sample-project.git" value={remoteUrl} />
-            </label>
-          </> : null}
-          <label className="plain-field spaced-field">
-            <span className="field-label-row">{action === 'pull' ? '项目所在的电脑文件夹' : '下载后放在哪个文件夹'}
-              <FieldHelp label="电脑文件夹">
-                <strong>这是项目在你电脑上的存放位置。</strong>
-                <ol>
-                  <li>{action === 'pull' ? '软件已经找到当前项目文件夹，不需要修改。' : '点击输入框右侧的文件夹图标。'}</li>
-                  <li>{action === 'pull' ? '这里只用于确认位置，不会把文件放到别处。' : '选择一个容易找到的位置，例如 D:\\Projects\\sample-project。'}</li>
-                  <li>{action === 'pull' ? '获取成功后，新内容会出现在这个文件夹中。' : '请选择空文件夹；已有其他文件的文件夹不能使用。'}</li>
-                  <li>不要选择桌面、下载目录或其他项目正在使用的文件夹。</li>
-                </ol>
-              </FieldHelp>
-            </span>
-            <span className={action === 'clone' && desktopDialogClient.available() ? 'path-input' : undefined}><input aria-label="本地保存位置" onChange={(event) => setDestination(event.target.value)} readOnly={action === 'pull'} value={destination} />{action === 'clone' && desktopDialogClient.available() ? <button aria-label="选择本地保存位置" onClick={() => void desktopDialogClient.chooseDirectory().then((path) => { if (path) setDestination(path) })} title="选择本地保存位置" type="button"><FolderOpen size={17} /></button> : null}</span>
-          </label>
-          {action === 'ironforge' && ironforgeUrl ? (
-            <a className="button button--secondary ironforge-link" href={ironforgeUrl} rel="noreferrer" target="_blank">
-              打开交付平台
-            </a>
-          ) : null}
-          </> : null}
+        </div>
+      ) : null}
+      {!result && step === 1 ? (
+        <div>
+          <div className="wizard-panel__intro">
+            <h2>准备下载</h2>
+            <p>软件会先检查公司服务器，只把缺少的新内容下载到当前项目。</p>
+          </div>
+          <div className="download-confirmation">
+            <CloudDownload size={28} />
+            <span><strong>{repository.displayName}</strong><small>不会删除其他项目，也不会上传本机文件。</small></span>
+          </div>
         </div>
       ) : null}
     </GuidedWorkflow>
