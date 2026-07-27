@@ -10,7 +10,7 @@ import './credentialFields.css'
 
 const computerAccountId = 'computer'
 
-export function AccountPage() {
+export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
   const [gitlabUrl, setGitlabUrl] = useState('https://gitlfs.lab.tp')
   const [token, setToken] = useState('')
   const [keyPath, setKeyPath] = useState('')
@@ -73,6 +73,7 @@ export function AccountPage() {
       <ConnectionWizard
         onConfigured={() => setConfigured(true)}
         projectId={computerAccountId}
+        checkProjectId={checkProjectId}
       />
 
       <details className="advanced-connection">

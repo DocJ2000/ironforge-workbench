@@ -22,6 +22,7 @@ import {
   pushRepositoryTag,
   type CreateBranchInput,
   pushRepositoryBranch,
+  probeRepositoryRemote,
 } from './gitBranchOperations.js'
 import {
   commitRepositoryChanges,
@@ -37,6 +38,8 @@ import { pullRepository } from './repositoryPull.js'
 import { cloneRepository } from './repositoryClone.js'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { checkConnection } from './connectionCheck.js'
+import { toFriendlyError } from './friendlyError.js'
 
 type NextFunction = (error?: unknown) => void
 type RepositoryScanner = (repositoryPath: string) => Promise<RepositorySnapshot>
@@ -280,7 +283,8 @@ export function createRepositoryMiddleware({
     const isBranchRequest = path === '/api/gitlab/branches'
     const isUploadRequest = path === '/api/gitlab/uploads'
     const isPullRequest = path === '/api/gitlab/pull'
-    const isCloneRequest = path === '/api/gitlab/clone'
+  const isCloneRequest = path === '/api/gitlab/clone'
+    const isConnectionRequest = path === '/api/connection/check'
 
     if (
       !isProjectsRequest &&
@@ -294,6 +298,7 @@ export function createRepositoryMiddleware({
       !isUploadRequest
       && !isPullRequest
       && !isCloneRequest
+      && !isConnectionRequest
     ) {
       next()
       return
@@ -361,7 +366,7 @@ export function createRepositoryMiddleware({
     }
 
     const expectedMethod =
-      isRepositoryRequest || isDeliveryRequest ? 'GET' : 'POST'
+      isRepositoryRequest || isDeliveryRequest || isConnectionRequest ? 'GET' : 'POST'
     if (request.method !== expectedMethod) {
       sendJson(response, 405, { error: 'Method not allowed' })
       return
@@ -398,6 +403,38 @@ export function createRepositoryMiddleware({
         sendJson(response, 400, {
           error: error instanceof Error ? error.message : 'Attachment upload failed',
         })
+      }
+      return
+    }
+
+    if (isConnectionRequest) {
+      try {
+        const projectCredentials = await resolveCredentials('computer')
+        const gitLab = createGitLabClient({
+          baseUrl: projectCredentials.baseUrl,
+          token: projectCredentials.token,
+          recommendedReviewers: [],
+        })
+        const result = await checkConnection(
+          activeRepositoryPath,
+          projectCredentials,
+          {
+            probeServer: async (baseUrl) => {
+              const response = await fetch(baseUrl, {
+                method: 'HEAD',
+                signal: AbortSignal.timeout(5000),
+              })
+              if (response.status >= 500) {
+                throw new Error(`company server ${response.status}`)
+              }
+            },
+            probeApi: async () => gitLab.currentUser(),
+            probeSsh: probeRepositoryRemote,
+          },
+        )
+        sendJson(response, 200, result)
+      } catch (error) {
+        sendJson(response, 400, { error: toFriendlyError(error) })
       }
       return
     }

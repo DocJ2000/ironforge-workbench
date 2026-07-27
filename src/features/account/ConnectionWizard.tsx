@@ -9,10 +9,13 @@ import { useEffect, useState } from 'react'
 import { credentialClient } from '../../data/credentialClient'
 import { identityClient } from '../../data/identityClient'
 import { FieldHelp } from './FieldHelp'
+import { createDeliveryApi } from '../../data/deliveryClient'
+import { ConnectionCheckPanel } from './ConnectionCheckPanel'
 import './connectionWizard.css'
 
 interface Props {
   projectId: string
+  checkProjectId?: string
   onConfigured: () => void
 }
 
@@ -36,7 +39,7 @@ function connectionError(cause: unknown) {
   return message || '连接没有完成。请按页面步骤重试。'
 }
 
-export function ConnectionWizard({ projectId, onConfigured }: Props) {
+export function ConnectionWizard({ projectId, checkProjectId, onConfigured }: Props) {
   const [step, setStep] = useState(0)
   const [token, setToken] = useState('')
   const [passphrase, setPassphrase] = useState('')
@@ -177,6 +180,11 @@ export function ConnectionWizard({ projectId, onConfigured }: Props) {
             <button className="button button--secondary" disabled={busy} onClick={() => setStep(0)} type="button">返回</button>
             <button className="button button--primary" disabled={busy} onClick={() => void generateIdentity()} type="button">{busy ? '正在创建' : '创建这台电脑的身份钥匙'}</button>
           </div>
+          {checkProjectId ? (
+            <ConnectionCheckPanel onCheck={() => createDeliveryApi(checkProjectId).checkConnection()} />
+          ) : (
+            <p className="connection-check__empty">添加项目后，这里会自动检查电脑是否能连接该项目。</p>
+          )}
         </div>
       ) : null}
 

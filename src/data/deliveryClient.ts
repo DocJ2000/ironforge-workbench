@@ -9,6 +9,7 @@ import type {
   MergeRequestResult,
   OutputPackageCandidate,
 } from '../domain/delivery'
+import type { ConnectionCheckResult } from '../domain/connection'
 
 export interface DeliveryOverview {
   packages: OutputPackageCandidate[]
@@ -34,6 +35,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export interface DeliveryApi {
+  checkConnection: () => Promise<ConnectionCheckResult>
   overview: () => Promise<DeliveryOverview>
   preview: (draft: DeliveryDraft) => Promise<DeliveryPreview>
   execute: (draft: DeliveryDraft) => Promise<DeliveryExecutionResult>
@@ -68,6 +70,8 @@ function projectPath(path: string, projectId?: string) {
 
 export function createDeliveryApi(projectId?: string): DeliveryApi {
   return {
+  checkConnection: () =>
+    requestJson(projectPath('/api/connection/check', projectId)),
   overview: () => requestJson(projectPath('/api/delivery', projectId)),
   preview: (draft) =>
     requestJson(projectPath('/api/delivery/preview', projectId), {

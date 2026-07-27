@@ -44,6 +44,11 @@ export interface MarkdownUpload {
   bytes: Uint8Array
 }
 
+export interface GitLabCurrentUser {
+  username: string
+  name: string
+}
+
 function projectUrl(baseUrl: string, projectPath: string) {
   return `${baseUrl}/api/v4/projects/${encodeURIComponent(projectPath)}`
 }
@@ -94,6 +99,12 @@ export function createGitLabClient(
   }
 
   return {
+    async currentUser(): Promise<GitLabCurrentUser> {
+      const response = await request('/api/v4/user')
+      const user = (await response.json()) as GitLabCurrentUser
+      return { username: user.username, name: user.name }
+    },
+
     async listReviewers(projectPath: string): Promise<GitLabReviewer[]> {
       const response = await request(
         `/api/v4/projects/${encodeURIComponent(projectPath)}/members/all?per_page=100`,

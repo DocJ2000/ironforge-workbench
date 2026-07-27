@@ -45,6 +45,13 @@ async function git(
   return stdout.trim()
 }
 
+export async function probeRepositoryRemote(
+  repositoryPath: string,
+  credentials: GitRemoteCredentials,
+) {
+  await git(repositoryPath, ['ls-remote', '--heads', 'origin'], credentials)
+}
+
 export interface CreateBranchInput {
   name: string
   startPoint: string

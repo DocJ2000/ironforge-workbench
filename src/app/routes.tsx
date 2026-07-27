@@ -66,7 +66,7 @@ export function AppRoutes() {
         <Route path="/history" element={<HistoryPage repository={repository} />} />
         <Route
           path="/account"
-          element={<AccountPage />}
+          element={<AccountPage checkProjectId={selectedProjectId} />}
         />
       </Route>
     </Routes>
