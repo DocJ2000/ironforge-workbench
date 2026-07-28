@@ -41,6 +41,7 @@ export interface DeliveryDraft {
 
 export interface GitLabSyncDraft {
   message: string
+  description?: string
   changePaths: string[]
   confirmedDeletions: string[]
   selectedPackageIds: string[]

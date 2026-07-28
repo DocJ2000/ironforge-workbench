@@ -9,6 +9,13 @@ const rules: Array<{
   nextAction: string
 }> = [
   {
+    code: 'lfs_server_unavailable',
+    pattern: /git lfs|objects\/batch|batch response.*HTTP 50[0234]|lfs.*server error/i,
+    title: '公司大文件服务器暂时不可用',
+    detail: '本地改动和已创建的保存记录仍然安全，但大型图纸暂时无法上传到 GitLab。',
+    nextAction: '稍后重试上传；不要重复整理或再次创建同一份保存记录。',
+  },
+  {
     code: 'company_certificate_untrusted',
     pattern: /SELF_SIGNED_CERT_IN_CHAIN|self[- ]signed certificate|certificate.*trust|unable to verify/i,
     title: '这台电脑还没有信任公司证书',

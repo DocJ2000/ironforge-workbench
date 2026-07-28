@@ -79,7 +79,9 @@ function commitRequest(
   chargeChanged: boolean,
 ): RepositoryCommitRequest {
   return {
-    message: draft.message,
+    message: [draft.message.trim(), draft.description?.trim()]
+      .filter(Boolean)
+      .join('\n\n'),
     paths: [
       ...new Set([
         ...draft.changePaths,

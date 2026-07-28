@@ -27,6 +27,14 @@ describe('toFriendlyError', () => {
     })
   })
 
+  it('explains a temporary Git LFS server failure without blaming local files', () => {
+    expect(toFriendlyError(new Error('Git LFS batch response: HTTP 502 from objects/batch'))).toMatchObject({
+      code: 'lfs_server_unavailable',
+      filesSafe: true,
+      title: '公司大文件服务器暂时不可用',
+    })
+  })
+
   it('redacts and bounds unknown technical details', () => {
     const result = toFriendlyError(
       new Error(`password=secret-value\n${'x'.repeat(400)}`),

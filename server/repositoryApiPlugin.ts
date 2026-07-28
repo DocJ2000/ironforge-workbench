@@ -285,7 +285,9 @@ export function createRepositoryMiddleware({
     const isPreviewRequest = path === '/api/commit/preview'
     const isCommitRequest = path === '/api/commit'
     const isSyncRequest = path === '/api/gitlab/sync'
+    const isRetryPushRequest = path === '/api/gitlab/retry-push'
     const isMergeRequest = path === '/api/gitlab/merge-requests'
+    const isMergeRequestStatus = path === '/api/gitlab/merge-request-status'
     const isBranchRequest = path === '/api/gitlab/branches'
     const isUploadRequest = path === '/api/gitlab/uploads'
     const isPullRequest = path === '/api/gitlab/pull'
@@ -300,7 +302,9 @@ export function createRepositoryMiddleware({
       !isPreviewRequest &&
       !isCommitRequest &&
       !isSyncRequest &&
+      !isRetryPushRequest &&
       !isMergeRequest &&
+      !isMergeRequestStatus &&
       !isBranchRequest &&
       !isUploadRequest
       && !isPullRequest
@@ -374,7 +378,7 @@ export function createRepositoryMiddleware({
     }
 
     const expectedMethod =
-      isRepositoryRequest || isDeliveryRequest || isConnectionRequest || isHistoryRequest ? 'GET' : 'POST'
+      isRepositoryRequest || isDeliveryRequest || isConnectionRequest || isHistoryRequest || isMergeRequestStatus ? 'GET' : 'POST'
     if (request.method !== expectedMethod) {
       sendJson(response, 405, { error: 'Method not allowed' })
       return
@@ -429,6 +433,60 @@ export function createRepositoryMiddleware({
         })
         return
       }
+    }
+
+    if (isRetryPushRequest) {
+      let body: { branch: string; confirmed: boolean }
+      try {
+        body = await readJson(request)
+      } catch {
+        sendJson(response, 400, { error: 'Invalid JSON request' })
+        return
+      }
+      if (!body.confirmed || !body.branch?.trim()) {
+        sendJson(response, 400, { error: 'Retry push must be confirmed' })
+        return
+      }
+      try {
+        const projectCredentials = await resolveCredentials(activeProjectId)
+        await pushRepositoryBranch(activeRepositoryPath, body.branch.trim(), {
+          sshKeyPath: projectCredentials.sshKeyPath,
+          ...(projectCredentials.sshPassphrase ? { sshPassphrase: projectCredentials.sshPassphrase } : {}),
+          ...(projectCredentials.sshAskPassPath ? { sshAskPassPath: projectCredentials.sshAskPassPath } : {}),
+        })
+        sendJson(response, 200, { branch: body.branch.trim() })
+      } catch (error) {
+        sendJson(response, 400, { error: toFriendlyError(error) })
+      }
+      return
+    }
+
+    if (isMergeRequestStatus) {
+      const iid = Number(requestUrl.searchParams.get('iid'))
+      if (!Number.isInteger(iid) || iid < 1) {
+        sendJson(response, 400, { error: 'Invalid merge request number' })
+        return
+      }
+      try {
+        const repository = await scan(activeRepositoryPath)
+        const projectCredentials = await resolveCredentials(activeProjectId)
+        const gitLab = createGitLabClient({
+          baseUrl: projectCredentials.baseUrl,
+          token: projectCredentials.token,
+          recommendedReviewers: [],
+        }, fetcher)
+        const mergeRequest = await gitLab.getMergeRequest(
+          gitLabProjectPath(repository.gitlabPath),
+          iid,
+        )
+        sendJson(response, 200, {
+          state: mergeRequest.state,
+          webUrl: mergeRequest.webUrl,
+        })
+      } catch (error) {
+        sendJson(response, 400, { error: toFriendlyError(error) })
+      }
+      return
     }
 
     if (isUploadRequest) {
@@ -558,8 +616,7 @@ export function createRepositoryMiddleware({
         sendJson(response, 200, result)
       } catch (error) {
         sendJson(response, 400, {
-          error:
-            error instanceof Error ? error.message : 'GitLab operation failed',
+          error: toFriendlyError(error),
         })
       }
       return

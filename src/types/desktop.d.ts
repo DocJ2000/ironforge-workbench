@@ -17,6 +17,9 @@ interface Window {
   ironforgeDesktop?: {
     platform: string
     packaged: boolean
+    notifications?: {
+      show: (input: { title: string; body: string }) => Promise<boolean>
+    }
     credentials: {
       status: (projectId: string) => Promise<DesktopCredentialStatus>
       save: (input: DesktopCredentialInput) => Promise<DesktopCredentialStatus>

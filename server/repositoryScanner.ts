@@ -182,20 +182,20 @@ function branchStage(name: string) {
 async function branches(repositoryPath: string, currentBranch: string): Promise<BranchSummary[]> {
   const output = await git(repositoryPath, [
     'for-each-ref',
-    '--format=%(refname:short)%00%(objectname:short)%00%(subject)%00%(committerdate:iso8601)',
+    '--format=%(refname:short)%00%(objectname:short)%00%(subject)%00%(committerdate:iso8601)%00%(upstream:short)',
     'refs/heads',
   ])
   if (!output) return []
 
   return output.split('\n').map((line) => {
-    const [name, commit, commitMessage, updatedAt] = line.split('\0')
+    const [name, commit, commitMessage, updatedAt, upstream] = line.split('\0')
     return {
       name,
       stage: branchStage(name),
       commit,
       commitMessage,
       updatedAt,
-      remote: false,
+      remote: Boolean(upstream),
       current: name === currentBranch,
     }
   })

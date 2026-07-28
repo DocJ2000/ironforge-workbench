@@ -54,9 +54,14 @@ export interface DeliveryApi {
   preview: (draft: DeliveryDraft) => Promise<DeliveryPreview>
   execute: (draft: DeliveryDraft) => Promise<DeliveryExecutionResult>
   syncGitLab: (draft: GitLabSyncDraft) => Promise<GitLabSyncResult>
+  retryPush: (branch: string) => Promise<{ branch: string }>
   createMergeRequest: (
     draft: MergeRequestDraft,
   ) => Promise<MergeRequestResult>
+  getMergeRequestStatus?: (iid: number) => Promise<{
+    state: 'opened' | 'closed' | 'merged'
+    webUrl: string
+  }>
   createBranch: (input: {
     name: string
     startPoint: string
@@ -100,11 +105,20 @@ export function createDeliveryApi(projectId?: string): DeliveryApi {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
     }),
+  retryPush: (branch) =>
+    requestJson(projectPath('/api/gitlab/retry-push', projectId), {
+      method: 'POST',
+      body: JSON.stringify({ branch, confirmed: true }),
+    }),
   createMergeRequest: (draft) =>
     requestJson(projectPath('/api/gitlab/merge-requests', projectId), {
       method: 'POST',
       body: JSON.stringify({ draft, confirmed: true }),
     }),
+  getMergeRequestStatus: (iid) => {
+    const path = projectPath('/api/gitlab/merge-request-status', projectId)
+    return requestJson(`${path}${path.includes('?') ? '&' : '?'}iid=${encodeURIComponent(iid)}`)
+  },
   createBranch: (input) =>
     requestJson(projectPath('/api/gitlab/branches', projectId), {
       method: 'POST',

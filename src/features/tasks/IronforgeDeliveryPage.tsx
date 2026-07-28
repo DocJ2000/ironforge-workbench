@@ -2,142 +2,104 @@ import { CheckCircle2, PackageCheck, UploadCloud } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { deliveryApi, type DeliveryApi } from '../../data/deliveryClient'
-import type { GitLabReviewer, OutputPackageCandidate } from '../../domain/delivery'
+import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
+import { uploadReceiptClient } from '../../data/uploadReceiptClient'
+import { notificationClient } from '../../data/notificationClient'
+import type { GitLabReviewer } from '../../domain/delivery'
 import type { RepositorySnapshot } from '../../domain/repository'
 import { MergeRequestEditor } from '../delivery/MergeRequestEditor'
-import { PackageTree } from '../delivery/PackageTree'
 import { ReviewerSelector } from '../delivery/ReviewerSelector'
-import { FieldHelp } from '../account/FieldHelp'
-import { organizationClient } from '../../data/organizationClient'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './ironforgeDelivery.css'
 import './deliverySuccess.css'
-import { uploadReceiptClient } from '../../data/uploadReceiptClient'
 
 interface Props { repository: RepositorySnapshot; api?: DeliveryApi; onRefresh?: () => Promise<void> }
-const steps = ['选择交付图纸', '填写更新', '上传图纸', '填写交付', '选择审核人', '提交审核']
+const steps = ['确认交付文件', '填写交付说明', '选择审核人', '确认交付']
 
-export function IronforgeDeliveryPage({ repository, api = deliveryApi, onRefresh }: Props) {
-  const ironforgeUrl = organizationClient.load().ironforgeUrl
+export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) {
   const uploadReceipt = uploadReceiptClient.load(repository.id)
-  const uploadReady = Boolean(
-    uploadReceipt
-    && uploadReceipt.branch === repository.branch
-    && (
-      uploadReceipt.commit.startsWith(repository.latestCommit)
-      || repository.latestCommit.startsWith(uploadReceipt.commit)
-    )
-    && repository.changes.length === 0
-    && repository.ahead === 0
-    && repository.behind === 0,
-  )
+  const uploadReady = Boolean(uploadReceipt && uploadReceipt.branch === repository.branch && repository.changes.length === 0 && repository.ahead === 0 && repository.behind === 0)
   const [step, setStep] = useState(0)
-  const [packages, setPackages] = useState<OutputPackageCandidate[]>([])
   const [reviewers, setReviewers] = useState<GitLabReviewer[]>([])
-  const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set())
   const [selectedReviewers, setSelectedReviewers] = useState<Set<number>>(new Set())
-  const [updateTitle, setUpdateTitle] = useState('')
-  const [tag, setTag] = useState('')
-  const [deliveryTitle, setDeliveryTitle] = useState('')
+  const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [links, setLinks] = useState<string[]>([])
   const [attachments, setAttachments] = useState<File[]>([])
-  const [syncResult, setSyncResult] = useState<{ commit: string; branch: string } | null>(null)
-  const [mrResult, setMrResult] = useState<{ iid: number; webUrl: string } | null>(null)
+  const [result, setResult] = useState<{ iid: number; webUrl: string } | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<ReturnType<typeof friendlyErrorFrom> | null>(null)
+  const [mrState, setMrState] = useState<'opened' | 'closed' | 'merged'>('opened')
 
   useEffect(() => {
     if (!uploadReady) return
     let active = true
-    void api.overview().then((result) => {
+    void api.overview().then((overview) => {
       if (!active) return
-      setPackages(result.packages)
-      setReviewers(result.reviewers)
-      setSelectedPackages(new Set(result.packages.map((item) => item.id)))
-      setSelectedReviewers(new Set(
-        result.reviewers
-          .filter((reviewer) => reviewer.recommended)
-          .map((reviewer) => reviewer.id),
-      ))
-    }).catch((cause) => active && setError(cause instanceof Error ? cause.message : '读取交付包失败'))
+      setReviewers(overview.reviewers)
+      setSelectedReviewers(new Set(overview.reviewers.filter((item) => item.recommended).map((item) => item.id)))
+    }).catch((cause) => active && setError(friendlyErrorFrom(cause)))
     return () => { active = false }
   }, [api, uploadReady])
 
-  function togglePackage(id: string) {
-    setSelectedPackages((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+  useEffect(() => {
+    if (!result || !api.getMergeRequestStatus) return
+    let active = true
+    const check = async () => {
+      try {
+        const status = await api.getMergeRequestStatus?.(result.iid)
+        if (!active || !status || status.state === 'opened') return
+        setMrState(status.state)
+        void notificationClient.show(
+          status.state === 'merged' ? '交付审核已通过' : '交付审核已关闭',
+          `${repository.displayName} 的审核单 #${result.iid}${status.state === 'merged' ? ' 已合入 main' : ' 已被关闭'}`,
+        )
+      } catch {
+        // A temporary polling failure should not interrupt the completed submission.
+      }
+    }
+    void check()
+    const timer = window.setInterval(() => void check(), 30_000)
+    return () => { active = false; window.clearInterval(timer) }
+  }, [api, repository.displayName, result])
+
   function toggleReviewer(id: number) {
     setSelectedReviewers((current) => {
       const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(id)) next.delete(id); else next.add(id)
       return next
     })
   }
 
-  async function sync() {
-    setBusy(true); setError(null)
-    try {
-      const result = await api.syncGitLab({
-        message: updateTitle.trim(),
-        changePaths: repository.changes.map((change) => change.path),
-        confirmedDeletions: repository.changes.filter((change) => change.kind === 'deleted').map((change) => change.path),
-        selectedPackageIds: [...selectedPackages],
-        branch: repository.branch,
-        ...(tag.trim() ? { tag: { name: tag.trim(), message: updateTitle.trim() } } : {}),
-      })
-      setSyncResult(result)
-      setDeliveryTitle((current) => current || updateTitle.trim())
-      setStep(3)
-      await onRefresh?.()
-    } catch (cause) { setError(cause instanceof Error ? cause.message : '上传工程和图纸失败') }
-    finally { setBusy(false) }
-  }
-
   async function createMr() {
-    if (!syncResult) return
     setBusy(true); setError(null)
     try {
       const attachmentMarkdown: string[] = []
       for (const file of attachments) attachmentMarkdown.push((await api.uploadAttachment(file)).markdown)
-      const result = await api.createMergeRequest({
-        sourceBranch: syncResult.branch, targetBranch: 'main', title: deliveryTitle.trim(),
+      const created = await api.createMergeRequest({
+        sourceBranch: repository.branch, targetBranch: 'main', title: title.trim(),
         description: description.trim(), reviewerIds: [...selectedReviewers],
         feishuLinks: links.map((link) => link.trim()).filter(Boolean), attachmentMarkdown,
       })
-      setMrResult(result)
-    } catch (cause) { setError(cause instanceof Error ? cause.message : '提交审核失败') }
+      setResult(created)
+      void notificationClient.show('交付审核已提交', `${repository.displayName} 的审核单 #${created.iid} 已创建`)
+    } catch (cause) {
+      const friendly = friendlyErrorFrom(cause)
+      setError(friendly)
+      void notificationClient.show('交付审核提交失败', friendly.title)
+    }
     finally { setBusy(false) }
   }
 
-  const nextDisabled = (step === 0 && !selectedPackages.size) || (step === 1 && !updateTitle.trim()) || (step === 3 && !deliveryTitle.trim()) || (step === 4 && !selectedReviewers.size) || busy
-  if (!uploadReady) {
-    return (
-      <section className="ironforge-upload-required">
-        <span><UploadCloud size={30} /></span>
-        <p className="task-eyebrow">还差一步</p>
-        <h1>请先上传这个项目</h1>
-        <p>铁炉堡只能交付已经上传到 GitLab 的图纸。请先完成同一项目的“上传整个工程”，成功后再回来提交审核。</p>
-        <Link className="button button--primary" to="/workspace/upload/gitlab">去上传这个项目</Link>
-      </section>
-    )
-  }
-  return <GuidedWorkflow currentStep={step} description="选择交付图纸，提交管理员审核；管理员批准后自动发布到铁炉堡。" nextDisabled={nextDisabled} nextLabel={step === 2 ? (busy ? '正在上传' : '上传图纸') : step === 5 ? (busy ? '正在提交' : '创建审核单') : '下一步'} onBack={step > 0 && !mrResult ? () => setStep((current) => current - 1) : undefined} onNext={mrResult ? undefined : step === 2 ? () => void sync() : step === 5 ? () => void createMr() : () => setStep((current) => current + 1)} steps={steps} title="提交图纸到铁炉堡">
-    {error ? <div className="delivery-alert delivery-alert--error">{error}</div> : null}
-    {mrResult ? <div className="wizard-success"><CheckCircle2 size={42} /><h2>已提交管理员审核</h2><p>管理员审核单 #{mrResult.iid} 已创建。管理员批准后，图纸会发布到交付平台。</p><div className="success-actions">{mrResult.webUrl ? <a className="button button--secondary" href={mrResult.webUrl} rel="noreferrer" target="_blank">打开审核单</a> : null}{ironforgeUrl ? <a className="button button--primary" href={ironforgeUrl} rel="noreferrer" target="_blank">打开交付平台</a> : null}</div></div> : null}
-    {!mrResult && step === 0 ? <div><Intro title="选择本次要交付的包">勾选母文件夹；展开后可以核对目录和本次变动，子文件不需要逐个勾选。</Intro>{packages.map((item) => <PackageTree changes={repository.changes} item={item} key={item.id} onToggle={() => togglePackage(item.id)} selected={selectedPackages.has(item.id)} />)}</div> : null}
-    {!mrResult && step === 1 ? <div><Intro title="说明这次交付了什么">标题必须填写；交付标签只有负责人要求留档时才填写。</Intro><label className="plain-field"><span className="field-label-row">这次做了什么<FieldHelp label="更新标题"><strong>用一句话说明本次修改。</strong><ol><li>先写动作，例如“新增”或“修改”。</li><li>再写零件或交付包名称。</li><li>正确示例：“更新 T2 示例零件”。</li><li>不要只写“更新”或日期。</li></ol></FieldHelp></span><input aria-label="本次更新标题" onChange={(event) => setUpdateTitle(event.target.value)} placeholder="例如：更新 T2 示例零件" value={updateTitle} /></label><label className="plain-field spaced-field"><span className="field-label-row">本次交付标签（可以不填）<FieldHelp label="交付标签"><strong>它相当于给这一次重要交付贴上一个不能重复的名字。</strong><ol><li>只有项目负责人明确要求“打标签”时才填写。</li><li>向负责人确认本次标签的准确名称。</li><li>正确示例：“T2示例零件”或“sample-T2-v1”。</li><li>同一个标签不能再次使用；再次交付请使用新名称。</li><li>如果负责人没有要求，保持空白即可。</li></ol></FieldHelp></span><input aria-label="本次交付标签" onChange={(event) => setTag(event.target.value)} placeholder="负责人没有要求就留空" value={tag} /></label></div> : null}
-    {!mrResult && step === 2 ? <div><Intro title="确认上传工程和图纸">软件会上传整个项目的有效改动，自动更新铁炉堡交付清单，并包含选中的交付图纸文件夹。</Intro><dl className="confirm-list"><div><dt>本次操作项目</dt><dd>{repository.displayName}</dd></div><div><dt>这台电脑上的文件夹</dt><dd>{repository.path}</dd></div><div><dt>当前工作版本</dt><dd>{repository.branch}</dd></div><div><dt>项目改动</dt><dd>{repository.changes.length} 个文件</dd></div><div><dt>交付图纸文件夹</dt><dd>{selectedPackages.size} 个</dd></div><div><dt>本次更新标题</dt><dd>{updateTitle}</dd></div><div><dt>本次交付标签</dt><dd>{tag || '不创建'}</dd></div></dl></div> : null}
-    {!mrResult && step === 3 ? <div><Intro title="填写交付内容">这是管理员在公司项目服务器的审核单里看到的标题和补充资料。</Intro><MergeRequestEditor attachments={attachments} description={description} feishuLinks={links} onAttachmentsChange={setAttachments} onDescriptionChange={setDescription} onFeishuLinksChange={setLinks} onTitleChange={setDeliveryTitle} title={deliveryTitle} /></div> : null}
-    {!mrResult && step === 4 ? <div><Intro title="选择管理员审核">至少选择一位审核人。上传工程本身不需要审核，这里选择的是图纸交付审核人。</Intro><ReviewerSelector onToggle={toggleReviewer} reviewers={reviewers} selectedIds={selectedReviewers} /></div> : null}
-    {!mrResult && step === 5 ? <div><Intro title="确认提交审核">创建管理员审核单后等待批准；批准并合入正式版本，就代表发布到铁炉堡。</Intro><dl className="confirm-list"><div><dt><PackageCheck size={16} />本次交付标题</dt><dd>{deliveryTitle}</dd></div><div><dt>审核人数</dt><dd>{selectedReviewers.size} 人</dd></div><div><dt>附件与链接</dt><dd>{attachments.length + links.filter(Boolean).length} 项</dd></div></dl></div> : null}
+  if (!uploadReady) return <section className="ironforge-upload-required"><span><UploadCloud size={30} /></span><p className="task-eyebrow">请先完成上传</p><h1>项目还没有准备好交付</h1><p>铁炉堡只能交付已经上传到 GitLab 的内容。请先完成“上传整个工程”，其中会选择交付包并生成 charge.json。</p><Link className="button button--primary" to="/workspace/upload/gitlab">去上传这个项目</Link></section>
+
+  return <GuidedWorkflow currentStep={step} description="核对已经上传的交付清单，创建管理员审核单；审核合入 main 后才完成正式交付。" nextDisabled={(step === 0 && !repository.deliveryPackages.length) || (step === 1 && !title.trim()) || (step === 2 && !selectedReviewers.size) || busy} nextLabel={step === 3 ? (busy ? '正在提交' : '确认交付') : '下一步'} onBack={step > 0 && !result ? () => setStep((current) => current - 1) : undefined} onNext={result ? undefined : step === 3 ? () => void createMr() : () => setStep((current) => current + 1)} steps={steps} title="提交图纸到铁炉堡">
+    {error ? <div className="delivery-alert delivery-alert--error"><strong>{error.title}</strong><p>{error.detail}</p><p>{error.nextAction}</p></div> : null}
+    {result ? <div className="wizard-success"><CheckCircle2 size={42} /><h2>{mrState === 'merged' ? '交付审核已通过' : mrState === 'closed' ? '交付审核已关闭' : '已提交管理员审核'}</h2><p>{mrState === 'opened' ? `审核单 #${result.iid} 已创建。管理员批准并合入 main 后，才代表交付完成。` : mrState === 'merged' ? `审核单 #${result.iid} 已合入 main，本次交付已经完成。` : `审核单 #${result.iid} 已被关闭，本次内容没有合入 main。`}</p>{result.webUrl ? <a className="button button--primary" href={result.webUrl} rel="noreferrer" target="_blank">查看本次审核单</a> : null}</div> : null}
+    {!result && step === 0 ? <div><Intro title="确认本次交付文件">这里读取的是上传时已经写入 charge.json 的交付包，不会再次修改或上传工程。</Intro><dl className="confirm-list">{repository.deliveryPackages.map((item) => <div key={item.id}><dt>{item.name}</dt><dd>{item.path}</dd></div>)}</dl></div> : null}
+    {!result && step === 1 ? <div><Intro title="填写管理员看到的交付说明">标题必填；备注可以填写修改原因、影响范围，并可附飞书链接或 PDF。</Intro><MergeRequestEditor attachments={attachments} description={description} feishuLinks={links} onAttachmentsChange={setAttachments} onDescriptionChange={setDescription} onFeishuLinksChange={setLinks} onTitleChange={setTitle} title={title} /></div> : null}
+    {!result && step === 2 ? <div><Intro title="选择管理员审核">至少选择一位审核人。普通上传不需要审核，这一步审核的是正式交付。</Intro><ReviewerSelector onToggle={toggleReviewer} reviewers={reviewers} selectedIds={selectedReviewers} /></div> : null}
+    {!result && step === 3 ? <div><Intro title="确认创建审核单">源工作版本是 {repository.branch}，目标固定为受保护的 main。</Intro><dl className="confirm-list"><div><dt><PackageCheck size={16} />交付包</dt><dd>{repository.deliveryPackages.length} 个</dd></div><div><dt>交付标题</dt><dd>{title}</dd></div><div><dt>审核人</dt><dd>{selectedReviewers.size} 人</dd></div><div><dt>合入目标</dt><dd>main（受保护主分支）</dd></div></dl></div> : null}
   </GuidedWorkflow>
 }
 

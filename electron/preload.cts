@@ -3,6 +3,10 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('ironforgeDesktop', {
   platform: process.platform,
   packaged: true,
+  notifications: {
+    show: (input: { title: string; body: string }) =>
+      ipcRenderer.invoke('notifications:show', input),
+  },
   credentials: {
     status: (projectId: string) =>
       ipcRenderer.invoke('credentials:status', projectId),

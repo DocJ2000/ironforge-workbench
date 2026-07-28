@@ -4,6 +4,7 @@ import {
   dialog,
   ipcMain,
   net,
+  Notification,
   safeStorage,
   session,
   shell,
@@ -29,6 +30,12 @@ import {
 import { AppSettingsStore, type AppSettings } from './appSettingsStore.js'
 
 const { autoUpdater } = electronUpdater
+
+ipcMain.handle('notifications:show', (_event, input: { title: string; body: string }) => {
+  if (!Notification.isSupported()) return false
+  new Notification({ title: input.title, body: input.body }).show()
+  return true
+})
 app.setPath(
   'userData',
   join(
