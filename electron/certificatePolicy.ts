@@ -13,3 +13,12 @@ export function mayTrustInternalCertificate(
     return false
   }
 }
+
+export function mayTrustInternalCertificateForHosts(
+  error: string,
+  hostname: string,
+  trustedHosts: ReadonlySet<string>,
+) {
+  return error === 'net::ERR_CERT_AUTHORITY_INVALID'
+    && trustedHosts.has(hostname.toLowerCase())
+}

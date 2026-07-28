@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { mayTrustInternalCertificate } from './certificatePolicy'
+import {
+  mayTrustInternalCertificate,
+  mayTrustInternalCertificateForHosts,
+} from './certificatePolicy'
 
 describe('mayTrustInternalCertificate', () => {
   it('allows only an authority error for the configured GitLab host', () => {
@@ -20,6 +23,38 @@ describe('mayTrustInternalCertificate', () => {
       error,
       url,
       'https://gitlfs.lab.tp',
+    )).toBe(false)
+  })
+})
+
+describe('mayTrustInternalCertificateForHosts', () => {
+  it('allows an authority error only for a host reached by the embedded login flow', () => {
+    const trustedHosts = new Set(['forge.example.test', 'sso.example.test'])
+
+    expect(mayTrustInternalCertificateForHosts(
+      'net::ERR_CERT_AUTHORITY_INVALID',
+      'sso.example.test',
+      trustedHosts,
+    )).toBe(true)
+    expect(mayTrustInternalCertificateForHosts(
+      'net::ERR_CERT_AUTHORITY_INVALID',
+      'other.example.test',
+      trustedHosts,
+    )).toBe(false)
+  })
+
+  it('never accepts expired or hostname-mismatched certificates', () => {
+    const trustedHosts = new Set(['sso.example.test'])
+
+    expect(mayTrustInternalCertificateForHosts(
+      'net::ERR_CERT_DATE_INVALID',
+      'sso.example.test',
+      trustedHosts,
+    )).toBe(false)
+    expect(mayTrustInternalCertificateForHosts(
+      'net::ERR_CERT_COMMON_NAME_INVALID',
+      'sso.example.test',
+      trustedHosts,
     )).toBe(false)
   })
 })

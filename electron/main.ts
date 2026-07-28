@@ -1,4 +1,15 @@
-import { app, BrowserWindow, dialog, ipcMain, net, safeStorage, session, shell } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  net,
+  safeStorage,
+  session,
+  shell,
+  type MessageBoxOptions,
+  type WebContents,
+} from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CredentialVault, type GitLabCredentialInput } from './credentialVault.js'
@@ -10,7 +21,10 @@ import { IdentityKeyService } from './identityKeyService.js'
 import electronUpdater from 'electron-updater'
 import { UpdateCoordinator } from './updateCoordinator.js'
 import { createUpdateBackup } from './updateBackup.js'
-import { mayTrustInternalCertificate } from './certificatePolicy.js'
+import {
+  mayTrustInternalCertificate,
+  mayTrustInternalCertificateForHosts,
+} from './certificatePolicy.js'
 
 const { autoUpdater } = electronUpdater
 app.setPath(
@@ -66,11 +80,61 @@ function registerIdentityHandlers(service: IdentityKeyService) {
 }
 
 function registerIronforgeHandlers() {
+  const ironforgeSession = session.fromPartition('persist:ironforge')
+  const trustedHosts = new Set<string>()
+  ironforgeSession.setCertificateVerifyProc((request, callback) => {
+    callback(mayTrustInternalCertificateForHosts(
+      request.verificationResult,
+      request.hostname,
+      trustedHosts,
+    ) ? 0 : -3)
+  })
+
+  const trustNavigationTarget = (url: string) => {
+    try {
+      const target = new URL(url)
+      if (target.protocol === 'https:' || target.protocol === 'http:') {
+        trustedHosts.add(target.hostname.toLowerCase())
+      }
+    } catch {
+      // Invalid navigation targets remain untrusted.
+    }
+  }
+
+  const trackLoginNavigation = (contents: WebContents) => {
+    contents.on('will-navigate', (_event, url) => trustNavigationTarget(url))
+    contents.on('will-redirect', (_event, url) => trustNavigationTarget(url))
+    contents.on('did-create-window', (child) => {
+      trackLoginNavigation(child.webContents)
+    })
+    contents.on('did-fail-load', (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
+      if (!isMainFrame || errorCode === -3) return
+      const parent = BrowserWindow.fromWebContents(contents)
+      const options: MessageBoxOptions = {
+        type: 'error',
+        title: '登录页面没有打开',
+        message: '铁炉堡登录页面加载失败',
+        detail: `${errorDescription}\n\n可以重试，或者改用系统浏览器打开。`,
+        buttons: ['重试', '用系统浏览器打开', '关闭'],
+        defaultId: 0,
+        cancelId: 2,
+      }
+      const prompt = parent
+        ? dialog.showMessageBox(parent, options)
+        : dialog.showMessageBox(options)
+      void prompt.then(({ response }) => {
+        if (response === 0) void contents.reload()
+        if (response === 1 && validatedUrl) void shell.openExternal(validatedUrl)
+      })
+    })
+  }
+
   ipcMain.handle('ironforge:open', (_event, url: string) => {
     const target = new URL(url)
     if (target.protocol !== 'https:' && target.protocol !== 'http:') {
       throw new Error('交付平台地址必须是网页地址')
     }
+    trustNavigationTarget(target.toString())
     const window = new BrowserWindow({
       width: 1280,
       height: 820,
@@ -84,11 +148,13 @@ function registerIronforgeHandlers() {
         partition: 'persist:ironforge',
       },
     })
+    trackLoginNavigation(window.webContents)
     window.webContents.setWindowOpenHandler(({ url: popupUrl }) => {
       const popupTarget = new URL(popupUrl)
       if (popupTarget.protocol !== 'https:' && popupTarget.protocol !== 'http:') {
         return { action: 'deny' }
       }
+      trustNavigationTarget(popupTarget.toString())
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
