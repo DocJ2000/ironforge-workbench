@@ -49,12 +49,26 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
     setConfigured(false)
     setError(null)
     if (!desktopStorage) return
-    void credentialClient.status(computerAccountId).then((status) => {
+    void Promise.all([
+      credentialClient.status(computerAccountId),
+      organizationClient.loadDurable(),
+    ]).then(([status, organization]) => {
       setConfigured(status.configured)
-      setGitlabUrl((current) => current || status.baseUrl || '')
+      setGitlabUrl(organization.gitlabUrl || status.baseUrl || '')
+      setIronforgeUrl(organization.ironforgeUrl)
+      setOrganizationSaved(Boolean(organization.gitlabUrl || status.baseUrl))
       setKeyPath(status.sshKeyPath ?? '')
-      const verified = localStorage.getItem(verifiedStorageKey) === 'true'
-      setView(status.configured && initialOrganization.gitlabUrl && verified ? 'summary' : 'welcome')
+      const verified = organization.connectionVerified === true
+        || localStorage.getItem(verifiedStorageKey) === 'true'
+      const recoveredUrl = organization.gitlabUrl || status.baseUrl || ''
+      if (status.configured && recoveredUrl && !organization.gitlabUrl) {
+        organizationClient.save({
+          gitlabUrl: recoveredUrl,
+          ironforgeUrl: organization.ironforgeUrl,
+          connectionVerified: true,
+        })
+      }
+      setView(status.configured && Boolean(recoveredUrl) && (verified || !organization.gitlabUrl) ? 'summary' : 'welcome')
     })
   }, [desktopStorage])
 
@@ -138,6 +152,11 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
       {view === 'connection' ? <ConnectionWizard
         onConfigured={() => {
           localStorage.setItem(verifiedStorageKey, 'true')
+          organizationClient.save({
+            gitlabUrl,
+            ironforgeUrl,
+            connectionVerified: true,
+          })
           setConfigured(true)
           setView('summary')
         }}

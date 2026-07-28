@@ -53,7 +53,17 @@ interface Window {
     userData?: {
       reset: () => Promise<boolean>
     }
+    settings?: {
+      load: () => Promise<DesktopAppSettings>
+      save: (settings: DesktopAppSettings) => Promise<DesktopAppSettings>
+    }
   }
+}
+
+interface DesktopAppSettings {
+  gitlabUrl: string
+  ironforgeUrl: string
+  connectionVerified: boolean
 }
 
 interface DesktopUpdateStatus {

@@ -17,11 +17,12 @@ export function RequiredSetupGate() {
       return
     }
 
-    const organizationReady = Boolean(organizationClient.load().gitlabUrl)
-    void credentialClient
-      .status(computerAccountId)
-      .then((status) =>
-        setState(organizationReady && status.configured ? 'ready' : 'missing'),
+    void Promise.all([
+      organizationClient.loadDurable(),
+      credentialClient.status(computerAccountId),
+    ])
+      .then(([organization, status]) =>
+        setState(organization.gitlabUrl && status.configured ? 'ready' : 'missing'),
       )
       .catch(() => setState('missing'))
   }, [desktopStorage])

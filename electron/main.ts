@@ -25,6 +25,7 @@ import {
   mayTrustInternalCertificate,
   mayTrustInternalCertificateForHosts,
 } from './certificatePolicy.js'
+import { AppSettingsStore, type AppSettings } from './appSettingsStore.js'
 
 const { autoUpdater } = electronUpdater
 app.setPath(
@@ -191,6 +192,7 @@ function registerResetHandler(userDataPath: string) {
       rm(join(userDataPath, 'projects.json'), { force: true }),
       rm(join(userDataPath, 'helpers'), { recursive: true, force: true }),
       rm(join(userDataPath, 'removed-legacy-project-seed'), { force: true }),
+      rm(join(userDataPath, 'app-settings.json'), { force: true }),
     ])
     setTimeout(() => {
       app.relaunch()
@@ -198,6 +200,13 @@ function registerResetHandler(userDataPath: string) {
     }, 300)
     return true
   })
+}
+
+function registerSettingsHandlers(store: AppSettingsStore) {
+  ipcMain.handle('settings:load', () => store.load())
+  ipcMain.handle('settings:save', (_event, settings: AppSettings) =>
+    store.save(settings),
+  )
 }
 
 let productionOrigin: string | null = null
@@ -237,6 +246,9 @@ function createWindow() {
 app.whenReady().then(async () => {
   const userDataPath = app.getPath('userData')
   const projectRegistryPath = join(userDataPath, 'projects.json')
+  registerSettingsHandlers(
+    new AppSettingsStore(join(userDataPath, 'app-settings.json')),
+  )
   registerResetHandler(userDataPath)
   registerUpdateHandlers(
     new UpdateCoordinator({

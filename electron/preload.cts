@@ -40,4 +40,12 @@ contextBridge.exposeInMainWorld('ironforgeDesktop', {
   userData: {
     reset: () => ipcRenderer.invoke('user-data:reset'),
   },
+  settings: {
+    load: () => ipcRenderer.invoke('settings:load'),
+    save: (settings: {
+      gitlabUrl: string
+      ironforgeUrl: string
+      connectionVerified: boolean
+    }) => ipcRenderer.invoke('settings:save', settings),
+  },
 })

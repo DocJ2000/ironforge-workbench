@@ -1,6 +1,7 @@
 export interface OrganizationSettings {
   gitlabUrl: string
   ironforgeUrl: string
+  connectionVerified?: boolean
 }
 
 const storageKey = 'ironforge-workbench:organization'
@@ -24,6 +25,29 @@ export const organizationClient = {
       ironforgeUrl: settings.ironforgeUrl.trim().replace(/\/$/, ''),
     }
     localStorage.setItem(storageKey, JSON.stringify(normalized))
+    void window.ironforgeDesktop?.settings?.save({
+      ...normalized,
+      connectionVerified: settings.connectionVerified === true,
+    })
     return normalized
+  },
+  async loadDurable(): Promise<OrganizationSettings> {
+    const local = this.load()
+    const bridge = window.ironforgeDesktop?.settings
+    if (!bridge) return local
+    const saved = await bridge.load()
+    if (!saved.gitlabUrl && local.gitlabUrl) {
+      await bridge.save({
+        ...local,
+        connectionVerified:
+          localStorage.getItem('ironforge-workbench:connection-verified') === 'true',
+      })
+      return local
+    }
+    localStorage.setItem(storageKey, JSON.stringify(saved))
+    if (saved.connectionVerified) {
+      localStorage.setItem('ironforge-workbench:connection-verified', 'true')
+    }
+    return saved
   },
 }
