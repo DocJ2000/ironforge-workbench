@@ -237,26 +237,30 @@ export function createGitLabClient(
       projectPath: string,
       iid: number,
     ): Promise<MergeRequestState> {
-      const [mergeRequestResponse, approvalsResponse] = await Promise.all([
-        request(
-          `${projectUrl('', projectPath)}/merge_requests/${iid}`,
-        ),
-        request(
-          `${projectUrl('', projectPath)}/merge_requests/${iid}/approvals`,
-        ),
-      ])
+      const mergeRequestResponse = await request(
+        `${projectUrl('', projectPath)}/merge_requests/${iid}`,
+      )
       const mergeRequest = (await mergeRequestResponse.json()) as {
         iid: number
         state: 'opened' | 'closed' | 'merged'
         web_url: string
       }
-      const approvals = (await approvalsResponse.json()) as {
-        approved: boolean
+      let approved = false
+      try {
+        const approvalsResponse = await request(
+          `${projectUrl('', projectPath)}/merge_requests/${iid}/approvals`,
+        )
+        const approvals = (await approvalsResponse.json()) as {
+          approved: boolean
+        }
+        approved = approvals.approved
+      } catch {
+        // Some GitLab roles can read an MR but cannot access its approvals API.
       }
       return {
         iid: mergeRequest.iid,
         state: mergeRequest.state,
-        approved: approvals.approved,
+        approved,
         webUrl: mergeRequest.web_url,
       }
     },

@@ -14,6 +14,39 @@ export interface ChargePreview {
   serialized: string
 }
 
+export interface ChargeFileSnapshot {
+  existed: boolean
+  contents?: Buffer
+}
+
+export async function captureChargeFile(
+  repositoryPath: string,
+): Promise<ChargeFileSnapshot> {
+  try {
+    return {
+      existed: true,
+      contents: await readFile(join(repositoryPath, 'charge.json')),
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return { existed: false }
+    }
+    throw error
+  }
+}
+
+export async function restoreChargeFile(
+  repositoryPath: string,
+  snapshot: ChargeFileSnapshot,
+) {
+  const chargePath = join(repositoryPath, 'charge.json')
+  if (!snapshot.existed) {
+    await rm(chargePath, { force: true })
+    return
+  }
+  await writeFile(chargePath, snapshot.contents ?? Buffer.alloc(0))
+}
+
 function selectedEntries(
   candidates: OutputPackageCandidate[],
   selectedIds: string[],

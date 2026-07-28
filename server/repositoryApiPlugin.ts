@@ -7,7 +7,9 @@ import type {
   MergeRequestDraft,
 } from '../src/domain/delivery.js'
 import {
+  captureChargeFile,
   previewCharge,
+  restoreChargeFile,
   writeChargeAtomically,
 } from './chargeGenerator.js'
 import {
@@ -22,6 +24,8 @@ import {
   pushRepositoryTag,
   type CreateBranchInput,
   pushRepositoryBranch,
+  repositoryBranchCommit,
+  validateRetryPushBranch,
 } from './gitBranchOperations.js'
 import {
   commitRepositoryChanges,
@@ -212,6 +216,8 @@ export function createRepositoryMiddleware({
       scanPackages: scanOutputPackages,
       previewCharge,
       writeCharge: writeChargeAtomically,
+      captureCharge: captureChargeFile,
+      restoreCharge: restoreChargeFile,
       previewCommit: previewRepositoryCommit,
       commit: commitRepositoryChanges,
       checkout: checkoutRepositoryBranch,
@@ -448,13 +454,18 @@ export function createRepositoryMiddleware({
         return
       }
       try {
+        const branch = validateRetryPushBranch(body.branch)
         const projectCredentials = await resolveCredentials(activeProjectId)
-        await pushRepositoryBranch(activeRepositoryPath, body.branch.trim(), {
+        await pushRepositoryBranch(activeRepositoryPath, branch, {
           sshKeyPath: projectCredentials.sshKeyPath,
           ...(projectCredentials.sshPassphrase ? { sshPassphrase: projectCredentials.sshPassphrase } : {}),
           ...(projectCredentials.sshAskPassPath ? { sshAskPassPath: projectCredentials.sshAskPassPath } : {}),
         })
-        sendJson(response, 200, { branch: body.branch.trim() })
+        const commit = await repositoryBranchCommit(
+          activeRepositoryPath,
+          branch,
+        )
+        sendJson(response, 200, { branch, commit })
       } catch (error) {
         sendJson(response, 400, { error: toFriendlyError(error) })
       }

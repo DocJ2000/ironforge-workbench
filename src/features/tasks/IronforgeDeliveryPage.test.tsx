@@ -44,3 +44,23 @@ it('requires the same project to be uploaded before an Ironforge delivery', () =
   expect(screen.getByRole('heading', { name: '项目还没有准备好交付' })).toBeVisible()
   expect(screen.getByRole('link', { name: '去上传这个项目' })).toHaveAttribute('href', '/workspace/upload/gitlab')
 })
+
+it('rejects a stale upload receipt from an older commit', () => {
+  const repository = {
+    ...getDemoRepository(),
+    changes: [],
+    ahead: 0,
+    behind: 0,
+    latestCommit: 'newer-commit',
+  }
+  localStorage.setItem(`ironforge-workbench:gitlab-upload:${repository.id}`, JSON.stringify({
+    branch: repository.branch,
+    commit: 'older-commit',
+    createdAt: new Date().toISOString(),
+  }))
+
+  render(<MemoryRouter><IronforgeDeliveryPage repository={repository} /></MemoryRouter>)
+
+  expect(screen.getByRole('heading', { name: '项目还没有准备好交付' })).toBeVisible()
+  localStorage.clear()
+})

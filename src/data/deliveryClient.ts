@@ -54,7 +54,7 @@ export interface DeliveryApi {
   preview: (draft: DeliveryDraft) => Promise<DeliveryPreview>
   execute: (draft: DeliveryDraft) => Promise<DeliveryExecutionResult>
   syncGitLab: (draft: GitLabSyncDraft) => Promise<GitLabSyncResult>
-  retryPush: (branch: string) => Promise<{ branch: string }>
+  retryPush: (branch: string) => Promise<{ branch: string; commit: string }>
   createMergeRequest: (
     draft: MergeRequestDraft,
   ) => Promise<MergeRequestResult>

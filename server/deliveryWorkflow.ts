@@ -12,7 +12,10 @@ import {
   validateGitLabSyncDraft,
   validateMergeRequestDraft,
 } from '../src/domain/delivery.js'
-import type { ChargePreview } from './chargeGenerator.js'
+import type {
+  ChargeFileSnapshot,
+  ChargePreview,
+} from './chargeGenerator.js'
 import type {
   CreatedMergeRequest,
   CreateMergeRequestInput,
@@ -46,6 +49,11 @@ export interface DeliveryWorkflowDependencies {
   writeCharge: (
     repositoryPath: string,
     preview: ChargePreview,
+  ) => Promise<void>
+  captureCharge: (repositoryPath: string) => Promise<ChargeFileSnapshot>
+  restoreCharge: (
+    repositoryPath: string,
+    snapshot: ChargeFileSnapshot,
   ) => Promise<void>
   previewCommit: (
     repositoryPath: string,
@@ -151,11 +159,24 @@ export async function syncGitLab(
     packages,
     draft.selectedPackageIds,
   )
-  await dependencies.writeCharge(repositoryPath, charge)
-
+  const chargeSnapshot = await dependencies.captureCharge(repositoryPath)
   const commitInput = commitRequest(draft, charge.changed)
-  await dependencies.previewCommit(repositoryPath, commitInput)
-  const commit = await dependencies.commit(repositoryPath, commitInput)
+  let commit: CommitResult
+  try {
+    await dependencies.writeCharge(repositoryPath, charge)
+    await dependencies.previewCommit(repositoryPath, commitInput)
+    commit = await dependencies.commit(repositoryPath, commitInput)
+  } catch (error) {
+    try {
+      await dependencies.restoreCharge(repositoryPath, chargeSnapshot)
+    } catch (restoreError) {
+      throw new AggregateError(
+        [error, restoreError],
+        '提交失败，并且 charge.json 未能恢复，请让技术同事检查工程文件。',
+      )
+    }
+    throw error
+  }
   await dependencies.push(repositoryPath, draft.branch)
   if (draft.tag) {
     await dependencies.createTag(repositoryPath, draft.tag, commit.commit)

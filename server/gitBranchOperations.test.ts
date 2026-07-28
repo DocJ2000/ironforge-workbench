@@ -10,7 +10,13 @@ import {
   createAnnotatedTag,
   createRepositoryBranch,
   gitRemoteEnvironment,
+  validateRetryPushBranch,
 } from './gitBranchOperations'
+
+it('only allows retrying uploads to development branches', () => {
+  expect(() => validateRetryPushBranch('main')).toThrow('只能上传到开发分支')
+  expect(() => validateRetryPushBranch('dev/T2')).not.toThrow()
+})
 
 const repositories: string[] = []
 

@@ -5,7 +5,12 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { previewCharge, writeChargeAtomically } from './chargeGenerator'
+import {
+  captureChargeFile,
+  previewCharge,
+  restoreChargeFile,
+  writeChargeAtomically,
+} from './chargeGenerator'
 import { syncGitLab } from './deliveryWorkflow'
 import {
   assertTagAvailable,
@@ -87,6 +92,8 @@ describe('tagged delivery release flow', () => {
         scanPackages: scanOutputPackages,
         previewCharge,
         writeCharge: writeChargeAtomically,
+        captureCharge: captureChargeFile,
+        restoreCharge: restoreChargeFile,
         previewCommit: previewRepositoryCommit,
         commit: commitRepositoryChanges,
         checkout: checkoutRepositoryBranch,

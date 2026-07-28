@@ -57,6 +57,13 @@ export interface CreateBranchInput {
   startPoint: string
 }
 
+export function validateRetryPushBranch(branch: string) {
+  if (!/^dev\/[A-Za-z0-9._/-]+$/.test(branch.trim())) {
+    throw new Error('只能上传到开发分支')
+  }
+  return branch.trim()
+}
+
 export async function createRepositoryBranch(
   repositoryPath: string,
   input: CreateBranchInput,
@@ -95,6 +102,13 @@ export async function pushRepositoryBranch(
   credentials?: GitRemoteCredentials,
 ) {
   await git(repositoryPath, ['push', '--set-upstream', 'origin', branch], credentials)
+}
+
+export async function repositoryBranchCommit(
+  repositoryPath: string,
+  branch: string,
+) {
+  return git(repositoryPath, ['rev-parse', '--verify', branch])
 }
 
 export async function assertTagAvailable(

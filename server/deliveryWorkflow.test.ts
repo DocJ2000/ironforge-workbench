@@ -63,6 +63,11 @@ function dependencies(order: string[] = []): DeliveryWorkflowDependencies {
     writeCharge: vi.fn().mockImplementation(async () => {
       order.push('charge')
     }),
+    captureCharge: vi.fn().mockResolvedValue({
+      existed: true,
+      contents: Buffer.from('[]\n'),
+    }),
+    restoreCharge: vi.fn().mockResolvedValue(undefined),
     previewCommit: vi.fn().mockResolvedValue({
       branch: 'dev/T2',
       message: syncDraft.message,
@@ -149,6 +154,27 @@ describe('syncGitLab', () => {
     expect(deps.push).toHaveBeenCalledWith('C:/fake-repository', 'dev/T2')
     expect(deps.createMergeRequest).not.toHaveBeenCalled()
     expect(result).toEqual({ branch: 'dev/T2', commit: 'abc1234' })
+  })
+
+  it('restores charge.json when commit preparation fails', async () => {
+    const deps = dependencies()
+    vi.mocked(deps.previewCommit).mockRejectedValueOnce(
+      new Error('preview failed'),
+    )
+
+    await expect(
+      syncGitLab(
+        'C:/fake-repository',
+        { draft: syncDraft, confirmed: true },
+        deps,
+      ),
+    ).rejects.toThrow('preview failed')
+
+    expect(deps.restoreCharge).toHaveBeenCalledWith(
+      'C:/fake-repository',
+      expect.objectContaining({ existed: true }),
+    )
+    expect(deps.push).not.toHaveBeenCalled()
   })
 
   it('checks uniqueness before commit and pushes an optional version Tag', async () => {

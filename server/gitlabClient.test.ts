@@ -150,6 +150,24 @@ describe('GitLabClient', () => {
     ).rejects.toThrow('当前分支已经存在开放中的 MR')
   })
 
+  it('still returns MR state when approvals are not permitted', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        iid: 9,
+        state: 'merged',
+        web_url: 'https://gitlab/project/-/merge_requests/9',
+      }))
+      .mockResolvedValueOnce(jsonResponse({ message: 'Forbidden' }, 403))
+    const client = createGitLabClient(config, fetcher)
+
+    await expect(client.getMergeRequest('project', 9)).resolves.toEqual({
+      iid: 9,
+      state: 'merged',
+      approved: false,
+      webUrl: 'https://gitlab/project/-/merge_requests/9',
+    })
+  })
+
   it('bounds history requests instead of loading an unlimited repository history', async () => {
     const rows = Array.from({ length: 100 }, (_, index) => ({
       id: `commit-${index}`,
