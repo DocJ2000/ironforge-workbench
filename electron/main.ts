@@ -24,6 +24,7 @@ import { createUpdateBackup } from './updateBackup.js'
 import {
   mayTrustInternalCertificate,
   mayTrustInternalCertificateForHosts,
+  mayTrustEmbeddedNavigationCertificate,
 } from './certificatePolicy.js'
 import { AppSettingsStore, type AppSettings } from './appSettingsStore.js'
 
@@ -83,6 +84,7 @@ function registerIdentityHandlers(service: IdentityKeyService) {
 function registerIronforgeHandlers() {
   const ironforgeSession = session.fromPartition('persist:ironforge')
   const trustedHosts = new Set<string>()
+  const trackedContents = new Set<number>()
   ironforgeSession.setCertificateVerifyProc((request, callback) => {
     callback(mayTrustInternalCertificateForHosts(
       request.verificationResult,
@@ -103,6 +105,8 @@ function registerIronforgeHandlers() {
   }
 
   const trackLoginNavigation = (contents: WebContents) => {
+    trackedContents.add(contents.id)
+    contents.once('destroyed', () => trackedContents.delete(contents.id))
     contents.on('will-navigate', (_event, url) => trustNavigationTarget(url))
     contents.on('will-redirect', (_event, url) => trustNavigationTarget(url))
     contents.on('did-create-window', (child) => {
@@ -129,6 +133,16 @@ function registerIronforgeHandlers() {
       })
     })
   }
+
+  app.on('certificate-error', (event, contents, url, error, _certificate, callback) => {
+    const trusted = mayTrustEmbeddedNavigationCertificate(
+      error,
+      url,
+      Boolean(contents && trackedContents.has(contents.id)),
+    )
+    if (trusted) event.preventDefault()
+    callback(trusted)
+  })
 
   ipcMain.handle('ironforge:open', (_event, url: string) => {
     const target = new URL(url)

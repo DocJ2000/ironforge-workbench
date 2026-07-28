@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   mayTrustInternalCertificate,
   mayTrustInternalCertificateForHosts,
+  mayTrustEmbeddedNavigationCertificate,
 } from './certificatePolicy'
 
 describe('mayTrustInternalCertificate', () => {
@@ -23,6 +24,26 @@ describe('mayTrustInternalCertificate', () => {
       error,
       url,
       'https://gitlfs.lab.tp',
+    )).toBe(false)
+  })
+})
+
+describe('mayTrustEmbeddedNavigationCertificate', () => {
+  it('allows an authority error only inside a tracked HTTPS login window', () => {
+    expect(mayTrustEmbeddedNavigationCertificate(
+      'net::ERR_CERT_AUTHORITY_INVALID',
+      'https://sso.example.test/login',
+      true,
+    )).toBe(true)
+    expect(mayTrustEmbeddedNavigationCertificate(
+      'net::ERR_CERT_AUTHORITY_INVALID',
+      'https://sso.example.test/login',
+      false,
+    )).toBe(false)
+    expect(mayTrustEmbeddedNavigationCertificate(
+      'net::ERR_CERT_DATE_INVALID',
+      'https://sso.example.test/login',
+      true,
     )).toBe(false)
   })
 })

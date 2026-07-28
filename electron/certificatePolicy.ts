@@ -22,3 +22,16 @@ export function mayTrustInternalCertificateForHosts(
   return error === 'net::ERR_CERT_AUTHORITY_INVALID'
     && trustedHosts.has(hostname.toLowerCase())
 }
+
+export function mayTrustEmbeddedNavigationCertificate(
+  error: string,
+  requestUrl: string,
+  trackedWindow: boolean,
+) {
+  if (!trackedWindow || error !== 'net::ERR_CERT_AUTHORITY_INVALID') return false
+  try {
+    return new URL(requestUrl).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
