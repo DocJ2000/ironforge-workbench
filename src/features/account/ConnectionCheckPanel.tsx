@@ -3,12 +3,24 @@ import { useState } from 'react'
 import type { ConnectionCheckResult } from '../../domain/connection'
 import './connectionCheckPanel.css'
 
-export function ConnectionCheckPanel({ onCheck }: { onCheck: () => Promise<ConnectionCheckResult> }) {
+export function ConnectionCheckPanel({
+  onCheck,
+  onConnected,
+}: {
+  onCheck: () => Promise<ConnectionCheckResult>
+  onConnected?: () => void
+}) {
   const [result, setResult] = useState<ConnectionCheckResult | null>(null)
   const [busy, setBusy] = useState(false)
   async function run() {
     setBusy(true)
-    try { setResult(await onCheck()) } finally { setBusy(false) }
+    try {
+      const nextResult = await onCheck()
+      setResult(nextResult)
+      if (nextResult.connected) onConnected?.()
+    } finally {
+      setBusy(false)
+    }
   }
   const checks = result?.checks ?? [
     { id: 'network', label: '公司网络', status: 'skipped' as const },
@@ -22,7 +34,16 @@ export function ConnectionCheckPanel({ onCheck }: { onCheck: () => Promise<Conne
     </div><button className="button button--secondary" disabled={busy} onClick={() => void run()} type="button"><RefreshCw size={15} />{busy ? '正在检查' : '检查连接'}</button></div>
     <ul className="connection-check__list">{checks.map((item) => <li key={item.id}>
       {item.status === 'passed' ? <CheckCircle2 size={17} /> : item.status === 'failed' ? <XCircle size={17} /> : <CircleDashed size={17} />}
-      <span><strong>{item.label}</strong>{'error' in item && item.error ? <small>{item.error.nextAction}</small> : null}</span>
+      <span>
+        <strong>{item.label}</strong>
+        {'error' in item && item.error ? (
+          <small>
+            <b>{item.error.title}</b>
+            {item.error.detail}
+            <em>{item.error.nextAction}</em>
+          </small>
+        ) : null}
+      </span>
     </li>)}</ul>
   </section>
 }

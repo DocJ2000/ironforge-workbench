@@ -149,4 +149,28 @@ describe('GitLabClient', () => {
       }),
     ).rejects.toThrow('当前分支已经存在开放中的 MR')
   })
+
+  it('bounds history requests instead of loading an unlimited repository history', async () => {
+    const rows = Array.from({ length: 100 }, (_, index) => ({
+      id: `commit-${index}`,
+      short_id: `${index}`.padStart(8, '0'),
+      title: `Commit ${index}`,
+      message: `Commit ${index}`,
+      author_name: 'Engineer',
+      committed_date: '2026-07-27T12:00:00Z',
+    }))
+    const fetcher = vi.fn().mockImplementation(() => new Response(
+      JSON.stringify(rows),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'x-next-page': '2' },
+      },
+    ))
+    const client = createGitLabClient(config, fetcher)
+
+    const commits = await client.listCommits('project', 120)
+
+    expect(commits).toHaveLength(120)
+    expect(fetcher).toHaveBeenCalledTimes(2)
+  })
 })

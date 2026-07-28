@@ -22,7 +22,6 @@ import {
   pushRepositoryTag,
   type CreateBranchInput,
   pushRepositoryBranch,
-  probeRepositoryRemote,
 } from './gitBranchOperations.js'
 import {
   commitRepositoryChanges,
@@ -38,7 +37,9 @@ import { pullRepository } from './repositoryPull.js'
 import { cloneRepository } from './repositoryClone.js'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { readFile } from 'node:fs/promises'
 import { checkConnection } from './connectionCheck.js'
+import { probeCompanyNetwork } from './networkProbe.js'
 import { toFriendlyError } from './friendlyError.js'
 
 type NextFunction = (error?: unknown) => void
@@ -66,6 +67,7 @@ type AttachmentUploader = (input: {
 
 interface RepositoryMiddlewareOptions {
   repositoryPath: string
+  fetcher?: typeof fetch
   registry?: Pick<ProjectRegistry, 'list' | 'add' | 'remove' | 'resolve'>
   scan?: RepositoryScanner
   preview?: CommitPreviewer
@@ -168,6 +170,7 @@ async function readUpload(request: IncomingMessage) {
 
 export function createRepositoryMiddleware({
   repositoryPath,
+  fetcher = fetch,
   registry,
   scan = scanRepository,
   preview = previewRepositoryCommit,
@@ -194,7 +197,7 @@ export function createRepositoryMiddleware({
       baseUrl: projectCredentials.baseUrl,
       token: projectCredentials.token,
       recommendedReviewers: [],
-    })
+    }, fetcher)
     const remoteCredentials = {
       sshKeyPath: projectCredentials.sshKeyPath,
       ...(projectCredentials.sshPassphrase
@@ -262,7 +265,7 @@ export function createRepositoryMiddleware({
         baseUrl: projectCredentials.baseUrl,
         token: projectCredentials.token,
         recommendedReviewers: [],
-      })
+      }, fetcher)
       return gitLab.uploadMarkdownFile(
         gitLabProjectPath(repository.gitlabPath),
         upload,
@@ -288,6 +291,7 @@ export function createRepositoryMiddleware({
     const isPullRequest = path === '/api/gitlab/pull'
   const isCloneRequest = path === '/api/gitlab/clone'
     const isConnectionRequest = path === '/api/connection/check'
+    const isHistoryRequest = path === '/api/gitlab/history'
 
     if (
       !isProjectsRequest &&
@@ -302,6 +306,7 @@ export function createRepositoryMiddleware({
       && !isPullRequest
       && !isCloneRequest
       && !isConnectionRequest
+      && !isHistoryRequest
     ) {
       next()
       return
@@ -325,8 +330,10 @@ export function createRepositoryMiddleware({
           return
         }
         if (request.method === 'DELETE') {
-          const body = await readJson<{ id: string }>(request)
-          sendJson(response, 200, { project: await registry.remove(body.id) })
+          const body = await readJson<{ id: string; deleteLocalFiles?: boolean }>(request)
+          sendJson(response, 200, {
+            project: await registry.remove(body.id, body.deleteLocalFiles === true),
+          })
           return
         }
         sendJson(response, 405, { error: 'Method not allowed' })
@@ -356,7 +363,7 @@ export function createRepositoryMiddleware({
         const cloned = clone
           ? await clone(body.input, remoteCredentials)
           : await cloneRepository({ ...body.input, credentials: remoteCredentials })
-        const project = registry ? await registry.add(cloned.path) : cloned
+        const project = registry ? await registry.add(cloned.path, true) : cloned
         sendJson(response, 201, { project })
       } catch (error) {
         sendJson(response, 400, {
@@ -367,9 +374,41 @@ export function createRepositoryMiddleware({
     }
 
     const expectedMethod =
-      isRepositoryRequest || isDeliveryRequest || isConnectionRequest ? 'GET' : 'POST'
+      isRepositoryRequest || isDeliveryRequest || isConnectionRequest || isHistoryRequest ? 'GET' : 'POST'
     if (request.method !== expectedMethod) {
       sendJson(response, 405, { error: 'Method not allowed' })
+      return
+    }
+
+    if (isConnectionRequest) {
+      try {
+        const projectCredentials = await resolveCredentials('computer')
+        const gitLab = createGitLabClient({
+          baseUrl: projectCredentials.baseUrl,
+          token: projectCredentials.token,
+          recommendedReviewers: [],
+        }, fetcher)
+        const result = await checkConnection(
+          repositoryPath,
+          projectCredentials,
+          {
+            probeServer: probeCompanyNetwork,
+            probeApi: async () => gitLab.currentUser(),
+            probeSsh: async () => {
+              const publicKey = await readFile(
+                `${projectCredentials.sshKeyPath}.pub`,
+                'utf8',
+              )
+              if (!(await gitLab.currentUserHasSshKey(publicKey))) {
+                throw new Error('identity public key is not registered in GitLab')
+              }
+            },
+          },
+        )
+        sendJson(response, 200, result)
+      } catch (error) {
+        sendJson(response, 400, { error: toFriendlyError(error) })
+      }
       return
     }
 
@@ -408,34 +447,36 @@ export function createRepositoryMiddleware({
       return
     }
 
-    if (isConnectionRequest) {
+    if (isHistoryRequest) {
       try {
         const projectCredentials = await resolveCredentials('computer')
+        const repository = await scan(activeRepositoryPath)
         const gitLab = createGitLabClient({
           baseUrl: projectCredentials.baseUrl,
           token: projectCredentials.token,
           recommendedReviewers: [],
-        })
-        const result = await checkConnection(
-          activeRepositoryPath,
-          projectCredentials,
-          {
-            probeServer: async (baseUrl) => {
-              const response = await fetch(baseUrl, {
-                method: 'HEAD',
-                signal: AbortSignal.timeout(5000),
-              })
-              if (response.status >= 500) {
-                throw new Error(`company server ${response.status}`)
-              }
-            },
-            probeApi: async () => gitLab.currentUser(),
-            probeSsh: probeRepositoryRemote,
-          },
+        }, fetcher)
+        const commits = await gitLab.listCommits(
+          gitLabProjectPath(repository.gitlabPath),
         )
-        sendJson(response, 200, result)
+        sendJson(response, 200, {
+          history: commits.map((commit) => ({
+            id: commit.id,
+            type: 'commit',
+            title: commit.title,
+            description: commit.message.trim() || commit.title,
+            actor: commit.authorName,
+            timestamp: new Date(commit.committedAt).toLocaleString('zh-CN', {
+              hour12: false,
+            }),
+            reference: commit.shortId,
+            tone: 'info',
+          })),
+        })
       } catch (error) {
-        sendJson(response, 400, { error: toFriendlyError(error) })
+        sendJson(response, 400, {
+          error: error instanceof Error ? error.message : '无法读取 GitLab 历史',
+        })
       }
       return
     }
@@ -558,7 +599,7 @@ export function createRepositoryMiddleware({
             baseUrl: projectCredentials.baseUrl,
             token: projectCredentials.token,
             recommendedReviewers: [],
-          })
+          }, fetcher)
           const reviewers = await gitLab.listReviewers(
             gitLabProjectPath(repository.gitlabPath),
           )

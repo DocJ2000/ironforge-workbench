@@ -9,6 +9,13 @@ const rules: Array<{
   nextAction: string
 }> = [
   {
+    code: 'company_certificate_untrusted',
+    pattern: /SELF_SIGNED_CERT_IN_CHAIN|self[- ]signed certificate|certificate.*trust|unable to verify/i,
+    title: '这台电脑还没有信任公司证书',
+    detail: '软件无法验证公司 GitLab 的安全证书，这与软件访问码和身份钥匙密码无关。',
+    nextAction: '请让 IT 同事确认公司证书已经安装到 Windows，然后重新打开软件再检查。',
+  },
+  {
     code: 'company_network_unreachable',
     pattern: /ETIMEDOUT|ENETUNREACH|ECONNREFUSED|network|fetch failed|timeout/i,
     title: '暂时无法连接公司服务器',
@@ -87,8 +94,12 @@ const rules: Array<{
   },
 ]
 
-function messageOf(cause: unknown) {
-  return cause instanceof Error ? cause.message : String(cause ?? '')
+function messageOf(cause: unknown): string {
+  if (!(cause instanceof Error)) return String(cause ?? '')
+  const nested: string = 'cause' in cause && cause.cause
+    ? ` ${messageOf(cause.cause)}`
+    : ''
+  return `${cause.message}${nested}`
 }
 
 function redact(message: string) {

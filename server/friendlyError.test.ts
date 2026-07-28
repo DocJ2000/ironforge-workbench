@@ -17,6 +17,16 @@ describe('toFriendlyError', () => {
     })
   })
 
+  it('distinguishes an untrusted company certificate from a bad access code', () => {
+    const cause = new Error('fetch failed', {
+      cause: new Error('SELF_SIGNED_CERT_IN_CHAIN'),
+    })
+    expect(toFriendlyError(cause)).toMatchObject({
+      code: 'company_certificate_untrusted',
+      filesSafe: true,
+    })
+  })
+
   it('redacts and bounds unknown technical details', () => {
     const result = toFriendlyError(
       new Error(`password=secret-value\n${'x'.repeat(400)}`),

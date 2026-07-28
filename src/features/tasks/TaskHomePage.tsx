@@ -1,4 +1,4 @@
-import { FolderOpen, FolderPlus, GitBranch, HardDrive } from 'lucide-react'
+import { AlertTriangle, FolderOpen, FolderPlus, GitBranch, HardDrive, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { RegisteredProject } from '../../data/repositoryContext'
@@ -16,14 +16,19 @@ interface Props {
   selectedId: string
   onSelect: (id: string) => void
   onAdd: (path: string) => Promise<void>
+  onRemove: (id: string, deleteLocalFiles?: boolean) => Promise<void>
 }
 
-export function TaskHomePage({ projects, onSelect, onAdd }: Props) {
+export function TaskHomePage({ projects, onSelect, onAdd, onRemove }: Props) {
   const navigate = useNavigate()
   const [showAdd, setShowAdd] = useState(false)
   const [path, setPath] = useState('')
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [projectToRemove, setProjectToRemove] = useState<RegisteredProject | null>(null)
+  const [deleteLocalFiles, setDeleteLocalFiles] = useState(false)
+  const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState<string | null>(null)
 
   function openProject(id: string) {
     onSelect(id)
@@ -91,7 +96,8 @@ export function TaskHomePage({ projects, onSelect, onAdd }: Props) {
         {projects.map((project) => {
           const summary = summarizeRepository(project.repository)
           return (
-            <button className="project-row" key={project.id} onClick={() => openProject(project.id)} type="button">
+            <div className="project-row" key={project.id}>
+              <button aria-label={`选择 ${project.repository.displayName}`} className="project-row__main" onClick={() => openProject(project.id)} type="button">
               <span className="project-row__identity">
                 <span className="project-row__icon"><HardDrive size={20} /></span>
                 <span><strong>{project.repository.displayName}</strong><small>{project.repository.path}</small></span>
@@ -102,10 +108,46 @@ export function TaskHomePage({ projects, onSelect, onAdd }: Props) {
                 <span className={`project-state project-state--${summary.syncTone}`}>{summary.syncLabel}</span>
               </span>
               <span className="project-row__open">选择项目</span>
-            </button>
+              </button>
+              <button
+                aria-label={`移除 ${project.repository.displayName}`}
+                className="project-row__remove"
+                onClick={() => { setProjectToRemove(project); setDeleteLocalFiles(false); setRemoveError(null) }}
+                title="移除项目"
+                type="button"
+              >
+                <Trash2 size={17} />
+              </button>
+            </div>
           )
         })}
       </div>
+      {projectToRemove ? (
+        <div className="dialog-backdrop" role="presentation">
+          <section aria-modal="true" className="dialog-card project-remove-dialog" role="dialog">
+            <h2>从软件中移除这个项目？</h2>
+            <p><strong>{projectToRemove.repository.displayName}</strong></p>
+            <p className="project-remove-dialog__path">{projectToRemove.repository.path}</p>
+            {projectToRemove.managed ? <label className="project-remove-dialog__danger">
+              <input checked={deleteLocalFiles} onChange={(event) => setDeleteLocalFiles(event.target.checked)} type="checkbox" />
+              <span><strong>同时删除这台电脑里的整个项目文件夹</strong><small>危险：图纸、模型和其他本地文件都会被永久删除，无法从回收站恢复。</small></span>
+            </label> : null}
+            {deleteLocalFiles ? <p className="project-remove-dialog__warning"><AlertTriangle size={17} />请再次核对上面的完整路径。GitLab 服务器上的项目不会被删除。</p> : <p>默认只从软件列表中移除，电脑里的文件和 GitLab 服务器都不会改变。</p>}
+            {removeError ? <p className="add-project-error">{removeError}</p> : null}
+            <div className="connection-wizard__actions">
+              <button className="button button--secondary" disabled={removing} onClick={() => setProjectToRemove(null)} type="button">取消</button>
+              <button className={deleteLocalFiles ? 'button button--danger' : 'button button--primary'} disabled={removing} onClick={() => {
+                setRemoving(true)
+                setRemoveError(null)
+                void onRemove(projectToRemove.id, deleteLocalFiles)
+                  .then(() => setProjectToRemove(null))
+                  .catch((cause) => setRemoveError(cause instanceof Error ? cause.message : '移除项目失败'))
+                  .finally(() => setRemoving(false))
+              }} type="button">{removing ? '正在处理' : deleteLocalFiles ? '确认移除并删除本地文件' : '只从软件列表移除'}</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   )
 }

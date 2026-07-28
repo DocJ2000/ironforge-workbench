@@ -4,10 +4,12 @@ import { getDemoRepository } from '../../data/demoRepository'
 import { WorkspacePage } from './WorkspacePage'
 
 describe('WorkspacePage', () => {
-  it('requires explicit selection before a deleted CAD file can be committed', () => {
+  it('shows deleted design files without requiring a second confirmation', () => {
     render(<WorkspacePage repository={getDemoRepository()} />)
 
-    expect(screen.getByText('删除的 CAD 文件需要逐项确认')).toBeVisible()
+    expect(screen.getByText(/个已删除的设计文件/)).toBeVisible()
+    expect(screen.queryByText(/尚未确认|逐项确认/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '确认全部删除' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '保存设计版本' })).toBeDisabled()
   })
 

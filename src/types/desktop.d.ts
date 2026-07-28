@@ -50,6 +50,9 @@ interface Window {
       download: () => Promise<DesktopUpdateStatus>
       install: () => Promise<DesktopUpdateStatus>
     }
+    userData?: {
+      reset: () => Promise<boolean>
+    }
   }
 }
 

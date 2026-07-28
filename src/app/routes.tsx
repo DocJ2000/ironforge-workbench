@@ -23,6 +23,7 @@ export function AppRoutes() {
   const {
     operationReady,
     addProject,
+    removeProject,
     projects,
     repository,
     selectedProjectId,
@@ -57,6 +58,7 @@ export function AppRoutes() {
             <TaskHomePage
               onSelect={selectProject}
               onAdd={addProject}
+              onRemove={removeProject}
               projects={projects}
               selectedId={selectedProjectId}
             />
@@ -74,7 +76,7 @@ export function AppRoutes() {
         <Route path="/workspace/retrieve" element={operationReady ? <CredentialGate projectId={selectedProjectId}><RetrievePage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></CredentialGate> : <ProjectUnavailable repository={repository} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
-        <Route path="/history" element={operationReady ? <HistoryPage repository={repository} /> : <ProjectUnavailable repository={repository} />} />
+        <Route path="/history" element={operationReady ? <HistoryPage projectId={selectedProjectId} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
         </Route>
       </Route>
     </Routes>

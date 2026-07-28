@@ -9,12 +9,15 @@ import {
   Search,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { StatusBadge } from '../../components/StatusBadge'
+import { fetchGitLabHistory } from '../../data/historyClient'
 import type { HistoryEvent, RepositorySnapshot } from '../../domain/repository'
 import './history.css'
 
 interface HistoryPageProps {
   repository: RepositorySnapshot
+  projectId?: string
 }
 
 const eventIcons: Record<HistoryEvent['type'], typeof GitCommitHorizontal> = {
@@ -33,7 +36,20 @@ const eventTerms: Record<HistoryEvent['type'], string> = {
   publish: '发布到铁炉堡',
 }
 
-export function HistoryPage({ repository }: HistoryPageProps) {
+export function HistoryPage({ repository, projectId }: HistoryPageProps) {
+  const [history, setHistory] = useState(repository.history)
+  const [loading, setLoading] = useState(Boolean(projectId))
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!projectId) return
+    setLoading(true)
+    setError(null)
+    void fetchGitLabHistory(projectId)
+      .then(setHistory)
+      .catch((cause) => setError(cause instanceof Error ? cause.message : '无法读取 GitLab 历史'))
+      .finally(() => setLoading(false))
+  }, [projectId])
   return (
     <div className="page page--history">
       <Link className="project-actions__back" to="/workspace/project">
@@ -48,7 +64,7 @@ export function HistoryPage({ repository }: HistoryPageProps) {
             每次保存、上传、审核和发布都会留下记录。
           </p>
         </div>
-        <StatusBadge tone="info">{repository.history.length} 条记录</StatusBadge>
+        <StatusBadge tone="info">{loading ? '正在读取 GitLab' : `${history.length} 条记录`}</StatusBadge>
       </header>
 
       <section className="history-summary">
@@ -58,7 +74,7 @@ export function HistoryPage({ repository }: HistoryPageProps) {
         </div>
         <div>
           <span>操作记录</span>
-          <strong>{repository.history.length} 条</strong>
+          <strong>{loading ? '正在读取' : `${history.length} 条`}</strong>
         </div>
         <div>
           <span>管理员审核</span>
@@ -84,7 +100,7 @@ export function HistoryPage({ repository }: HistoryPageProps) {
         <div className="history-toolbar">
           <div>
             <h2>操作时间线</h2>
-            <p>按发生顺序展示项目保存、审核和铁炉堡发布状态。</p>
+            <p>直接读取 GitLab 上的项目提交记录，最新记录显示在最上方。</p>
           </div>
           <div className="history-toolbar__tools">
             <label className="search-field">
@@ -105,7 +121,9 @@ export function HistoryPage({ repository }: HistoryPageProps) {
             <span>时间</span>
             <span>引用</span>
           </div>
-          {repository.history.map((event) => {
+          {error ? <div className="workspace-feedback workspace-feedback--error">{error}</div> : null}
+          {!loading && !error && history.length === 0 ? <div className="workspace-feedback">GitLab 上还没有提交记录。</div> : null}
+          {history.map((event) => {
             const Icon = eventIcons[event.type]
             return (
               <div className="history-row" key={event.id}>

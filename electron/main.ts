@@ -1,15 +1,16 @@
-import { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, safeStorage, session, shell } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CredentialVault, type GitLabCredentialInput } from './credentialVault.js'
 import { startLocalServer } from './localServer.js'
 import { createRepositoryMiddleware } from '../server/repositoryApiPlugin.js'
 import { ProjectRegistry } from '../server/projectRegistry.js'
-import { access, mkdir, writeFile } from 'node:fs/promises'
+import { access, mkdir, rm, writeFile } from 'node:fs/promises'
 import { IdentityKeyService } from './identityKeyService.js'
 import electronUpdater from 'electron-updater'
 import { UpdateCoordinator } from './updateCoordinator.js'
 import { createUpdateBackup } from './updateBackup.js'
+import { mayTrustInternalCertificate } from './certificatePolicy.js'
 
 const { autoUpdater } = electronUpdater
 app.setPath(
@@ -83,6 +84,26 @@ function registerIronforgeHandlers() {
         partition: 'persist:ironforge',
       },
     })
+    window.webContents.setWindowOpenHandler(({ url: popupUrl }) => {
+      const popupTarget = new URL(popupUrl)
+      if (popupTarget.protocol !== 'https:' && popupTarget.protocol !== 'http:') {
+        return { action: 'deny' }
+      }
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 1100,
+          height: 760,
+          title: '登录铁炉堡',
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+            partition: 'persist:ironforge',
+          },
+        },
+      }
+    })
     void window.loadURL(target.toString())
     return true
   })
@@ -93,6 +114,24 @@ function registerUpdateHandlers(coordinator: UpdateCoordinator) {
   ipcMain.handle('updates:check', () => coordinator.check())
   ipcMain.handle('updates:download', () => coordinator.download())
   ipcMain.handle('updates:install', () => coordinator.install())
+}
+
+function registerResetHandler(userDataPath: string) {
+  ipcMain.handle('user-data:reset', async () => {
+    await session.fromPartition('persist:ironforge').clearStorageData()
+    await Promise.all([
+      rm(join(userDataPath, 'gitlab-credentials.dat'), { force: true }),
+      rm(join(userDataPath, 'identities'), { recursive: true, force: true }),
+      rm(join(userDataPath, 'projects.json'), { force: true }),
+      rm(join(userDataPath, 'helpers'), { recursive: true, force: true }),
+      rm(join(userDataPath, 'removed-legacy-project-seed'), { force: true }),
+    ])
+    setTimeout(() => {
+      app.relaunch()
+      app.exit(0)
+    }, 300)
+    return true
+  })
 }
 
 let productionOrigin: string | null = null
@@ -132,6 +171,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   const userDataPath = app.getPath('userData')
   const projectRegistryPath = join(userDataPath, 'projects.json')
+  registerResetHandler(userDataPath)
   registerUpdateHandlers(
     new UpdateCoordinator({
       updater: autoUpdater,
@@ -168,6 +208,17 @@ app.whenReady().then(async () => {
     join(userDataPath, 'gitlab-credentials.dat'),
     safeStorage,
   )
+  session.defaultSession.setCertificateVerifyProc((request, callback) => {
+    void vault.get('computer')
+      .then((credentials) => {
+        callback(mayTrustInternalCertificate(
+          request.verificationResult,
+          `https://${request.hostname}`,
+          credentials.baseUrl,
+        ) ? 0 : -3)
+      })
+      .catch(() => callback(-3))
+  })
   registerCredentialHandlers(vault)
   registerFileDialogHandlers()
   registerIronforgeHandlers()
@@ -187,13 +238,16 @@ app.whenReady().then(async () => {
       'utf8',
     )
     const repositoryPath = app.getPath('documents')
-    const registry = new ProjectRegistry(
-      projectRegistryPath,
-      repositoryPath,
-    )
+    const registry = new ProjectRegistry(projectRegistryPath)
+    const legacySeedMigration = join(userDataPath, 'removed-legacy-project-seed')
+    if (!(await access(legacySeedMigration).then(() => true).catch(() => false))) {
+      await registry.removeLegacySeed(repositoryPath)
+      await writeFile(legacySeedMigration, 'completed\n', 'utf8')
+    }
     const middleware = createRepositoryMiddleware({
       repositoryPath,
       registry,
+      fetcher: net.fetch as typeof fetch,
       credentials: async (projectId) => ({
         ...(await vault.get(projectId)),
         sshAskPassPath,

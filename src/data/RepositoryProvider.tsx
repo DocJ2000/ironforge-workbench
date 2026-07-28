@@ -39,9 +39,16 @@ export function RepositoryProvider({ children }: PropsWithChildren) {
           repository: (await fetchRepositorySnapshot(record.id)).repository,
           connected: true,
           lastOpened: new Date(record.addedAt).toLocaleDateString('zh-CN'),
+          managed: record.managed === true,
         })),
       )
-      if (!snapshots.length) throw new Error('还没有登记本地项目')
+      if (!snapshots.length) {
+        setProjects([])
+        setSelectedProjectId('')
+        setSource('live')
+        setError(null)
+        return
+      }
       setProjects(snapshots)
       setSelectedProjectId((current) =>
         snapshots.some((project) => project.id === current)
@@ -94,8 +101,8 @@ export function RepositoryProvider({ children }: PropsWithChildren) {
     [loadProjects],
   )
   const removeProject = useCallback(
-    async (id: string) => {
-      await projectClient.remove(id)
+    async (id: string, deleteLocalFiles = false) => {
+      await projectClient.remove(id, deleteLocalFiles)
       await loadProjects()
     },
     [loadProjects],
@@ -103,7 +110,7 @@ export function RepositoryProvider({ children }: PropsWithChildren) {
   const selectProject = useCallback((id: string) => setSelectedProjectId(id), [])
   const repository =
     projects.find((project) => project.id === selectedProjectId)?.repository ??
-    projects[0].repository
+    projects[0]?.repository ?? demo
   const operationReady =
     projects.find((project) => project.id === selectedProjectId)?.connected ??
     false

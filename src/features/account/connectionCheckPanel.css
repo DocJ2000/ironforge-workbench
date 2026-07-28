@@ -8,3 +8,6 @@
 .connection-check__list small{color:var(--muted);line-height:1.45}
 .connection-check__empty{grid-column:2}
 @media(max-width:650px){.connection-check,.connection-check__empty{grid-column:1}.connection-check__heading{align-items:flex-start;flex-direction:column}}
+.connection-check__list small b,.connection-check__list small em{display:block}
+.connection-check__list small b{margin-bottom:2px;color:var(--danger);font-style:normal}
+.connection-check__list small em{margin-top:3px;color:var(--ink);font-style:normal;font-weight:700}

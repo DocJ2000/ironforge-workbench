@@ -55,6 +55,19 @@ describe('ProjectRegistry', () => {
     await expect(registry.resolve(project.id)).rejects.toThrow('尚未登记')
   })
 
+  it('deletes local project files only when explicitly requested', async () => {
+    const repository = await createRepository('delete-local')
+    const storage = join(repository, '..', `${Date.now()}-projects.json`)
+    roots.push(storage)
+    const registry = new ProjectRegistry(storage)
+    const project = await registry.add(repository, true)
+
+    await registry.remove(project.id, true)
+
+    await expect(stat(repository)).rejects.toThrow()
+    await expect(registry.list()).resolves.toEqual([])
+  })
+
   it('ignores a packaged fallback path that is not a Git repository', async () => {
     const root = await mkdtemp(join(tmpdir(), 'ironforge-invalid-seed-'))
     roots.push(root)
@@ -63,11 +76,61 @@ describe('ProjectRegistry', () => {
     await expect(registry.list()).resolves.toEqual([])
   })
 
+  it('removes only the legacy auto-seeded record without deleting files', async () => {
+    const repository = await createRepository('legacy-seed')
+    const storage = join(repository, '..', `${Date.now()}-projects.json`)
+    roots.push(storage)
+    const registry = new ProjectRegistry(storage, repository)
+    await registry.list()
+
+    await expect(registry.removeLegacySeed(repository)).resolves.toMatchObject({
+      path: repository,
+    })
+    await expect(registry.list()).resolves.toEqual([])
+    await expect(stat(repository)).resolves.toBeTruthy()
+  })
+
   it('explains that an ordinary folder must be downloaded or prepared first', async () => {
     const root = await mkdtemp(join(tmpdir(), 'ironforge-ordinary-folder-'))
     roots.push(root)
     const registry = new ProjectRegistry(join(root, 'projects.json'))
 
     await expect(registry.add(root)).rejects.toThrow('下载新项目')
+  })
+
+  it('migrates legacy v1 project records without losing user projects', async () => {
+    const repository = await createRepository('legacy-registry')
+    const storage = join(repository, '..', `${Date.now()}-projects.json`)
+    roots.push(storage)
+    await writeFile(storage, JSON.stringify({
+      version: 1,
+      projects: [{
+        id: 'legacy',
+        path: repository,
+        name: 'legacy-registry',
+        gitlabRemote: '',
+        addedAt: new Date().toISOString(),
+      }],
+    }))
+
+    const registry = new ProjectRegistry(storage)
+
+    await expect(registry.list()).resolves.toEqual([
+      expect.objectContaining({ id: 'legacy', path: repository }),
+    ])
+    await expect(stat(repository)).resolves.toBeTruthy()
+    expect(JSON.parse(await readFile(storage, 'utf8')).version).toBe(2)
+  })
+
+  it('never deletes files for a project that the user added manually', async () => {
+    const repository = await createRepository('manual-project')
+    const storage = join(repository, '..', `${Date.now()}-projects.json`)
+    roots.push(storage)
+    const registry = new ProjectRegistry(storage)
+    const project = await registry.add(repository)
+
+    await expect(registry.remove(project.id, true)).rejects.toThrow('只能移除项目记录')
+    await expect(stat(repository)).resolves.toBeTruthy()
+    await expect(registry.resolve(project.id)).resolves.toMatchObject({ path: repository })
   })
 })

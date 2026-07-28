@@ -31,3 +31,23 @@ it('lists and registers projects through the backend registry', async () => {
     }),
   )
 })
+
+it('only requests local file deletion when the user explicitly chose it', async () => {
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ project: { id: 'project-one' } }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+
+  await projectClient.remove('project-one', true)
+
+  expect(fetcher).toHaveBeenCalledWith(
+    '/api/projects',
+    expect.objectContaining({
+      method: 'DELETE',
+      body: JSON.stringify({ id: 'project-one', deleteLocalFiles: true }),
+    }),
+  )
+})

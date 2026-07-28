@@ -8,6 +8,7 @@ export interface RegisteredProject {
   repository: RepositorySnapshot
   connected: boolean
   lastOpened: string
+  managed?: boolean
 }
 
 export interface RepositoryContextValue {
@@ -16,7 +17,7 @@ export interface RepositoryContextValue {
   selectedProjectId: string
   selectProject: (id: string) => void
   addProject: (path: string) => Promise<void>
-  removeProject: (id: string) => Promise<void>
+  removeProject: (id: string, deleteLocalFiles?: boolean) => Promise<void>
   operationReady: boolean
   source: RepositorySource
   loading: boolean

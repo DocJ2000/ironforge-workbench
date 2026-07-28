@@ -17,13 +17,15 @@ interface Props {
   projectId: string
   checkProjectId?: string
   gitlabUrl?: string
+  onBack?: () => void
   onConfigured: () => void
 }
 
 const steps = [
   '让软件连接公司 GitLab',
   '给这台电脑创建身份钥匙',
-  '完成连接',
+  '把电脑登记到 GitLab',
+  '检查并完成',
 ]
 
 function connectionError(cause: unknown) {
@@ -40,11 +42,14 @@ function connectionError(cause: unknown) {
   return message || '连接没有完成。请按页面步骤重试。'
 }
 
-export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', onConfigured }: Props) {
+export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', onBack, onConfigured }: Props) {
   const [step, setStep] = useState(0)
   const [token, setToken] = useState('')
   const [passphrase, setPassphrase] = useState('')
   const [publicKey, setPublicKey] = useState('')
+  const [identityPath, setIdentityPath] = useState('')
+  const [identityConfigured, setIdentityConfigured] = useState(false)
+  const [credentialsConfigured, setCredentialsConfigured] = useState(false)
   const [loading, setLoading] = useState(identityClient.available())
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -56,6 +61,9 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
     setToken('')
     setPassphrase('')
     setPublicKey('')
+    setIdentityPath('')
+    setIdentityConfigured(false)
+    setCredentialsConfigured(false)
     setError(null)
     if (!identityClient.available()) {
       setLoading(false)
@@ -67,15 +75,21 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
       identityClient.status(projectId),
     ])
       .then(async ([credentials, identity]) => {
+        setCredentialsConfigured(credentials.configured)
+        setIdentityConfigured(identity.configured)
+        setIdentityPath(credentials.sshKeyPath ?? '')
         if (credentials.configured && identity.configured) {
           setPublicKey(await identityClient.publicKey(projectId))
-          setStep(2)
         }
       })
       .finally(() => setLoading(false))
   }, [projectId])
 
   async function generateIdentity() {
+    if (!token.trim()) {
+      setError('请重新填写软件访问码，再创建新的电脑身份钥匙。')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -91,15 +105,45 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
         ...(passphrase ? { sshPassphrase: passphrase } : {}),
       })
       setPublicKey(generated.publicKey)
+      setIdentityPath(generated.pathHint)
+      setIdentityConfigured(true)
+      setCredentialsConfigured(true)
       setToken('')
       setPassphrase('')
       setStep(2)
-      onConfigured()
     } catch (cause) {
       setError(connectionError(cause))
     } finally {
       setBusy(false)
     }
+  }
+
+  async function continueWithIdentity() {
+    if (!publicKey) {
+      await generateIdentity()
+      return
+    }
+    if (token.trim()) {
+      setBusy(true)
+      setError(null)
+      try {
+        await credentialClient.save({
+          projectId,
+          baseUrl: gitlabUrl,
+          token,
+          sshKeyPath: identityPath,
+          ...(passphrase ? { sshPassphrase: passphrase } : {}),
+        })
+        setCredentialsConfigured(true)
+        setToken('')
+      } catch (cause) {
+        setError(connectionError(cause))
+        return
+      } finally {
+        setBusy(false)
+      }
+    }
+    setStep(2)
   }
 
   async function copyPublicKey() {
@@ -129,6 +173,7 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
           <div>
             <h2>让软件连接公司 GitLab</h2>
             <p>先创建一个只给本软件使用的访问码。它不是你的登录密码。</p>
+            {credentialsConfigured ? <p className="connection-wizard__saved">软件访问码已安全保存，可以继续使用。</p> : null}
           </div>
           <a aria-disabled={!serverReady} className="button button--secondary connection-wizard__link" href={serverReady ? `${gitlabUrl}/-/user_settings/personal_access_tokens` : undefined} rel="noreferrer" target="_blank">
             打开 GitLab 创建访问码 <ExternalLink size={15} />
@@ -152,7 +197,12 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
             </span>
             <input aria-label="软件访问码" autoComplete="off" onChange={(event) => setToken(event.target.value)} placeholder="创建后粘贴到这里" type="password" value={token} />
           </label>
-          <button className="button button--primary connection-wizard__next" disabled={!serverReady || !token.trim()} onClick={() => setStep(1)} type="button">下一步</button>
+          <div className="connection-wizard__actions">
+            {onBack ? <button className="button button--secondary" onClick={onBack} type="button">返回</button> : null}
+            <button className="button button--primary" disabled={!serverReady || ((!credentialsConfigured || !identityConfigured) && !token.trim())} onClick={() => setStep(1)} type="button">
+              {credentialsConfigured && identityConfigured && !token.trim() ? '继续使用已保存访问码' : '下一步'}
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -180,13 +230,10 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
           {error ? <p className="credential-error">{error}</p> : null}
           <div className="connection-wizard__actions">
             <button className="button button--secondary" disabled={busy} onClick={() => setStep(0)} type="button">返回</button>
-            <button className="button button--primary" disabled={busy} onClick={() => void generateIdentity()} type="button">{busy ? '正在创建' : '创建这台电脑的身份钥匙'}</button>
+            <button className="button button--primary" disabled={busy} onClick={() => void continueWithIdentity()} type="button">
+              {busy ? '正在创建' : publicKey ? '继续使用已有身份钥匙' : '创建这台电脑的身份钥匙'}
+            </button>
           </div>
-          {checkProjectId ? (
-            <ConnectionCheckPanel onCheck={() => createDeliveryApi(checkProjectId).checkConnection()} />
-          ) : (
-            <p className="connection-check__empty">添加项目后，这里会自动检查电脑是否能连接该项目。</p>
-          )}
         </div>
       ) : null}
 
@@ -201,11 +248,34 @@ export function ConnectionWizard({ projectId, checkProjectId, gitlabUrl = '', on
               </FieldHelp>
             </h2>
             <p>复制下面的电脑登记码，再打开 GitLab 粘贴并保存。登记码可以公开，电脑身份钥匙不会离开这台电脑。</p>
+            <p className="connection-wizard__saved">软件访问码已安全保存，不需要再次填写。</p>
           </div>
           <code className="public-key-output">{publicKey}</code>
           <div className="connection-wizard__actions">
             <button className="button button--secondary" onClick={() => void copyPublicKey()} type="button">{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? '已复制' : '复制电脑登记码'}</button>
             <a className="button button--primary" href={`${gitlabUrl}/-/user_settings/ssh_keys`} rel="noreferrer" target="_blank">打开 GitLab 添加身份钥匙 <ExternalLink size={15} /></a>
+          </div>
+          <div className="connection-wizard__actions">
+            <button className="button button--secondary" onClick={() => setStep(1)} type="button">返回修改上一步</button>
+            <button className="button button--primary" onClick={() => setStep(3)} type="button">已添加，下一步</button>
+          </div>
+        </div>
+      ) : null}
+
+      {step === 3 ? (
+        <div className="connection-wizard__body">
+          <span className="connection-wizard__icon connection-wizard__icon--success"><Check size={24} /></span>
+          <div>
+            <h2>检查连接</h2>
+            <p>点击一次会同时检查公司网络、软件访问码和电脑身份钥匙。三项全部通过后会自动完成初始设置。</p>
+          </div>
+          <ConnectionCheckPanel
+            onCheck={() => createDeliveryApi(checkProjectId).checkConnection()}
+            onConnected={onConfigured}
+          />
+          <div className="connection-wizard__actions">
+            <button className="button button--secondary" onClick={() => setStep(0)} type="button">返回修改软件访问码</button>
+            <button className="button button--secondary" onClick={() => setStep(2)} type="button">返回修改上一步</button>
           </div>
         </div>
       ) : null}

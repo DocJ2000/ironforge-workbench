@@ -1,12 +1,10 @@
-import { AlertTriangle, FileBox, FileJson2, FileText } from 'lucide-react'
+import { FileBox, FileJson2, FileText } from 'lucide-react'
 import type { WorkingTreeChange } from '../../domain/repository'
 
 interface ChangeTableProps {
   changes: WorkingTreeChange[]
   selectedIds: Set<string>
-  confirmedDeletionIds: Set<string>
   onToggle: (id: string) => void
-  onConfirmDeletion: (id: string) => void
 }
 
 const kindLabels: Record<WorkingTreeChange['kind'], string> = {
@@ -25,9 +23,7 @@ function ChangeIcon({ change }: { change: WorkingTreeChange }) {
 export function ChangeTable({
   changes,
   selectedIds,
-  confirmedDeletionIds,
   onToggle,
-  onConfirmDeletion,
 }: ChangeTableProps) {
   return (
     <div className="change-table">
@@ -78,17 +74,6 @@ export function ChangeTable({
             </div>
             <div className="change-row__size">{change.size}</div>
 
-            {needsDeletionConfirmation && isSelected ? (
-              <label className="deletion-confirm">
-                <AlertTriangle aria-hidden="true" size={15} />
-                <input
-                  checked={confirmedDeletionIds.has(change.id)}
-                  onChange={() => onConfirmDeletion(change.id)}
-                  type="checkbox"
-                />
-                我确认要从版本中删除这个 CAD 文件
-              </label>
-            ) : null}
           </div>
         )
       })}

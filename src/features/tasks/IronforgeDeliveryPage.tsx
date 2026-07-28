@@ -1,6 +1,7 @@
-import { CheckCircle2, PackageCheck } from 'lucide-react'
+import { CheckCircle2, PackageCheck, UploadCloud } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { deliveryApi, type DeliveryApi } from '../../data/deliveryClient'
 import type { GitLabReviewer, OutputPackageCandidate } from '../../domain/delivery'
 import type { RepositorySnapshot } from '../../domain/repository'
@@ -12,12 +13,25 @@ import { organizationClient } from '../../data/organizationClient'
 import { GuidedWorkflow } from './GuidedWorkflow'
 import './ironforgeDelivery.css'
 import './deliverySuccess.css'
+import { uploadReceiptClient } from '../../data/uploadReceiptClient'
 
 interface Props { repository: RepositorySnapshot; api?: DeliveryApi; onRefresh?: () => Promise<void> }
 const steps = ['选择交付图纸', '填写更新', '上传图纸', '填写交付', '选择审核人', '提交审核']
 
 export function IronforgeDeliveryPage({ repository, api = deliveryApi, onRefresh }: Props) {
   const ironforgeUrl = organizationClient.load().ironforgeUrl
+  const uploadReceipt = uploadReceiptClient.load(repository.id)
+  const uploadReady = Boolean(
+    uploadReceipt
+    && uploadReceipt.branch === repository.branch
+    && (
+      uploadReceipt.commit.startsWith(repository.latestCommit)
+      || repository.latestCommit.startsWith(uploadReceipt.commit)
+    )
+    && repository.changes.length === 0
+    && repository.ahead === 0
+    && repository.behind === 0,
+  )
   const [step, setStep] = useState(0)
   const [packages, setPackages] = useState<OutputPackageCandidate[]>([])
   const [reviewers, setReviewers] = useState<GitLabReviewer[]>([])
@@ -35,6 +49,7 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi, onRefresh
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!uploadReady) return
     let active = true
     void api.overview().then((result) => {
       if (!active) return
@@ -48,7 +63,7 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi, onRefresh
       ))
     }).catch((cause) => active && setError(cause instanceof Error ? cause.message : '读取交付包失败'))
     return () => { active = false }
-  }, [api])
+  }, [api, uploadReady])
 
   function togglePackage(id: string) {
     setSelectedPackages((current) => {
@@ -103,6 +118,17 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi, onRefresh
   }
 
   const nextDisabled = (step === 0 && !selectedPackages.size) || (step === 1 && !updateTitle.trim()) || (step === 3 && !deliveryTitle.trim()) || (step === 4 && !selectedReviewers.size) || busy
+  if (!uploadReady) {
+    return (
+      <section className="ironforge-upload-required">
+        <span><UploadCloud size={30} /></span>
+        <p className="task-eyebrow">还差一步</p>
+        <h1>请先上传这个项目</h1>
+        <p>铁炉堡只能交付已经上传到 GitLab 的图纸。请先完成同一项目的“上传整个工程”，成功后再回来提交审核。</p>
+        <Link className="button button--primary" to="/workspace/upload/gitlab">去上传这个项目</Link>
+      </section>
+    )
+  }
   return <GuidedWorkflow currentStep={step} description="选择交付图纸，提交管理员审核；管理员批准后自动发布到铁炉堡。" nextDisabled={nextDisabled} nextLabel={step === 2 ? (busy ? '正在上传' : '上传图纸') : step === 5 ? (busy ? '正在提交' : '创建审核单') : '下一步'} onBack={step > 0 && !mrResult ? () => setStep((current) => current - 1) : undefined} onNext={mrResult ? undefined : step === 2 ? () => void sync() : step === 5 ? () => void createMr() : () => setStep((current) => current + 1)} steps={steps} title="提交图纸到铁炉堡">
     {error ? <div className="delivery-alert delivery-alert--error">{error}</div> : null}
     {mrResult ? <div className="wizard-success"><CheckCircle2 size={42} /><h2>已提交管理员审核</h2><p>管理员审核单 #{mrResult.iid} 已创建。管理员批准后，图纸会发布到交付平台。</p><div className="success-actions">{mrResult.webUrl ? <a className="button button--secondary" href={mrResult.webUrl} rel="noreferrer" target="_blank">打开审核单</a> : null}{ironforgeUrl ? <a className="button button--primary" href={ironforgeUrl} rel="noreferrer" target="_blank">打开交付平台</a> : null}</div></div> : null}

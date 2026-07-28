@@ -37,4 +37,7 @@ contextBridge.exposeInMainWorld('ironforgeDesktop', {
     download: () => ipcRenderer.invoke('updates:download'),
     install: () => ipcRenderer.invoke('updates:install'),
   },
+  userData: {
+    reset: () => ipcRenderer.invoke('user-data:reset'),
+  },
 })

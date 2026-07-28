@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises'
-import { basename, dirname, resolve as resolvePath } from 'node:path'
+import { mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises'
+import { basename, dirname, join, resolve as resolvePath } from 'node:path'
 import { promisify } from 'node:util'
 import { gitExecutable } from './gitExecutable.js'
 
@@ -13,10 +13,11 @@ export interface ProjectRecord {
   name: string
   gitlabRemote: string
   addedAt: string
+  managed?: boolean
 }
 
 interface StoredRegistry {
-  version: 1
+  version: 1 | 2
   projects: ProjectRecord[]
 }
 
@@ -69,13 +70,14 @@ export class ProjectRegistry {
 
   private async load() {
     if (this.projects) return this.projects
-    let stored: StoredRegistry = { version: 1, projects: [] }
+    let stored: StoredRegistry = { version: 2, projects: [] }
     try {
       stored = JSON.parse(await readFile(this.storagePath, 'utf8')) as StoredRegistry
     } catch {
       // A missing or unreadable registry starts empty; validated seed follows.
     }
     this.projects = Array.isArray(stored.projects) ? stored.projects : []
+    if (stored.version === 1) await this.persist()
     if (this.seedPath && this.projects.length === 0) {
       const seed = await this.record(this.seedPath).catch(() => null)
       if (seed) {
@@ -92,7 +94,7 @@ export class ProjectRegistry {
     const temporaryPath = `${this.storagePath}.${process.pid}.tmp`
     await writeFile(
       temporaryPath,
-      `${JSON.stringify({ version: 1, projects: this.projects }, null, 2)}\n`,
+      `${JSON.stringify({ version: 2, projects: this.projects }, null, 2)}\n`,
       'utf8',
     )
     await rename(temporaryPath, this.storagePath)
@@ -102,7 +104,7 @@ export class ProjectRegistry {
     return [...(await this.load())]
   }
 
-  async add(candidatePath: string) {
+  async add(candidatePath: string, managed = false) {
     if (!candidatePath.trim()) throw new Error('请选择本地 Git 项目文件夹')
     const candidate = await this.record(candidatePath).catch(() => {
       throw new Error(
@@ -112,15 +114,44 @@ export class ProjectRegistry {
     const projects = await this.load()
     const existing = projects.find((project) => project.id === candidate.id)
     if (existing) return existing
+    if (managed) {
+      await writeFile(join(candidate.path, '.git', 'ironforge-workbench-managed'), candidate.id, 'utf8')
+      candidate.managed = true
+    }
     projects.push(candidate)
     await this.persist()
     return candidate
   }
 
-  async remove(id: string) {
+  async remove(id: string, deleteLocalFiles = false) {
     const projects = await this.load()
     const index = projects.findIndex((project) => project.id === id)
     if (index < 0) throw new Error('项目不存在或已移除')
+    const removed = projects[index]
+    if (deleteLocalFiles) {
+      const projectPath = await realpath(removed.path)
+      const marker = await readFile(
+        join(projectPath, '.git', 'ironforge-workbench-managed'),
+        'utf8',
+      ).catch(() => '')
+      if (!removed.managed || marker.trim() !== removed.id) {
+        throw new Error('这个文件夹不是由本软件新下载的，只能移除项目记录，不能删除本地文件')
+      }
+      await rm(projectPath, { recursive: true, force: false })
+    }
+    projects.splice(index, 1)
+    await this.persist()
+    return removed
+  }
+
+  async removeLegacySeed(candidatePath: string) {
+    const legacyRoot = await canonicalGitRoot(candidatePath).catch(() => null)
+    if (!legacyRoot) return null
+    const projects = await this.load()
+    const index = projects.findIndex(
+      (project) => project.path.toLowerCase() === legacyRoot.toLowerCase(),
+    )
+    if (index < 0) return null
     const [removed] = projects.splice(index, 1)
     await this.persist()
     return removed

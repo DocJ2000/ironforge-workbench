@@ -24,8 +24,8 @@ describe('checkConnection', () => {
     ])
   })
 
-  it('skips the identity check when the access code is invalid', async () => {
-    const probeSsh = vi.fn()
+  it('runs all checks even when one check fails', async () => {
+    const probeSsh = vi.fn().mockResolvedValue(undefined)
     const result = await checkConnection('C:\\project', credentials, {
       probeServer: vi.fn().mockResolvedValue(undefined),
       probeApi: vi.fn().mockRejectedValue(new Error('401 Unauthorized')),
@@ -36,9 +36,9 @@ describe('checkConnection', () => {
     expect(result.checks.map((item) => item.status)).toEqual([
       'passed',
       'failed',
-      'skipped',
+      'passed',
     ])
     expect(result.checks[1].error?.code).toBe('access_code_invalid')
-    expect(probeSsh).not.toHaveBeenCalled()
+    expect(probeSsh).toHaveBeenCalledOnce()
   })
 })

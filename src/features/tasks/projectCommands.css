@@ -1,1 +1,8 @@
 .project-center__header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.project-center__commands{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}@media(max-width:700px){.project-center__header{display:block}.project-center__commands{justify-content:flex-start;margin-top:15px}}
+/* Removing a project defaults to leaving every local file untouched. */
+.project-remove-dialog__path{padding:9px 10px;overflow-wrap:anywhere;background:var(--surface-soft);font-family:"Cascadia Code",Consolas,monospace;font-size:10px}
+.project-remove-dialog__danger{display:grid;grid-template-columns:18px minmax(0,1fr);gap:9px;margin:14px 0;padding:12px;border:1px solid #e8b6b6;background:var(--danger-soft)}
+.project-remove-dialog__danger input{width:16px;height:16px;accent-color:var(--danger)}
+.project-remove-dialog__danger strong,.project-remove-dialog__danger small{display:block}
+.project-remove-dialog__danger small{margin-top:4px;color:#805656;line-height:1.5}
+.project-remove-dialog__warning{display:flex;gap:8px;color:var(--danger)}

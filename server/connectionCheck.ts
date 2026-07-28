@@ -28,56 +28,28 @@ export async function checkConnection(
   credentials: ConnectionCredentials,
   dependencies: ConnectionCheckDependencies,
 ): Promise<ConnectionCheckResult> {
-  const checks: ConnectionCheckItem[] = []
-  try {
-    await dependencies.probeServer(credentials.baseUrl)
-    checks.push({ id: 'network', label: '公司网络', status: 'passed' })
-  } catch (cause) {
-    checks.push({
-      id: 'network',
-      label: '公司网络',
-      status: 'failed',
-      error: toFriendlyError(cause),
-    })
-    checks.push(
-      { id: 'access_code', label: '软件访问码', status: 'skipped' },
-      { id: 'identity', label: '电脑身份钥匙', status: 'skipped' },
-    )
-    return { connected: false, checks }
+  const [network, accessCode, identity] = await Promise.allSettled([
+    dependencies.probeServer(credentials.baseUrl),
+    dependencies.probeApi(credentials.baseUrl, credentials.token),
+    dependencies.probeSsh(repositoryPath, credentials),
+  ])
+  const username = accessCode.status === 'fulfilled'
+    ? accessCode.value.username
+    : undefined
+  const checks: ConnectionCheckItem[] = [
+    network.status === 'fulfilled'
+      ? { id: 'network', label: '公司网络', status: 'passed' }
+      : { id: 'network', label: '公司网络', status: 'failed', error: toFriendlyError(network.reason) },
+    accessCode.status === 'fulfilled'
+      ? { id: 'access_code', label: '软件访问码', status: 'passed', detail: accessCode.value.username }
+      : { id: 'access_code', label: '软件访问码', status: 'failed', error: toFriendlyError(accessCode.reason) },
+    identity.status === 'fulfilled'
+      ? { id: 'identity', label: '电脑身份钥匙', status: 'passed' }
+      : { id: 'identity', label: '电脑身份钥匙', status: 'failed', error: toFriendlyError(identity.reason) },
+  ]
+  return {
+    connected: checks.every((item) => item.status === 'passed'),
+    ...(username ? { username } : {}),
+    checks,
   }
-
-  let username: string
-  try {
-    username = (await dependencies.probeApi(credentials.baseUrl, credentials.token)).username
-    checks.push({
-      id: 'access_code',
-      label: '软件访问码',
-      status: 'passed',
-      detail: username,
-    })
-  } catch (cause) {
-    checks.push({
-      id: 'access_code',
-      label: '软件访问码',
-      status: 'failed',
-      error: toFriendlyError(cause),
-    })
-    checks.push({ id: 'identity', label: '电脑身份钥匙', status: 'skipped' })
-    return { connected: false, checks }
-  }
-
-  try {
-    await dependencies.probeSsh(repositoryPath, credentials)
-    checks.push({ id: 'identity', label: '电脑身份钥匙', status: 'passed' })
-  } catch (cause) {
-    checks.push({
-      id: 'identity',
-      label: '电脑身份钥匙',
-      status: 'failed',
-      error: toFriendlyError(cause),
-    })
-    return { connected: false, username, checks }
-  }
-
-  return { connected: true, username, checks }
 }

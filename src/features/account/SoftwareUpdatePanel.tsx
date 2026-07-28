@@ -35,6 +35,12 @@ export function SoftwareUpdatePanel({
     setBusy(true)
     try {
       setStatus(await action())
+    } catch (cause) {
+      setStatus((current) => ({
+        phase: 'error',
+        currentVersion: current?.currentVersion ?? '未知',
+        message: cause instanceof Error ? cause.message : '操作没有完成，请稍后重试',
+      }))
     } finally {
       setBusy(false)
     }
@@ -86,7 +92,8 @@ export function SoftwareUpdatePanel({
             onClick={() => void run(client.check)}
             type="button"
           >
-            检查新版本
+            <RefreshCw size={17} />
+            {busy ? '正在检查，请稍候' : '检查新版本'}
           </button>
         )}
       </footer>

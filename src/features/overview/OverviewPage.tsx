@@ -125,7 +125,7 @@ export function OverviewPage({
                 <code>保存修改</code>
               </div>
               <p>
-                检查 {repository.changes.length} 个本地修改，逐项确认删除项，并填写这次改了什么。
+                检查 {repository.changes.length} 个本地修改，并填写这次改了什么。
               </p>
             </div>
             <button aria-label="进入保存设计版本" className="icon-button-light" type="button">

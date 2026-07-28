@@ -3,7 +3,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { startLocalServer } from './localServer'
 
 const roots: string[] = []
@@ -46,4 +46,28 @@ it('lets API middleware answer before the static fallback', async () => {
 
   await expect(fetch(`${server.origin}/api/health`).then((response) => response.text()))
     .resolves.toBe('healthy')
+})
+
+it('rejects cross-origin and origin-less writes to local API routes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ironforge-static-'))
+  roots.push(root)
+  await writeFile(join(root, 'index.html'), '<main>workbench</main>')
+  const middleware = vi.fn()
+  const server = await startLocalServer({ staticRoot: root, middleware })
+  servers.push(server)
+
+  const crossOrigin = await fetch(`${server.origin}/api/projects`, {
+    method: 'POST',
+    headers: { Origin: 'https://attacker.example', 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+  const noOrigin = await fetch(`${server.origin}/api/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
+
+  expect(crossOrigin.status).toBe(403)
+  expect(noOrigin.status).toBe(403)
+  expect(middleware).not.toHaveBeenCalled()
 })

@@ -23,5 +23,6 @@ module.exports = {
     perMachine: false,
     allowToChangeInstallationDirectory: true,
     deleteAppDataOnUninstall: false,
+    include: 'build/installer.nsh',
   },
 }

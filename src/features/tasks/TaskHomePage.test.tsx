@@ -14,6 +14,7 @@ describe('TaskHomePage', () => {
       <MemoryRouter>
         <TaskHomePage
           onAdd={vi.fn()}
+          onRemove={vi.fn()}
           onSelect={vi.fn()}
           projects={[]}
           selectedId=""
@@ -41,6 +42,7 @@ describe('TaskHomePage', () => {
     const { container } = render(
       <MemoryRouter><TaskHomePage
         onAdd={vi.fn()}
+        onRemove={vi.fn()}
         onSelect={onSelect}
         projects={[
           { id: dragon.id, repository: dragon, connected: true, lastOpened: '刚刚' },
@@ -53,9 +55,31 @@ describe('TaskHomePage', () => {
     expect(screen.getByText('Aurora Lens Mechanics')).toBeVisible()
     expect(container.querySelector('.project-center--empty')).toBeNull()
     expect(screen.queryByRole('button', { name: '上传项目' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Aurora Lens Mechanics/ }))
+    fireEvent.click(screen.getByRole('button', { name: '选择 Aurora Lens Mechanics' }))
     expect(onSelect).toHaveBeenCalledWith('aurora')
     expect(screen.getByTestId('location')).toHaveTextContent('/workspace/project')
+  })
+
+  it('defaults to removing only the software record', async () => {
+    const project = getDemoRepository()
+    const onRemove = vi.fn().mockResolvedValue(undefined)
+    render(
+      <MemoryRouter>
+        <TaskHomePage
+          onAdd={vi.fn()}
+          onRemove={onRemove}
+          onSelect={vi.fn()}
+          projects={[{ id: project.id, repository: project, connected: true, lastOpened: '刚刚' }]}
+          selectedId={project.id}
+        />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: `移除 ${project.displayName}` }))
+    expect(screen.getByText(/默认只从软件列表中移除/)).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: '只从软件列表移除' }))
+
+    expect(onRemove).toHaveBeenCalledWith(project.id, false)
   })
 
 })

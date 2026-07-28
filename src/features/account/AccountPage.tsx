@@ -1,4 +1,4 @@
-import { Eye, EyeOff, FolderOpen, KeyRound, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, FolderOpen, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { credentialClient } from '../../data/credentialClient'
@@ -7,6 +7,7 @@ import { ConnectionWizard } from './ConnectionWizard'
 import { FieldHelp } from './FieldHelp'
 import { ClearConnectionDialog } from './ClearConnectionDialog'
 import { organizationClient } from '../../data/organizationClient'
+import { userDataClient } from '../../data/userDataClient'
 import './account.css'
 import './accountNav.css'
 import './credentialFields.css'
@@ -14,6 +15,8 @@ import './requiredSetup.css'
 import { SoftwareUpdatePanel } from './SoftwareUpdatePanel'
 
 const computerAccountId = 'computer'
+const verifiedStorageKey = 'ironforge-workbench:connection-verified'
+type AccountView = 'welcome' | 'organization' | 'connection' | 'summary'
 
 export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
   const location = useLocation()
@@ -33,6 +36,9 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showClear, setShowClear] = useState(false)
+  const [showReset, setShowReset] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [view, setView] = useState<AccountView>('welcome')
   const desktopStorage = credentialClient.available()
   const complete = Boolean(gitlabUrl.trim() && token.trim() && keyPath.trim())
 
@@ -47,6 +53,8 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
       setConfigured(status.configured)
       setGitlabUrl((current) => current || status.baseUrl || '')
       setKeyPath(status.sshKeyPath ?? '')
+      const verified = localStorage.getItem(verifiedStorageKey) === 'true'
+      setView(status.configured && initialOrganization.gitlabUrl && verified ? 'summary' : 'welcome')
     })
   }, [desktopStorage])
 
@@ -94,27 +102,73 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         </section>
       ) : null}
 
-      <section className="connection-section">
+      {view === 'welcome' ? (
+        <section className="account-welcome">
+          <span className="account-welcome__icon"><KeyRound size={28} /></span>
+          <p className="task-eyebrow">第一次只需设置一次</p>
+          <h2>连接公司项目服务器</h2>
+          <p>软件会一步一步带你完成。不会上传项目，也不会改动工程文件。</p>
+          <button className="button button--primary" onClick={() => setView('organization')} type="button">开始设置</button>
+        </section>
+      ) : null}
+
+      {view === 'organization' ? <section className="connection-section account-step-card">
         <header>
           <span className="connection-icon connection-icon--gitlab">1</span>
-          <div><h2>公司服务器地址</h2><p>第一次使用时填写一次，软件升级不会清除。</p></div>
+          <div><span className="task-eyebrow">第 1 步，共 6 步</span><h2>填写公司地址</h2><p>第一次使用时填写一次，软件升级不会清除。</p></div>
           <span className={`connection-status connection-status--${organizationSaved ? 'ready' : 'pending'}`}>{organizationSaved ? '已保存' : '需要填写'}</span>
         </header>
         <div className="connection-form">
           <label className="plain-field"><span className="field-label-row">公司项目服务器地址<FieldHelp label="公司项目服务器地址"><strong>这是公司 GitLab 登录页面的开头部分。</strong><ol><li>打开公司 GitLab 登录页面。</li><li>复制浏览器地址中域名部分，例如 https://gitlab.example.com。</li><li>不要复制项目后面的长路径。</li><li>不确定时询问管理员。</li></ol></FieldHelp></span><input aria-label="公司项目服务器地址" onChange={(event) => { setGitlabUrl(event.target.value); setOrganizationSaved(false) }} placeholder="例如：https://gitlab.example.com" value={gitlabUrl} /></label>
           <label className="plain-field"><span className="field-label-row">交付平台地址<FieldHelp label="交付平台地址"><strong>这是浏览器中打开交付平台项目列表时的完整地址。</strong><ol><li>在浏览器中打开公司的交付平台。</li><li>进入项目列表页面。</li><li>复制浏览器顶部的完整地址并粘贴到这里。</li><li>不确定时询问管理员。</li></ol></FieldHelp></span><input aria-label="交付平台地址" onChange={(event) => { setIronforgeUrl(event.target.value); setOrganizationSaved(false) }} placeholder="例如：https://delivery.example.com/projects" value={ironforgeUrl} /></label>
         </div>
-        <footer><button className="button button--primary" disabled={!gitlabUrl.trim()} onClick={() => { const saved = organizationClient.save({ gitlabUrl, ironforgeUrl }); setGitlabUrl(saved.gitlabUrl); setIronforgeUrl(saved.ironforgeUrl); setOrganizationSaved(true) }} type="button">保存公司地址</button></footer>
-      </section>
+        <footer>
+          <button className="button button--secondary" onClick={() => setView('welcome')} type="button">返回</button>
+          <button className="button button--primary" disabled={!gitlabUrl.trim()} onClick={() => {
+            const saved = organizationClient.save({ gitlabUrl, ironforgeUrl })
+            setGitlabUrl(saved.gitlabUrl)
+            setIronforgeUrl(saved.ironforgeUrl)
+            setOrganizationSaved(true)
+            localStorage.removeItem(verifiedStorageKey)
+            setView('connection')
+          }} type="button">保存并继续</button>
+        </footer>
+      </section> : null}
 
-      <ConnectionWizard
-        onConfigured={() => setConfigured(true)}
+      {view === 'connection' ? <ConnectionWizard
+        onConfigured={() => {
+          localStorage.setItem(verifiedStorageKey, 'true')
+          setConfigured(true)
+          setView('summary')
+        }}
+        onBack={() => setView('organization')}
         projectId={computerAccountId}
         checkProjectId={checkProjectId}
         gitlabUrl={gitlabUrl}
-      />
+      /> : null}
 
-      <details className="advanced-connection">
+      {view === 'summary' ? (
+        <>
+          <section className="account-summary">
+            <span className="account-summary__icon"><CheckCircle2 size={28} /></span>
+            <div><p className="task-eyebrow">连接状态</p><h2>已完成初始设置</h2><p>公司地址和个人连接信息已经安全保存。</p></div>
+            <span className="connection-status connection-status--ready">可以使用</span>
+            <dl>
+              <div><dt>公司项目服务器</dt><dd>{gitlabUrl}</dd></div>
+              <div><dt>铁炉堡</dt><dd>{ironforgeUrl || '尚未填写'}</dd></div>
+              <div><dt>软件访问码</dt><dd>已安全保存</dd></div>
+              <div><dt>电脑身份钥匙</dt><dd>已保存在本机</dd></div>
+            </dl>
+            <button className="button button--secondary" onClick={() => {
+              localStorage.removeItem(verifiedStorageKey)
+              setView('organization')
+            }} type="button">重新设置连接</button>
+          </section>
+          <SoftwareUpdatePanel />
+        </>
+      ) : null}
+
+      {view === 'summary' ? <details className="advanced-connection">
         <summary>专业显示：手动使用已有的电脑身份钥匙</summary>
       <section className="connection-section">
         <header>
@@ -137,10 +191,54 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
           <button className="button button--primary" disabled={!complete || busy} onClick={() => void saveCredentials()} type="button">{desktopStorage ? busy ? '正在安全保存' : '安全保存' : '检查填写内容'}</button>
         </footer>
       </section>
-      </details>
+      </details> : null}
 
-      {showClear ? <ClearConnectionDialog busy={busy} onCancel={() => setShowClear(false)} onConfirm={() => { setBusy(true); void credentialClient.clear(computerAccountId).then(() => { setConfigured(false); setShowClear(false) }).finally(() => setBusy(false)) }} /> : null}
-      <SoftwareUpdatePanel />
+      {view === 'summary' ? (
+        <section className="account-reset">
+          <div className="account-reset__icon"><Trash2 size={20} /></div>
+          <div>
+            <h2>重置用户信息</h2>
+            <p>准备把这台电脑交给别人使用时，可清除账号、身份钥匙和软件里的项目记录。</p>
+          </div>
+          <button className="button button--secondary" onClick={() => setShowReset(true)} type="button">重置用户信息</button>
+        </section>
+      ) : null}
+
+      {showClear ? <ClearConnectionDialog busy={busy} onCancel={() => setShowClear(false)} onConfirm={() => {
+        setBusy(true)
+        void credentialClient.clear(computerAccountId).then(() => {
+          localStorage.removeItem(verifiedStorageKey)
+          setConfigured(false)
+          setShowClear(false)
+          setView('welcome')
+        }).finally(() => setBusy(false))
+      }} /> : null}
+      {showReset ? (
+        <div className="dialog-backdrop" role="presentation">
+          <section aria-labelledby="reset-user-title" aria-modal="true" className="reset-user-dialog" role="dialog">
+            <span className="reset-user-dialog__icon"><AlertTriangle size={24} /></span>
+            <h2 id="reset-user-title">确定重置这台电脑的用户信息？</h2>
+            <p>软件会关闭并重新打开，回到第一次使用时的设置页面。</p>
+            <div className="reset-user-dialog__details">
+              <strong>会清除</strong>
+              <p>公司服务器地址、软件访问码、软件创建的身份钥匙、项目列表和本机操作记录。</p>
+              <strong>不会清除</strong>
+              <p>你选择过的工程文件夹、工程图纸和 GitLab 云端文件。</p>
+            </div>
+            <footer>
+              <button className="button button--secondary" disabled={resetting} onClick={() => setShowReset(false)} type="button">取消</button>
+              <button className="button button--danger" disabled={resetting} onClick={() => {
+                setResetting(true)
+                void userDataClient.reset().catch((cause) => {
+                  setError(cause instanceof Error ? cause.message : '重置失败，请关闭软件后重试')
+                  setResetting(false)
+                  setShowReset(false)
+                })
+              }} type="button">{resetting ? '正在重置' : '确定重置'}</button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </div>
   )
 }

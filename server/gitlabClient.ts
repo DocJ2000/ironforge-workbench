@@ -49,6 +49,19 @@ export interface GitLabCurrentUser {
   name: string
 }
 
+interface GitLabSshKey {
+  key: string
+}
+
+export interface GitLabCommit {
+  id: string
+  shortId: string
+  title: string
+  message: string
+  authorName: string
+  committedAt: string
+}
+
 function projectUrl(baseUrl: string, projectPath: string) {
   return `${baseUrl}/api/v4/projects/${encodeURIComponent(projectPath)}`
 }
@@ -105,6 +118,15 @@ export function createGitLabClient(
       return { username: user.username, name: user.name }
     },
 
+    async currentUserHasSshKey(publicKey: string): Promise<boolean> {
+      const response = await request('/api/v4/user/keys?per_page=100')
+      const keys = (await response.json()) as GitLabSshKey[]
+      const identity = publicKey.trim().split(/\s+/).slice(0, 2).join(' ')
+      return keys.some((entry) =>
+        entry.key.trim().split(/\s+/).slice(0, 2).join(' ') === identity,
+      )
+    },
+
     async listReviewers(projectPath: string): Promise<GitLabReviewer[]> {
       const response = await request(
         `/api/v4/projects/${encodeURIComponent(projectPath)}/members/all?per_page=100`,
@@ -137,6 +159,35 @@ export function createGitLabClient(
             Number(right.recommended) - Number(left.recommended) ||
             left.name.localeCompare(right.name, 'zh-CN'),
         )
+    },
+
+    async listCommits(projectPath: string, limit = 200): Promise<GitLabCommit[]> {
+      const commits: GitLabCommit[] = []
+      let page = '1'
+      while (page && commits.length < limit) {
+        const response = await request(
+          `${projectUrl('', projectPath)}/repository/commits?per_page=100&page=${page}`,
+          { signal: AbortSignal.timeout(10_000) },
+        )
+        const rows = (await response.json()) as Array<{
+          id: string
+          short_id: string
+          title: string
+          message: string
+          author_name: string
+          committed_date: string
+        }>
+        commits.push(...rows.map((row) => ({
+          id: row.id,
+          shortId: row.short_id,
+          title: row.title,
+          message: row.message,
+          authorName: row.author_name,
+          committedAt: row.committed_date,
+        })).slice(0, limit - commits.length))
+        page = response.headers.get('x-next-page') ?? ''
+      }
+      return commits
     },
 
     async createMergeRequest(

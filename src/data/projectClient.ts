@@ -4,6 +4,7 @@ export interface ProjectRecord {
   name: string
   gitlabRemote: string
   addedAt: string
+  managed?: boolean
 }
 
 async function projectRequest<T>(init?: RequestInit): Promise<T> {
@@ -26,9 +27,9 @@ export const projectClient = {
       method: 'POST',
       body: JSON.stringify({ path }),
     }),
-  remove: (id: string) =>
+  remove: (id: string, deleteLocalFiles = false) =>
     projectRequest<{ project: ProjectRecord }>({
       method: 'DELETE',
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, deleteLocalFiles }),
     }),
 }

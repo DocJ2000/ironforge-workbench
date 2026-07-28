@@ -1,6 +1,5 @@
 import { AlertTriangle, Filter, RefreshCw, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { StatusBadge } from '../../components/StatusBadge'
 import {
   repositoryCommitApi,
   type CommitApi,
@@ -25,9 +24,6 @@ export function WorkspacePage({
   onRepositoryRefresh,
 }: WorkspacePageProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [confirmedDeletionIds, setConfirmedDeletionIds] = useState<Set<string>>(
-    new Set(),
-  )
   const [commitMessage, setCommitMessage] = useState('')
   const [preview, setPreview] = useState<CommitPreview | null>(null)
   const [busy, setBusy] = useState(false)
@@ -44,24 +40,11 @@ export function WorkspacePage({
     [repository.changes],
   )
 
-  const selectedDeletedCadIds = [...selectedIds].filter((id) => deletedCadIds.has(id))
-  const deletionsConfirmed = selectedDeletedCadIds.every((id) =>
-    confirmedDeletionIds.has(id),
-  )
   const commitDisabled =
-    selectedIds.size === 0 || commitMessage.trim().length === 0 || !deletionsConfirmed
+    selectedIds.size === 0 || commitMessage.trim().length === 0
 
   function toggleSelected(id: string) {
     setSelectedIds((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  function toggleDeletionConfirmation(id: string) {
-    setConfirmedDeletionIds((current) => {
       const next = new Set(current)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -76,9 +59,9 @@ export function WorkspacePage({
       paths: [...selectedIds]
         .map((id) => changesById.get(id)?.path)
         .filter((path): path is string => Boolean(path)),
-      confirmedDeletions: [...confirmedDeletionIds]
-        .map((id) => changesById.get(id)?.path)
-        .filter((path): path is string => Boolean(path)),
+      confirmedDeletions: repository.changes
+        .filter((change) => change.kind === 'deleted' && selectedIds.has(change.id))
+        .map((change) => change.path),
     }
   }
 
@@ -102,7 +85,6 @@ export function WorkspacePage({
       const result = await commitApi.commit(commitRequest())
       setPreview(null)
       setSelectedIds(new Set())
-      setConfirmedDeletionIds(new Set())
       setCommitMessage('')
       setSuccess(`已保存为 ${result.commit}`)
       await onRepositoryRefresh?.()
@@ -129,16 +111,10 @@ export function WorkspacePage({
         </button>
       </header>
 
-      <aside className="workspace-warning">
+      {deletedCadIds.size > 0 ? <aside className="workspace-warning">
         <AlertTriangle aria-hidden="true" size={19} />
-        <div>
-          <strong>删除的 CAD 文件需要逐项确认</strong>
-          <p>软件无法判断删除是设计意图还是误操作，因此不会自动选择。</p>
-        </div>
-        <StatusBadge tone="danger">
-          {deletedCadIds.size} 个文件
-        </StatusBadge>
-      </aside>
+        <div><strong>本次改动包含 {deletedCadIds.size} 个已删除的设计文件</strong><p>删除与新增、修改一样正常选择，不需要额外确认。</p></div>
+      </aside> : null}
 
       {error ? <div className="workspace-feedback workspace-feedback--error">{error}</div> : null}
       {success ? (
@@ -165,8 +141,6 @@ export function WorkspacePage({
 
           <ChangeTable
             changes={repository.changes}
-            confirmedDeletionIds={confirmedDeletionIds}
-            onConfirmDeletion={toggleDeletionConfirmation}
             onToggle={toggleSelected}
             selectedIds={selectedIds}
           />

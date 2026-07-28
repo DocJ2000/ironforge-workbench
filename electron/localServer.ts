@@ -50,6 +50,20 @@ async function serveStatic(
 
 export async function startLocalServer({ staticRoot, middleware }: LocalServerOptions) {
   const server = createServer((request, response) => {
+    const method = request.method ?? 'GET'
+    const pathname = new URL(request.url ?? '/', 'http://localhost').pathname
+    if (pathname.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      const expectedOrigin = request.headers.host
+        ? `http://${request.headers.host}`
+        : ''
+      if (!expectedOrigin || request.headers.origin !== expectedOrigin) {
+        response.statusCode = 403
+        response.setHeader('Content-Type', 'application/json; charset=utf-8')
+        response.setHeader('Cache-Control', 'no-store')
+        response.end(JSON.stringify({ error: 'Request origin is not allowed' }))
+        return
+      }
+    }
     middleware(request, response, (error) => {
       if (error) {
         response.statusCode = 500

@@ -63,7 +63,9 @@ export class UpdateCoordinator {
     updater.on('update-available', (info) =>
       this.set({ phase: 'available', availableVersion: info.version }),
     )
-    updater.on('update-not-available', () => this.set({ phase: 'idle' }))
+    updater.on('update-not-available', () =>
+      this.set({ phase: 'idle', message: '当前已经是最新版本' }),
+    )
     updater.on('download-progress', (progress) =>
       this.set({
         phase: 'downloading',
@@ -95,9 +97,8 @@ export class UpdateCoordinator {
   async check() {
     if (!this.packaged) return this.status()
     this.set({ phase: 'checking', message: undefined, progress: undefined })
-    await this.updater.checkForUpdates().catch((error) => {
+    await this.updater.checkForUpdates().catch(() => {
       this.set({ phase: 'error', message: '检查更新失败，请确认网络连接后重试。' })
-      throw error
     })
     return this.status()
   }

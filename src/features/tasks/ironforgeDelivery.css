@@ -1,1 +1,4 @@
 .blocking-notice{display:grid;justify-items:start;gap:12px}.blocking-notice>svg{color:var(--amber)}.spaced-field{margin-top:18px}
+.ironforge-upload-required{display:grid;justify-items:center;width:min(560px,100%);margin:44px auto;padding:40px 28px;text-align:center;border:1px solid var(--line);border-radius:7px;background:var(--surface);box-shadow:var(--shadow-soft)}
+.ironforge-upload-required>span{display:grid;place-items:center;width:58px;height:58px;margin-bottom:12px;color:var(--accent);border-radius:7px;background:var(--accent-soft)}
+.ironforge-upload-required h1{margin:4px 0 8px;font-size:24px}.ironforge-upload-required>p:not(.task-eyebrow){max-width:430px;margin:0 0 20px;color:var(--muted);font-size:12px;line-height:1.7}
