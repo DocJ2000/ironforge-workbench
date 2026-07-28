@@ -64,6 +64,23 @@ export function SoftwareUpdatePanel({
               ? `已下载 ${status.progress ?? 0}%`
               : status?.message ?? (status ? labels[status.phase] : '请稍候')}
         </p>
+        {status?.phase === 'available' && status.releases?.length ? (
+          <section className="update-release-notes">
+            <strong>这次更新了什么</strong>
+            {status.releases.length > 1 ? <p>本次将跨 {status.releases.length} 个版本更新，一次安装即可完成。</p> : null}
+            {status.releases.map((release, index) => (
+              <details key={release.version} open={index === 0}>
+                <summary>版本 {release.version}</summary>
+                <ul>
+                  {release.notes.map((note) => <li key={note}>{note}</li>)}
+                </ul>
+              </details>
+            ))}
+          </section>
+        ) : null}
+        {status?.phase === 'available' && !status.releases?.length ? (
+          <p className="update-release-notes__missing">暂时没拿到完整更新说明，但仍可以正常下载安装。</p>
+        ) : null}
       </div>
       <footer>
         {status?.phase === 'available' ? (

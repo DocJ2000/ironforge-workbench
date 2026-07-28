@@ -7,6 +7,14 @@ export interface OrganizationSettings {
 const storageKey = 'ironforge-workbench:organization'
 const emptySettings: OrganizationSettings = { gitlabUrl: '', ironforgeUrl: '' }
 
+function normalize(settings: OrganizationSettings) {
+  return {
+    gitlabUrl: settings.gitlabUrl.trim().replace(/\/+$/, ''),
+    ironforgeUrl: settings.ironforgeUrl.trim().replace(/\/+$/, ''),
+    connectionVerified: settings.connectionVerified === true,
+  }
+}
+
 export const organizationClient = {
   load(): OrganizationSettings {
     try {
@@ -20,16 +28,15 @@ export const organizationClient = {
     }
   },
   save(settings: OrganizationSettings) {
-    const normalized = {
-      gitlabUrl: settings.gitlabUrl.trim().replace(/\/$/, ''),
-      ironforgeUrl: settings.ironforgeUrl.trim().replace(/\/$/, ''),
-    }
+    const normalized = normalize(settings)
     localStorage.setItem(storageKey, JSON.stringify(normalized))
-    void window.ironforgeDesktop?.settings?.save({
-      ...normalized,
-      connectionVerified: settings.connectionVerified === true,
-    })
     return normalized
+  },
+  async saveDurable(settings: OrganizationSettings) {
+    const normalized = this.save(settings)
+    const bridge = window.ironforgeDesktop?.settings
+    if (!bridge) return normalized
+    return bridge.save(normalized)
   },
   async loadDurable(): Promise<OrganizationSettings> {
     const local = this.load()

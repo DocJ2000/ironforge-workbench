@@ -18,7 +18,7 @@ interface Props {
   checkProjectId?: string
   gitlabUrl?: string
   onBack?: () => void
-  onConfigured: () => void
+  onConfigured: () => void | Promise<void>
 }
 
 const steps = [

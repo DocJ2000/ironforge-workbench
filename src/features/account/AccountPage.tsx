@@ -138,27 +138,38 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         </div>
         <footer>
           <button className="button button--secondary" onClick={() => setView('welcome')} type="button">返回</button>
-          <button className="button button--primary" disabled={!gitlabUrl.trim()} onClick={() => {
-            const saved = organizationClient.save({ gitlabUrl, ironforgeUrl })
-            setGitlabUrl(saved.gitlabUrl)
-            setIronforgeUrl(saved.ironforgeUrl)
-            setOrganizationSaved(true)
-            localStorage.removeItem(verifiedStorageKey)
-            setView('connection')
-          }} type="button">保存并继续</button>
+          <button className="button button--primary" disabled={!gitlabUrl.trim() || busy} onClick={() => {
+            setBusy(true)
+            setError(null)
+            void organizationClient.saveDurable({ gitlabUrl, ironforgeUrl })
+              .then((saved) => {
+                setGitlabUrl(saved.gitlabUrl)
+                setIronforgeUrl(saved.ironforgeUrl)
+                setOrganizationSaved(true)
+                localStorage.removeItem(verifiedStorageKey)
+                setView('connection')
+              })
+              .catch(() => setError('公司地址没有保存成功，请重试。'))
+              .finally(() => setBusy(false))
+          }} type="button">{busy ? '正在保存' : '保存并继续'}</button>
         </footer>
       </section> : null}
 
       {view === 'connection' ? <ConnectionWizard
-        onConfigured={() => {
-          localStorage.setItem(verifiedStorageKey, 'true')
-          organizationClient.save({
-            gitlabUrl,
-            ironforgeUrl,
-            connectionVerified: true,
-          })
-          setConfigured(true)
-          setView('summary')
+        onConfigured={async () => {
+          try {
+            await organizationClient.saveDurable({
+              gitlabUrl,
+              ironforgeUrl,
+              connectionVerified: true,
+            })
+            localStorage.setItem(verifiedStorageKey, 'true')
+            setConfigured(true)
+            setView('summary')
+          } catch {
+            setError('连接已经检查通过，但设置没有保存到电脑。请再点一次“检查连接”。')
+            throw new Error('设置没有保存到电脑')
+          }
         }}
         onBack={() => setView('organization')}
         projectId={computerAccountId}

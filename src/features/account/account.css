@@ -4,6 +4,12 @@
 .connection-section,.connection-wizard{box-shadow:var(--shadow-soft)}
 .connection-section>header{min-height:48px}
 .software-update-panel .connection-icon{color:var(--cyan);background:var(--cyan-soft)}
+.update-release-notes{display:grid;gap:7px;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--surface-soft)}
+.update-release-notes>p{margin:0;color:var(--muted);font-size:11px}
+.update-release-notes details{border-top:1px solid var(--line);padding-top:7px}
+.update-release-notes summary{color:var(--ink);font-size:12px;font-weight:800;cursor:pointer}
+.update-release-notes ul{margin:7px 0 2px;padding-left:20px;color:var(--muted);font-size:11px;line-height:1.6}
+.update-release-notes__missing{padding:9px 11px;border-left:3px solid var(--amber);background:var(--amber-soft)}
 .connection-wizard__saved{margin-top:7px!important;color:var(--green)!important;font-weight:800}
 .advanced-connection{padding:0 14px;border:1px dashed var(--line-strong);border-radius:7px;background:var(--surface-soft)}
 .advanced-connection[open]{padding-bottom:14px}

@@ -9,6 +9,9 @@ it('requires separate clicks to check, download, and install', async () => {
       phase: 'available',
       currentVersion: '1.0.0',
       availableVersion: '1.1.0',
+      releases: [
+        { version: '1.1.0', notes: ['修复登录页面', '文件核对更清楚'] },
+      ],
     }),
     download: vi.fn().mockResolvedValue({
       phase: 'ready',
@@ -22,6 +25,9 @@ it('requires separate clicks to check, download, and install', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: '检查新版本' }))
   await screen.findByText('发现新版本 1.1.0')
+  expect(screen.getByText('这次更新了什么')).toBeVisible()
+  expect(screen.getByText('修复登录页面')).toBeVisible()
+  expect(screen.getByText('文件核对更清楚')).toBeVisible()
   expect(client.download).not.toHaveBeenCalled()
 
   fireEvent.click(screen.getByRole('button', { name: '下载新版本' }))

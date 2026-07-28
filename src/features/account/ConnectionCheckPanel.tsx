@@ -8,7 +8,7 @@ export function ConnectionCheckPanel({
   onConnected,
 }: {
   onCheck: () => Promise<ConnectionCheckResult>
-  onConnected?: () => void
+  onConnected?: () => void | Promise<void>
 }) {
   const [result, setResult] = useState<ConnectionCheckResult | null>(null)
   const [busy, setBusy] = useState(false)
@@ -17,7 +17,7 @@ export function ConnectionCheckPanel({
     try {
       const nextResult = await onCheck()
       setResult(nextResult)
-      if (nextResult.connected) onConnected?.()
+      if (nextResult.connected) await onConnected?.()
     } finally {
       setBusy(false)
     }

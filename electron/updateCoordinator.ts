@@ -1,5 +1,6 @@
 interface UpdateInfo {
   version?: string
+  releaseNotes?: string | Array<{ version?: string; note?: string | null }>
 }
 
 interface DownloadProgress {
@@ -9,6 +10,7 @@ interface DownloadProgress {
 export interface DesktopUpdater {
   autoDownload: boolean
   autoInstallOnAppQuit: boolean
+  fullChangelog?: boolean
   on(event: 'checking-for-update', listener: () => void): unknown
   on(event: 'update-available' | 'update-not-available' | 'update-downloaded', listener: (info: UpdateInfo) => void): unknown
   on(event: 'download-progress', listener: (progress: DownloadProgress) => void): unknown
@@ -33,6 +35,7 @@ export interface UpdateStatus {
   availableVersion?: string
   progress?: number
   message?: string
+  releases?: Array<{ version: string; notes: string[] }>
 }
 
 interface UpdateCoordinatorOptions {
@@ -59,9 +62,14 @@ export class UpdateCoordinator {
     }
     updater.autoDownload = false
     updater.autoInstallOnAppQuit = false
+    updater.fullChangelog = true
     updater.on('checking-for-update', () => this.set({ phase: 'checking' }))
     updater.on('update-available', (info) =>
-      this.set({ phase: 'available', availableVersion: info.version }),
+      this.set({
+        phase: 'available',
+        availableVersion: info.version,
+        releases: normalizeReleaseNotes(info),
+      }),
     )
     updater.on('update-not-available', () =>
       this.set({ phase: 'idle', message: '当前已经是最新版本' }),
@@ -116,4 +124,30 @@ export class UpdateCoordinator {
     this.updater.quitAndInstall()
     return this.status()
   }
+}
+
+function normalizeReleaseNotes(info: UpdateInfo) {
+  const entries = Array.isArray(info.releaseNotes)
+    ? info.releaseNotes.map((release) => ({
+        version: release.version ?? info.version ?? '新版本',
+        note: release.note ?? '',
+      }))
+    : [{ version: info.version ?? '新版本', note: info.releaseNotes ?? '' }]
+
+  return entries
+    .map(({ version, note }) => ({ version, notes: markdownToPlainItems(note) }))
+    .filter((release) => release.notes.length > 0)
+}
+
+function markdownToPlainItems(markdown: string) {
+  return markdown
+    .split(/\r?\n/)
+    .map((line) => line
+      .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/\[([^\]]+)]\([^)]+\)/g, '$1')
+      .replace(/[*_`~]/g, '')
+      .trim())
+    .filter(Boolean)
+    .slice(0, 30)
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { ConnectionCheckPanel } from './ConnectionCheckPanel'
 
@@ -18,4 +18,21 @@ it('runs and explains the three connection checks', async () => {
   expect(await screen.findByText('全部连接正常')).toBeInTheDocument()
   expect(screen.getByText(/jiangcheng/)).toBeInTheDocument()
   expect(onConnected).toHaveBeenCalledOnce()
+})
+
+it('waits for durable completion before leaving the connection check', async () => {
+  let finish: (() => void) | undefined
+  const onConnected = vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
+    finish = resolve
+  }))
+  render(<ConnectionCheckPanel
+    onCheck={vi.fn().mockResolvedValue({ connected: true, checks: [] })}
+    onConnected={onConnected}
+  />)
+
+  fireEvent.click(screen.getByRole('button', { name: '检查连接' }))
+  await waitFor(() => expect(onConnected).toHaveBeenCalledOnce())
+  expect(screen.getByRole('button', { name: '正在检查' })).toBeDisabled()
+  finish?.()
+  await screen.findByRole('button', { name: '检查连接' })
 })

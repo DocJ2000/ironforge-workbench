@@ -18,6 +18,7 @@ import { AccountPage } from '../features/account/AccountPage'
 import { CredentialGate } from '../features/account/CredentialGate'
 import { RequiredSetupGate } from '../features/account/RequiredSetupGate'
 import { createDeliveryApi } from '../data/deliveryClient'
+import { getDemoRepository } from '../data/demoRepository'
 
 export function AppRoutes() {
   const {
@@ -40,6 +41,7 @@ export function AppRoutes() {
           path="/account"
           element={<AccountPage checkProjectId={selectedProjectId} />}
         />
+        {import.meta.env.DEV ? <Route path="/preview/upload-review" element={<ProjectUploadPage repository={getDemoRepository()} />} /> : null}
         <Route element={<RequiredSetupGate />}>
         <Route index element={<Navigate replace to="/workspace" />} />
         <Route

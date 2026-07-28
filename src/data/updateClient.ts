@@ -13,6 +13,7 @@ export interface UpdateStatus {
   availableVersion?: string
   progress?: number
   message?: string
+  releases?: Array<{ version: string; notes: string[] }>
 }
 
 const unavailable: UpdateStatus = {
