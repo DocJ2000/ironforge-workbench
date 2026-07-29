@@ -116,4 +116,19 @@ describe('scanRepository', () => {
       ]),
     )
   })
+
+  it('exposes the GitLab web project path instead of the SSH clone address', async () => {
+    const repositoryPath = await createRepository()
+    git(
+      repositoryPath,
+      'remote',
+      'set-url',
+      'origin',
+      'git@c.gitlfs.lab.tp:rockteam/dragon/optics/lens-mechanics.git',
+    )
+
+    const snapshot = await scanRepository(repositoryPath)
+
+    expect(snapshot.gitlabPath).toBe('rockteam/dragon/optics/lens-mechanics')
+  })
 })

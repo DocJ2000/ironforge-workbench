@@ -46,6 +46,9 @@ import { readFile } from 'node:fs/promises'
 import { checkConnection } from './connectionCheck.js'
 import { probeCompanyNetwork } from './networkProbe.js'
 import { toFriendlyError } from './friendlyError.js'
+import { gitLabProjectPath } from './gitLabProjectPath.js'
+
+export { gitLabProjectPath } from './gitLabProjectPath.js'
 
 type NextFunction = (error?: unknown) => void
 type RepositoryScanner = (repositoryPath: string) => Promise<RepositorySnapshot>
@@ -105,18 +108,6 @@ function sendJson(response: ServerResponse, statusCode: number, value: unknown) 
   response.setHeader('Content-Type', 'application/json; charset=utf-8')
   response.setHeader('Cache-Control', 'no-store')
   response.end(JSON.stringify(value))
-}
-
-export function gitLabProjectPath(remote: string) {
-  const scpPath = remote.match(/^[^@]+@[^:]+:(.+?)(?:\.git)?$/)?.[1]
-  if (scpPath) return scpPath
-
-  try {
-    const url = new URL(remote)
-    return url.pathname.replace(/^\/|\/$/g, '').replace(/\.git$/, '')
-  } catch {
-    return remote.replace(/\.git$/, '')
-  }
 }
 
 async function readJson<T>(request: IncomingMessage): Promise<T> {

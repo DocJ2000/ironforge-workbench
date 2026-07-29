@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, extname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { gitExecutable } from './gitExecutable.js'
+import { gitLabProjectPath } from './gitLabProjectPath.js'
 import type {
   BranchSummary,
   ChangeKind,
@@ -249,7 +250,9 @@ export async function scanRepository(repositoryPath: string): Promise<Repository
     name,
     displayName: name,
     path: root,
-    gitlabPath: await optionalGit(root, ['remote', 'get-url', 'origin']),
+    gitlabPath: gitLabProjectPath(
+      await optionalGit(root, ['remote', 'get-url', 'origin']),
+    ),
     branch,
     upstream: sync.upstream,
     stage: branchStage(branch),
