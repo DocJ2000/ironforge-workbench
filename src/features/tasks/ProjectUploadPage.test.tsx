@@ -3,7 +3,8 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { getDemoRepository } from '../../data/demoRepository'
 import type { DeliveryApi } from '../../data/deliveryClient'
-import { initialUploadBranch, ProjectUploadPage, uploadBranchNames } from './ProjectUploadPage'
+import { workflowDraftClient } from '../../data/workflowDraftClient'
+import { branchStartNames, initialUploadBranch, ProjectUploadPage, uploadBranchNames } from './ProjectUploadPage'
 
 function readyRepository() {
   return {
@@ -48,6 +49,37 @@ it('restores the unfinished upload step after leaving the page', async () => {
     </MemoryRouter>,
   )
   expect(screen.getByRole('heading', { name: '核对自动生成的交付清单' })).toBeVisible()
+})
+
+it('clears the upload draft when the user returns to project operations', async () => {
+  const repository = readyRepository()
+  const api = {
+    overview: vi.fn().mockResolvedValue({
+      packages: [{
+        id: 'fixture',
+        name: '治具',
+        path: 'output/mechanical/治具',
+        domain: 'mechanical',
+        files: [],
+      }],
+      reviewers: [],
+    }),
+  } as unknown as DeliveryApi
+
+  render(
+    <MemoryRouter>
+      <ProjectUploadPage api={api} repository={repository} />
+    </MemoryRouter>,
+  )
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  await waitFor(() =>
+    expect(workflowDraftClient.loadUpload(repository.id)?.step).toBe(1),
+  )
+
+  fireEvent.click(screen.getByRole('link', { name: '返回项目操作' }))
+
+  expect(workflowDraftClient.loadUpload(repository.id)).toBeNull()
 })
 
 it('offers to continue an existing local commit after returning to the page', async () => {
@@ -183,6 +215,23 @@ it('only offers cloud development branches and falls back from a local-only bran
 
   expect(uploadBranchNames(repository)).toEqual(['dev/T1', 'dev/T2'])
   expect(initialUploadBranch(repository)).toBe('dev/T2')
+})
+
+it('keeps main as a source for creating the first cloud work version', () => {
+  const repository = structuredClone(getDemoRepository())
+  repository.branch = 'main'
+  repository.branches = [{
+    name: 'main',
+    stage: '正式主线',
+    commit: 'abc12345',
+    commitMessage: 'initial project',
+    updatedAt: '2026-07-29',
+    remote: true,
+    current: true,
+  }]
+
+  expect(uploadBranchNames(repository)).toEqual([])
+  expect(branchStartNames(repository)).toEqual(['main'])
 })
 
 it('separates added, modified, and deleted files during review', () => {

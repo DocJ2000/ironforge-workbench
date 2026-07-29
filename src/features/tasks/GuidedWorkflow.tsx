@@ -9,6 +9,7 @@ interface GuidedWorkflowProps {
   currentStep: number
   children: ReactNode
   onBack?: () => void
+  onExit?: () => void
   onNext?: () => void
   nextDisabled?: boolean
   nextLabel?: string
@@ -21,6 +22,7 @@ export function GuidedWorkflow({
   currentStep,
   children,
   onBack,
+  onExit,
   onNext,
   nextDisabled = false,
   nextLabel = '下一步',
@@ -28,7 +30,7 @@ export function GuidedWorkflow({
   return (
     <div className="task-page">
       <header className="task-page__header">
-        <Link className="task-home-link" to="/workspace/project">
+        <Link className="task-home-link" onClick={onExit} to="/workspace/project">
           <House aria-hidden="true" size={17} />
           返回项目操作
         </Link>

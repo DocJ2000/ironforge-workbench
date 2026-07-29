@@ -89,4 +89,31 @@ describe('scanRepository', () => {
       }),
     ])
   })
+
+  it('includes a remote-only main branch as an available cloud branch', async () => {
+    const repositoryPath = await createRepository()
+    git(repositoryPath, 'push', 'origin', 'dev/T2:main')
+
+    const snapshot = await scanRepository(repositoryPath)
+
+    expect(snapshot.branches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'main', remote: true }),
+      ]),
+    )
+  })
+
+  it('marks a local main branch as cloud-backed when origin has the same branch', async () => {
+    const repositoryPath = await createRepository()
+    git(repositoryPath, 'branch', 'main', 'dev/T2')
+    git(repositoryPath, 'push', 'origin', 'main')
+
+    const snapshot = await scanRepository(repositoryPath)
+
+    expect(snapshot.branches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'main', remote: true }),
+      ]),
+    )
+  })
 })

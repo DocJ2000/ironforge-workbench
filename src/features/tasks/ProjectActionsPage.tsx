@@ -1,9 +1,14 @@
-import { ArrowLeft, CloudDownload, History, UploadCloud } from 'lucide-react'
+import { ArrowLeft, CloudDownload, ExternalLink, History, UploadCloud } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { organizationClient } from '../../data/organizationClient'
 import type { RepositorySnapshot } from '../../domain/repository'
 import './projectActions.css'
 
 export function ProjectActionsPage({ repository }: { repository: RepositorySnapshot }) {
+  const gitLabBase = organizationClient.load().gitlabUrl.replace(/\/+$/, '')
+  const projectUrl = gitLabBase && repository.gitlabPath
+    ? `${gitLabBase}/${repository.gitlabPath}`
+    : ''
   return (
     <div className="task-page project-actions-page">
       <Link className="project-actions__back" to="/workspace">
@@ -14,6 +19,7 @@ export function ProjectActionsPage({ repository }: { repository: RepositorySnaps
         <span className="task-eyebrow">已选择项目</span>
         <h1>{repository.displayName}</h1>
         <p>这次想做什么？请选择一项。</p>
+        {projectUrl ? <a className="project-actions__gitlab-link" href={projectUrl} rel="noreferrer" target="_blank"><ExternalLink size={16} />在 GitLab 查看本项目</a> : null}
       </header>
       <div className="project-action-choices">
         <Link to="/workspace/upload/gitlab">

@@ -184,21 +184,36 @@ async function branches(repositoryPath: string, currentBranch: string): Promise<
     'for-each-ref',
     '--format=%(refname:short)%00%(objectname:short)%00%(subject)%00%(committerdate:iso8601)%00%(upstream:short)',
     'refs/heads',
+    'refs/remotes/origin',
   ])
   if (!output) return []
 
-  return output.split('\n').map((line) => {
+  const summaries = new Map<string, BranchSummary>()
+  for (const line of output.split('\n')) {
     const [name, commit, commitMessage, updatedAt, upstream] = line.split('\0')
-    return {
-      name,
-      stage: branchStage(name),
+    if (name === 'origin/HEAD') continue
+    const remoteOnly = name.startsWith('origin/')
+    const normalizedName = remoteOnly ? name.slice('origin/'.length) : name
+    const summary = {
+      name: normalizedName,
+      stage: branchStage(normalizedName),
       commit,
       commitMessage,
       updatedAt,
-      remote: Boolean(upstream),
-      current: name === currentBranch,
+      remote: remoteOnly || Boolean(upstream),
+      current: !remoteOnly && normalizedName === currentBranch,
     }
-  })
+    const existing = summaries.get(normalizedName)
+    if (existing && remoteOnly) {
+      summaries.set(normalizedName, { ...existing, remote: true })
+    } else {
+      summaries.set(normalizedName, {
+        ...summary,
+        remote: summary.remote || existing?.remote === true,
+      })
+    }
+  }
+  return [...summaries.values()]
 }
 
 async function upstreamState(repositoryPath: string) {
