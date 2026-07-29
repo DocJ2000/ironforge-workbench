@@ -58,7 +58,7 @@ export interface CreateBranchInput {
 }
 
 export function validateRetryPushBranch(branch: string) {
-  if (!/^dev\/[A-Za-z0-9._/-]+$/.test(branch.trim())) {
+  if (!/^dev\/[A-Za-z0-9._+/-]+$/.test(branch.trim())) {
     throw new Error('只能上传到开发分支')
   }
   return branch.trim()
@@ -87,6 +87,35 @@ export async function createRepositoryBranch(
   if (existing) throw new Error(`分支 ${name} 已存在`)
 
   await git(repositoryPath, ['switch', '-c', name, startPoint])
+}
+
+export async function createAndPublishRepositoryBranch(
+  repositoryPath: string,
+  input: CreateBranchInput,
+  credentials?: GitRemoteCredentials,
+) {
+  const name = input.name.trim()
+  if (!/^dev\/[A-Za-z0-9._+/-]+$/.test(name)) {
+    throw new Error('只能创建 dev/ 开头的工作版本')
+  }
+
+  const originalBranch = await git(repositoryPath, ['branch', '--show-current'])
+  let created = false
+  try {
+    const startPoint = input.startPoint.startsWith('origin/')
+      ? input.startPoint
+      : `origin/${input.startPoint}`
+    await createRepositoryBranch(repositoryPath, { ...input, name, startPoint })
+    created = true
+    await pushRepositoryBranch(repositoryPath, name, credentials)
+    return { branch: name }
+  } catch (error) {
+    if (created) {
+      await git(repositoryPath, ['switch', originalBranch])
+      await git(repositoryPath, ['branch', '-D', name])
+    }
+    throw error
+  }
 }
 
 export async function checkoutRepositoryBranch(

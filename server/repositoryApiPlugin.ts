@@ -19,8 +19,8 @@ import {
 import {
   assertTagAvailable,
   checkoutRepositoryBranch,
+  createAndPublishRepositoryBranch,
   createAnnotatedTag,
-  createRepositoryBranch,
   pushRepositoryTag,
   type CreateBranchInput,
   pushRepositoryBranch,
@@ -251,12 +251,25 @@ export function createRepositoryMiddleware({
       : workflowDependencies(projectId).then((dependencies) =>
           createDeliveryMergeRequest(path, operation, dependencies),
         )
-  const executeCreateBranch = (path: string, input: CreateBranchInput) =>
-    createBranch
-      ? createBranch(input)
-      : createRepositoryBranch(path, input).then(() => ({
-          branch: input.name.trim(),
-        }))
+  const executeCreateBranch = async (
+    path: string,
+    projectId: string,
+    input: CreateBranchInput,
+  ) => {
+    if (createBranch) return createBranch(input)
+    const projectCredentials = await resolveCredentials(projectId)
+    return createAndPublishRepositoryBranch(path, input, {
+      sshKeyPath: projectCredentials.sshKeyPath,
+      ...(projectCredentials.sshPassphrase
+        ? { sshPassphrase: projectCredentials.sshPassphrase }
+        : {}),
+      ...(projectCredentials.sshAskPassPath
+        ? { sshAskPassPath: projectCredentials.sshAskPassPath }
+        : sshAskPassPath
+          ? { sshAskPassPath }
+          : {}),
+    })
+  }
   const executeUpload = (
     path: string,
     projectId: string,
@@ -591,7 +604,11 @@ export function createRepositoryMiddleware({
         sendJson(
           response,
           200,
-          await executeCreateBranch(activeRepositoryPath, body.input),
+          await executeCreateBranch(
+            activeRepositoryPath,
+            activeProjectId,
+            body.input,
+          ),
         )
       } catch (error) {
         sendJson(response, 400, {

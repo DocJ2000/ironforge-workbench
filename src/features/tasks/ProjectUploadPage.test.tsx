@@ -5,6 +5,95 @@ import { getDemoRepository } from '../../data/demoRepository'
 import type { DeliveryApi } from '../../data/deliveryClient'
 import { initialUploadBranch, ProjectUploadPage, uploadBranchNames } from './ProjectUploadPage'
 
+function readyRepository() {
+  return {
+    ...getDemoRepository(),
+    ahead: 0,
+    behind: 0,
+  }
+}
+
+it('offers to continue an existing local commit after returning to the page', async () => {
+  const repository = {
+    ...readyRepository(),
+    ahead: 1,
+    latestCommit: 'a5e149a6212b',
+    latestCommitMessage: '更新结构件图纸',
+    changes: [],
+  }
+  const retryPush = vi.fn().mockResolvedValue({
+    branch: 'dev/T2',
+    commit: 'a5e149a6212b',
+  })
+  const syncGitLab = vi.fn()
+  const api = {
+    overview: vi.fn().mockResolvedValue({ packages: [], reviewers: [] }),
+    retryPush,
+    syncGitLab,
+  } as unknown as DeliveryApi
+
+  render(
+    <MemoryRouter>
+      <ProjectUploadPage api={api} repository={repository} />
+    </MemoryRouter>,
+  )
+
+  expect(screen.getByRole('heading', {
+    name: '有 1 次更新还没有传到公司服务器',
+  })).toBeVisible()
+  expect(screen.getByText('更新结构件图纸')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: '继续上传' }))
+
+  await waitFor(() => expect(retryPush).toHaveBeenCalledWith('dev/T2'))
+  expect(syncGitLab).not.toHaveBeenCalled()
+  expect(screen.getByText('工程已上传')).toBeVisible()
+})
+
+it('creates a new cloud work version from an existing cloud branch', async () => {
+  const repository = readyRepository()
+  const createBranch = vi.fn().mockResolvedValue({ branch: 'dev/T3' })
+  const api = {
+    overview: vi.fn().mockResolvedValue({
+      packages: [{
+        id: 'package',
+        name: '结构件',
+        path: 'output/mechanical/结构件',
+        domain: 'mechanical',
+        files: [],
+      }],
+      reviewers: [],
+    }),
+    createBranch,
+  } as unknown as DeliveryApi
+
+  render(
+    <MemoryRouter>
+      <ProjectUploadPage api={api} repository={repository} />
+    </MemoryRouter>,
+  )
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+  for (let index = 0; index < 4; index += 1) {
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  }
+
+  fireEvent.click(screen.getByRole('button', { name: '新建工作版本' }))
+  fireEvent.change(screen.getByLabelText('新工作版本名称'), {
+    target: { value: 'T3' },
+  })
+  fireEvent.change(screen.getByLabelText('从哪个工作版本复制'), {
+    target: { value: 'dev/T2' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: '创建到 GitLab' }))
+
+  await waitFor(() => expect(createBranch).toHaveBeenCalledWith({
+    name: 'dev/T3',
+    startPoint: 'dev/T2',
+  }))
+  await waitFor(() => {
+    expect(screen.getByLabelText('上传到哪个工作版本')).toHaveValue('dev/T3')
+  })
+})
+
 it('only offers cloud development branches and falls back from a local-only branch', () => {
   const repository = structuredClone(getDemoRepository())
   repository.branch = 'dev/T2+'
@@ -36,7 +125,7 @@ it('only offers cloud development branches and falls back from a local-only bran
 
 it('separates added, modified, and deleted files during review', () => {
   const api = { overview: vi.fn().mockResolvedValue({ packages: [], reviewers: [] }) } as unknown as DeliveryApi
-  render(<MemoryRouter><ProjectUploadPage api={api} repository={getDemoRepository()} /></MemoryRouter>)
+  render(<MemoryRouter><ProjectUploadPage api={api} repository={readyRepository()} /></MemoryRouter>)
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
 
   expect(screen.getByRole('tab', { name: /新增/ })).toHaveAttribute('aria-selected', 'true')
@@ -54,7 +143,7 @@ it('uploads all project changes without a tag', async () => {
     }),
     syncGitLab,
   } as unknown as DeliveryApi
-  render(<MemoryRouter><ProjectUploadPage api={api} repository={getDemoRepository()} /></MemoryRouter>)
+  render(<MemoryRouter><ProjectUploadPage api={api} repository={readyRepository()} /></MemoryRouter>)
   await waitFor(() => expect(api.overview).toHaveBeenCalled())
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))

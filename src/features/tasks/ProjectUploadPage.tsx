@@ -1,4 +1,4 @@
-import { CheckCircle2, FileText, GitBranch, UploadCloud } from 'lucide-react'
+import { CheckCircle2, FileText, GitBranch, Plus, UploadCloud } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -44,11 +44,20 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<ReturnType<typeof friendlyErrorFrom> | null>(null)
   const [result, setResult] = useState<{ commit: string; branch: string } | null>(null)
+  const [showCreateBranch, setShowCreateBranch] = useState(false)
+  const [newBranchName, setNewBranchName] = useState('')
+  const [newBranchStart, setNewBranchStart] = useState(
+    () => initialUploadBranch(repository),
+  )
   const [changeFilter, setChangeFilter] = useState<ChangeFilter>(() => {
     if (repository.changes.some((change) => change.kind === 'untracked')) return 'untracked'
     if (repository.changes.some((change) => change.kind === 'modified')) return 'modified'
     return 'deleted'
   })
+  const selectableBranches = useMemo(
+    () => branch && !branches.includes(branch) ? [...branches, branch] : branches,
+    [branch, branches],
+  )
 
   useEffect(() => {
     let active = true
@@ -93,10 +102,10 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     finally { setBusy(false) }
   }
 
-  async function retryPush() {
+  async function retryPush(targetBranch = branch) {
     setBusy(true); setError(null)
     try {
-      const execution = await api.retryPush(branch)
+      const execution = await api.retryPush(targetBranch)
       uploadReceiptClient.save(repository.id, execution)
       onboardingClient.update({ firstUpload: true })
       void notificationClient.show('项目上传成功', '本次工程改动已经上传。')
@@ -107,6 +116,26 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
       setError(friendly)
       void notificationClient.show('重试上传失败', friendly.title)
     } finally { setBusy(false) }
+  }
+
+  async function createCloudBranch() {
+    const suffix = newBranchName.trim().replace(/^dev\//i, '')
+    if (!suffix) return
+    setBusy(true); setError(null)
+    try {
+      const created = await api.createBranch({
+        name: `dev/${suffix}`,
+        startPoint: newBranchStart,
+      })
+      await onRefresh?.()
+      setBranch(created.branch)
+      setNewBranchName('')
+      setShowCreateBranch(false)
+    } catch (cause) {
+      setError(friendlyErrorFrom(cause))
+    } finally {
+      setBusy(false)
+    }
   }
 
   const selected = packages.filter((item) => selectedPackages.has(item.id))
@@ -120,6 +149,32 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
   const commitUrl = result && repository.gitlabPath
     ? `${gitLabBase}/${repository.gitlabPath}/-/commit/${result.commit}`
     : ''
+  const hasPendingUpload = repository.ahead > 0 && repository.behind === 0
+
+  if (hasPendingUpload && !result) {
+    return <section className="pending-upload">
+      <span className="pending-upload__icon"><UploadCloud size={30} /></span>
+      <p className="task-eyebrow">发现尚未完成的上传</p>
+      <h1>有 {repository.ahead} 次更新还没有传到公司服务器</h1>
+      <p>这是已经保存在电脑里的版本，不需要重新选择文件或再次创建更新。</p>
+      <dl className="confirm-list pending-upload__details">
+        <div><dt>更新标题</dt><dd>{repository.latestCommitMessage}</dd></div>
+        <div><dt>保存编号</dt><dd>{repository.latestCommit.slice(0, 8)}</dd></div>
+        <div><dt>工作版本</dt><dd>{repository.branch}</dd></div>
+      </dl>
+      {error ? <div className="delivery-alert delivery-alert--error">
+        <strong>{error.title}</strong><p>{error.detail}</p><p>{error.nextAction}</p>
+      </div> : null}
+      <button
+        className="button button--primary"
+        disabled={busy}
+        onClick={() => void retryPush(repository.branch)}
+        type="button"
+      >
+        {busy ? '正在继续上传' : '继续上传'}
+      </button>
+    </section>
+  }
 
   return <GuidedWorkflow
     currentStep={step}
@@ -137,7 +192,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     {!result && step === 1 ? <ChangeReview changes={repository.changes} filter={changeFilter} onFilterChange={setChangeFilter} /> : null}
     {!result && step === 2 ? <div><Intro title="选择本次交付包">只需勾选 OUTPUT 里的母文件夹。软件会把选择结果写入交付清单。</Intro>{packages.map((item) => <PackageTree changes={repository.changes} item={item} key={item.id} onToggle={() => togglePackage(item.id)} selected={selectedPackages.has(item.id)} />)}{!packages.length ? <p>OUTPUT 中没有找到可交付的文件夹。</p> : null}</div> : null}
     {!result && step === 3 ? <div><Intro title="核对自动生成的交付清单">上传时会自动创建或更新 <code>charge.json</code>，铁炉堡将按这份清单读取交付包。</Intro><dl className="confirm-list">{selected.map((item) => <div key={item.id}><dt>{item.name}</dt><dd>{item.path}</dd></div>)}</dl></div> : null}
-    {!result && step === 4 ? <div><Intro title="选择上传到哪个工作版本">这里只显示 GitLab 云端已有的开发分支。正式主分支 main 只能通过审核单合入。</Intro><label className="plain-field"><span className="field-label-row">本次工程阶段<FieldHelp label="本次工程阶段"><strong>选择 GitLab 页面中对应的开发分支。</strong><ol><li>T1、T2 代表不同工程阶段。</li><li>main 是正式主分支，不能直接上传。</li><li>不确定时请向项目负责人确认。</li></ol></FieldHelp></span><select aria-label="上传到哪个工作版本" onChange={(event) => setBranch(event.target.value)} value={branch}>{branches.map((item) => <option key={item}>{item}</option>)}</select></label>{repository.branch !== branch ? <p className="change-review-note">本机当前是 {repository.branch}，本次将选择云端工作分支 {branch}。软件不会把本地临时分支显示成云端分支。</p> : null}</div> : null}
+    {!result && step === 4 ? <div><Intro title="选择上传到哪个工作版本">这里只显示 GitLab 云端已有的开发分支。正式主分支 main 只能通过审核单合入。</Intro><div className="branch-picker-row"><label className="plain-field"><span className="field-label-row">本次工程阶段<FieldHelp label="本次工程阶段"><strong>选择 GitLab 页面中对应的开发分支。</strong><ol><li>T1、T2 代表不同工程阶段。</li><li>main 是正式主分支，不能直接上传。</li><li>不确定时请向项目负责人确认。</li></ol></FieldHelp></span><select aria-label="上传到哪个工作版本" onChange={(event) => setBranch(event.target.value)} value={branch}>{selectableBranches.map((item) => <option key={item}>{item}</option>)}</select></label><button className="button button--secondary branch-action-button" onClick={() => setShowCreateBranch((current) => !current)} type="button"><Plus size={16} />新建工作版本</button></div>{showCreateBranch ? <div className="create-branch-panel"><h3>创建新的云端工作版本</h3><p>软件会先在 GitLab 创建成功，再把它选为本次上传目标。</p><div className="create-branch-fields"><label className="plain-field"><span>新工作版本名称</span><div className="branch-name-input"><span>dev/</span><input aria-label="新工作版本名称" onChange={(event) => setNewBranchName(event.target.value)} placeholder="例如：T3" value={newBranchName} /></div></label><label className="plain-field"><span>从哪个工作版本复制</span><select aria-label="从哪个工作版本复制" onChange={(event) => setNewBranchStart(event.target.value)} value={newBranchStart}>{branches.map((item) => <option key={item}>{item}</option>)}</select></label></div><div className="create-branch-actions"><button className="button button--secondary" onClick={() => setShowCreateBranch(false)} type="button">取消</button><button className="button button--primary" disabled={busy || !newBranchName.trim() || !newBranchStart} onClick={() => void createCloudBranch()} type="button">{busy ? '正在创建' : '创建到 GitLab'}</button></div></div> : null}{repository.branch !== branch ? <p className="change-review-note">本机当前是 {repository.branch}，本次将选择云端工作分支 {branch}。软件不会把本地临时分支显示成云端分支。</p> : null}</div> : null}
     {!result && step === 5 ? <div><Intro title="填写本次上传说明">标题用于快速识别，描述可补充更详细的变更内容。</Intro><label className="plain-field"><span>本次更新标题</span><input aria-label="本次更新标题" onChange={(event) => setTitle(event.target.value)} placeholder="例如：更新 T2 结构件图纸" value={title} /></label><label className="plain-field spaced-field"><span>本次更新描述（可以不填）</span><textarea aria-label="本次更新描述" onChange={(event) => setDescription(event.target.value)} placeholder="补充修改原因、影响范围或注意事项" rows={5} value={description} /></label></div> : null}
     {!result && step === 6 ? <div><Intro title="确认上传">点击确认后，软件才会生成 charge.json、保存本次改动并上传。</Intro><dl className="confirm-list"><div><dt>项目</dt><dd>{repository.displayName}</dd></div><div><dt><FileText size={16} />改动文件</dt><dd>{repository.changes.length} 个</dd></div><div><dt>交付包</dt><dd>{selectedPackages.size} 个</dd></div><div><dt><GitBranch size={16} />工作版本</dt><dd>{branch}</dd></div><div><dt><UploadCloud size={16} />更新标题</dt><dd>{title}</dd></div></dl></div> : null}
   </GuidedWorkflow>

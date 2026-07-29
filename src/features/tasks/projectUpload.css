@@ -1,1 +1,16 @@
 .branch-action-button{min-width:112px;white-space:nowrap}
+.branch-picker-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}
+.create-branch-panel{margin-top:16px;padding:18px;border:1px solid #ccd4da;background:#f7f9fa;border-radius:6px}
+.create-branch-panel h3{margin:0 0 4px;font-size:17px}
+.create-branch-panel>p{margin:0 0 16px;color:#66737e}
+.create-branch-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.branch-name-input{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;border:1px solid #b8c2ca;background:#fff;border-radius:5px;overflow:hidden}
+.branch-name-input>span{padding:0 10px;color:#53616c;background:#edf1f3;align-self:stretch;display:flex;align-items:center}
+.branch-name-input input{border:0;border-radius:0;min-width:0}
+.create-branch-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+.pending-upload{width:min(760px,calc(100% - 48px));margin:clamp(32px,8vh,96px) auto;padding:32px;border:1px solid #ccd4da;background:#fff;border-radius:6px;box-shadow:0 2px 6px rgb(23 34 43 / 8%)}
+.pending-upload__icon{display:grid;place-items:center;width:54px;height:54px;margin-bottom:14px;color:#177d61;background:#e8f5f0;border-radius:6px}
+.pending-upload h1{margin:4px 0 8px;font-size:28px}
+.pending-upload>p:not(.task-eyebrow){margin:0 0 20px;color:#66737e}
+.pending-upload__details{margin-bottom:20px}
+@media(max-width:760px){.branch-picker-row,.create-branch-fields{grid-template-columns:1fr}.branch-action-button{width:100%}.pending-upload{width:calc(100% - 24px);padding:22px}}
