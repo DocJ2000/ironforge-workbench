@@ -21,6 +21,7 @@ import {
   checkoutRepositoryBranch,
   createAndPublishRepositoryBranch,
   createAnnotatedTag,
+  ensureRepositoryTag,
   pushRepositoryTag,
   type CreateBranchInput,
   pushRepositoryBranch,
@@ -228,6 +229,11 @@ export function createRepositoryMiddleware({
       createTag: createAnnotatedTag,
       pushTag: (path: string, name: string) =>
         pushRepositoryTag(path, name, remoteCredentials),
+      ensureTag: (
+        path: string,
+        tag: { name: string; message: string },
+        commit: string,
+      ) => ensureRepositoryTag(path, tag, commit, remoteCredentials),
       createMergeRequest: gitLab.createMergeRequest.bind(gitLab),
     }
   }
@@ -569,20 +575,55 @@ export function createRepositoryMiddleware({
           .sort((left, right) =>
             Date.parse(right.commit.committedAt) - Date.parse(left.commit.committedAt))
           .slice(0, 200)
-        sendJson(response, 200, {
-          history: commits.map(({ commit, branches }) => ({
+        const [tags, mergedRequests] = await Promise.all([
+          gitLab.listTags(gitLabProjectPath(repository.gitlabPath)).catch(() => []),
+          gitLab.listMergedRequests(gitLabProjectPath(repository.gitlabPath)).catch(() => []),
+        ])
+        const formatTime = (value: string) => new Date(value).toLocaleString('zh-CN', {
+          hour12: false,
+        })
+        const history = [
+          ...commits.map(({ commit, branches }) => ({
             id: commit.id,
-            type: 'commit',
+            type: 'commit' as const,
             title: commit.title,
             description: commit.message.trim() || commit.title,
             actor: commit.authorName,
-            timestamp: new Date(commit.committedAt).toLocaleString('zh-CN', {
-              hour12: false,
-            }),
+            timestamp: formatTime(commit.committedAt),
             reference: commit.shortId,
-            tone: 'info',
+            tone: 'info' as const,
             branches,
+            sortAt: commit.committedAt,
           })),
+          ...tags.map((tag) => ({
+            id: `tag:${tag.name}`,
+            type: 'tag' as const,
+            title: `版本标记 ${tag.name}`,
+            description: tag.message || '关键版本标记',
+            actor: 'GitLab',
+            timestamp: formatTime(tag.committedAt),
+            reference: tag.name,
+            tone: 'warning' as const,
+            sortAt: tag.committedAt,
+          })),
+          ...mergedRequests.map((mergeRequest) => ({
+            id: `merge:${mergeRequest.iid}`,
+            type: 'merge' as const,
+            title: mergeRequest.title,
+            description: `${mergeRequest.sourceBranch} 已合并到 ${mergeRequest.targetBranch}`,
+            actor: mergeRequest.mergedBy,
+            timestamp: formatTime(mergeRequest.mergedAt),
+            reference: `审核单 #${mergeRequest.iid}`,
+            tone: 'success' as const,
+            branches: [mergeRequest.sourceBranch, mergeRequest.targetBranch],
+            sortAt: mergeRequest.mergedAt,
+          })),
+        ]
+          .sort((left, right) => Date.parse(right.sortAt) - Date.parse(left.sortAt))
+          .slice(0, 200)
+          .map(({ sortAt: _sortAt, ...event }) => event)
+        sendJson(response, 200, {
+          history,
         })
       } catch (error) {
         sendJson(response, 400, {

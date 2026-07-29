@@ -7,6 +7,7 @@ import {
   PackageCheck,
   RefreshCw,
   Search,
+  Tag,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
@@ -24,6 +25,7 @@ interface HistoryPageProps {
 const eventIcons: Record<HistoryEvent['type'], typeof GitCommitHorizontal> = {
   commit: GitCommitHorizontal,
   push: CloudUpload,
+  tag: Tag,
   merge_request: GitMerge,
   merge: CheckCircle2,
   publish: PackageCheck,
@@ -32,6 +34,7 @@ const eventIcons: Record<HistoryEvent['type'], typeof GitCommitHorizontal> = {
 const eventTerms: Record<HistoryEvent['type'], string> = {
   commit: '保存修改',
   push: '上传项目',
+  tag: '建立版本标记',
   merge_request: '提交管理员审核',
   merge: '管理员批准',
   publish: '发布到铁炉堡',
@@ -172,7 +175,7 @@ export function HistoryPage({ repository, projectId, onRefresh }: HistoryPagePro
                 <span className="history-row__description">{event.description}</span>
                 <span>{event.actor}</span>
                 <span>{event.timestamp}</span>
-                <div className="history-row__reference"><code>{event.reference}</code>{event.branches?.length ? <span className="history-branch" data-testid={`history-branches-${event.id}`}>{event.branches.join('、')}</span> : null}</div>
+                <div className="history-row__reference"><code>{event.reference}</code>{event.branches?.length ? <span className="history-branches" data-testid={`history-branches-${event.id}`}>{event.branches.map((branch) => <span className={`history-branch${branch === 'main' ? ' history-branch--main' : ''}`} key={branch}>{branch}</span>)}</span> : null}</div>
               </div>
             )
           })}

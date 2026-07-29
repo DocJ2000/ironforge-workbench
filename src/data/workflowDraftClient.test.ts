@@ -28,11 +28,15 @@ it('keeps merge request drafts and clears completed workflows', () => {
     description: '请审核',
     links: ['https://example.com/doc'],
     reviewerIds: [7],
+    tagEnabled: true,
+    tagName: 'T2-第二次打样',
+    tagMessage: '供应商打样版本',
   })
 
   expect(workflowDraftClient.loadMergeRequest('project-a')).toMatchObject({
     step: 2,
     reviewerIds: [7],
+    tagName: 'T2-第二次打样',
   })
   workflowDraftClient.clearMergeRequest('project-a')
   expect(workflowDraftClient.loadMergeRequest('project-a')).toBeNull()

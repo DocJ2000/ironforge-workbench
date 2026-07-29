@@ -203,4 +203,32 @@ describe('GitLabClient', () => {
       expect.any(Object),
     )
   })
+
+  it('reads version Tags and merged reviews for classified history', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(jsonResponse([{
+        name: 'T2-第二次打样',
+        message: '供应商打样版本',
+        commit: { id: 'abc123', committed_date: '2026-07-29T10:00:00Z' },
+      }]))
+      .mockResolvedValueOnce(jsonResponse([{
+        iid: 12,
+        title: 'T2 第二次打样',
+        source_branch: 'dev/T2',
+        target_branch: 'main',
+        merged_at: '2026-07-29T11:00:00Z',
+        merged_by: { name: '审核人' },
+      }]))
+    const client = createGitLabClient(config, fetcher)
+
+    await expect(client.listTags('project')).resolves.toEqual([expect.objectContaining({
+      name: 'T2-第二次打样',
+      commitId: 'abc123',
+    })])
+    await expect(client.listMergedRequests('project')).resolves.toEqual([expect.objectContaining({
+      iid: 12,
+      sourceBranch: 'dev/T2',
+      targetBranch: 'main',
+    })])
+  })
 })

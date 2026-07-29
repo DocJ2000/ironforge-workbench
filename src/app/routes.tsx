@@ -61,6 +61,7 @@ export function AppRoutes() {
               onSelect={selectProject}
               onAdd={addProject}
               onRemove={removeProject}
+              onRefresh={refresh}
               projects={projects}
               selectedId={selectedProjectId}
             />

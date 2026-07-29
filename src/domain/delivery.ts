@@ -66,6 +66,10 @@ export interface MergeRequestDraft {
   reviewerIds: number[]
   feishuLinks: string[]
   attachmentMarkdown: string[]
+  tag?: {
+    name: string
+    message: string
+  }
 }
 
 export interface MergeRequestResult {
@@ -119,6 +123,10 @@ export function validateMergeRequestDraft(draft: MergeRequestDraft) {
   if (!draft.targetBranch.trim()) errors.push('请选择要交付到的正式版本')
   if (!draft.title.trim()) errors.push('请填写管理员审核单标题')
   if (!draft.reviewerIds.length) errors.push('至少选择一位审核人')
+  if (draft.tag) {
+    if (!draft.tag.name.trim()) errors.push('请填写本次版本标记')
+    if (!draft.tag.message.trim()) errors.push('请填写版本标记说明')
+  }
   if (
     draft.feishuLinks.some((link) => {
       try {

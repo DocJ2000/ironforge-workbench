@@ -1,4 +1,4 @@
-import { AlertTriangle, FolderOpen, FolderPlus, GitBranch, HardDrive, Trash2 } from 'lucide-react'
+import { AlertTriangle, FolderOpen, FolderPlus, GitBranch, HardDrive, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { RegisteredProject } from '../../data/repositoryContext'
@@ -17,9 +17,10 @@ interface Props {
   onSelect: (id: string) => void
   onAdd: (path: string) => Promise<void>
   onRemove: (id: string, deleteLocalFiles?: boolean) => Promise<void>
+  onRefresh?: () => Promise<void>
 }
 
-export function TaskHomePage({ projects, onSelect, onAdd, onRemove }: Props) {
+export function TaskHomePage({ projects, onSelect, onAdd, onRemove, onRefresh }: Props) {
   const navigate = useNavigate()
   const [showAdd, setShowAdd] = useState(false)
   const [path, setPath] = useState('')
@@ -29,6 +30,8 @@ export function TaskHomePage({ projects, onSelect, onAdd, onRemove }: Props) {
   const [deleteLocalFiles, setDeleteLocalFiles] = useState(false)
   const [removing, setRemoving] = useState(false)
   const [removeError, setRemoveError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
 
   function openProject(id: string) {
     onSelect(id)
@@ -53,8 +56,15 @@ export function TaskHomePage({ projects, onSelect, onAdd, onRemove }: Props) {
           <h1>选择一个项目</h1>
           <p>点击项目后，再选择上传、下载或查看历史。</p>
         </div>
-        {projects.length > 0 ? <div className="project-center__commands">{projectActions}</div> : null}
+        {projects.length > 0 ? <div className="project-center__commands"><button className="button button--secondary" disabled={refreshing} onClick={() => {
+          setRefreshing(true)
+          setRefreshError(null)
+          void (onRefresh?.() ?? Promise.resolve())
+            .catch((cause) => setRefreshError(cause instanceof Error ? cause.message : '刷新项目概况失败'))
+            .finally(() => setRefreshing(false))
+        }} type="button"><RefreshCw size={17} />{refreshing ? '正在刷新概况' : '刷新项目概况'}</button>{projectActions}</div> : null}
       </header>
+      {refreshError ? <div className="workspace-feedback workspace-feedback--error">{refreshError}</div> : null}
 
       {projects.length === 0 ? (
         <section className="project-center__empty-actions">

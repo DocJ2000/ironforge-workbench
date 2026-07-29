@@ -162,6 +162,27 @@
   white-space: nowrap;
 }
 
+.history-branches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.history-branch {
+  padding: 2px 5px;
+  color: #17627a;
+  background: #e8f7fb;
+  border: 1px solid #b9e2ec;
+  border-radius: 4px;
+}
+
+.history-branch--main {
+  color: #17633f;
+  background: #e9f7ef;
+  border-color: #bfe2cf;
+}
+
 @media (max-width: 980px) {
   .history-table {
     width: 100%;

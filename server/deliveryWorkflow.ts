@@ -30,6 +30,7 @@ interface RepositoryIdentity {
   branch: string
   gitlabPath: string
   behind?: number
+  latestCommit?: string
 }
 
 interface CommitResult {
@@ -75,6 +76,11 @@ export interface DeliveryWorkflowDependencies {
   createMergeRequest: (
     input: CreateMergeRequestInput,
   ) => Promise<CreatedMergeRequest>
+  ensureTag?: (
+    repositoryPath: string,
+    tag: { name: string; message: string },
+    commit: string,
+  ) => Promise<void>
 }
 
 export interface ConfirmedRequest<T> {
@@ -200,6 +206,12 @@ export async function createDeliveryMergeRequest(
   assertValid(validateMergeRequestDraft(draft))
 
   const repository = await dependencies.scanRepository(repositoryPath)
+  if (draft.tag) {
+    if (!dependencies.ensureTag) throw new Error('当前版本暂不支持建立版本标记')
+    const latestCommit = repository.latestCommit ?? ''
+    if (!latestCommit) throw new Error('无法确认当前工作版本的最新提交')
+    await dependencies.ensureTag(repositoryPath, draft.tag, latestCommit)
+  }
   const description = composeMergeRequestDescription(draft)
   const mergeRequest = await dependencies.createMergeRequest({
     projectPath: repository.gitlabPath,

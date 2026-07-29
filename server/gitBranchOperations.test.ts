@@ -10,6 +10,7 @@ import {
   createAndPublishRepositoryBranch,
   createAnnotatedTag,
   createRepositoryBranch,
+  ensureRepositoryTag,
   gitRemoteEnvironment,
   validateRetryPushBranch,
 } from './gitBranchOperations'
@@ -167,5 +168,35 @@ describe('version Tags', () => {
       assertTagAvailable(repositoryPath, 'T2-v1'),
     ).rejects.toThrow('版本 Tag T2-v1 已存在')
     expect(git(repositoryPath, 'tag', '--list')).toBe('T2-v1')
+  })
+
+  it('reuses a remote Tag only when it points to the same commit', async () => {
+    const repositoryPath = await createRepository()
+    const remotePath = await mkdtemp(join(tmpdir(), 'ironforge-tag-remote-'))
+    repositories.push(remotePath)
+    git(remotePath, 'init', '--bare')
+    git(repositoryPath, 'remote', 'add', 'origin', remotePath)
+    git(repositoryPath, 'push', 'origin', 'dev/T2')
+    const commit = git(repositoryPath, 'rev-parse', 'HEAD')
+
+    await ensureRepositoryTag(
+      repositoryPath,
+      { name: 'T2-第二次打样', message: '供应商打样版本' },
+      commit,
+    )
+    await ensureRepositoryTag(
+      repositoryPath,
+      { name: 'T2-第二次打样', message: '供应商打样版本' },
+      commit,
+    )
+
+    await writeFile(join(repositoryPath, 'next.txt'), 'next')
+    git(repositoryPath, 'add', '.')
+    git(repositoryPath, 'commit', '-m', 'next')
+    await expect(ensureRepositoryTag(
+      repositoryPath,
+      { name: 'T2-第二次打样', message: '不能移动' },
+      git(repositoryPath, 'rev-parse', 'HEAD'),
+    )).rejects.toThrow('已指向其他版本')
   })
 })

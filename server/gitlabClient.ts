@@ -62,6 +62,22 @@ export interface GitLabCommit {
   committedAt: string
 }
 
+export interface GitLabTag {
+  name: string
+  message: string
+  commitId: string
+  committedAt: string
+}
+
+export interface GitLabMergedRequest {
+  iid: number
+  title: string
+  sourceBranch: string
+  targetBranch: string
+  mergedAt: string
+  mergedBy: string
+}
+
 function projectUrl(baseUrl: string, projectPath: string) {
   return `${baseUrl}/api/v4/projects/${encodeURIComponent(projectPath)}`
 }
@@ -192,6 +208,47 @@ export function createGitLabClient(
         page = response.headers.get('x-next-page') ?? ''
       }
       return commits
+    },
+
+    async listTags(projectPath: string): Promise<GitLabTag[]> {
+      const response = await request(
+        `${projectUrl('', projectPath)}/repository/tags?per_page=100`,
+        { signal: AbortSignal.timeout(10_000) },
+      )
+      const rows = (await response.json()) as Array<{
+        name: string
+        message?: string | null
+        commit: { id: string; committed_date: string }
+      }>
+      return rows.map((row) => ({
+        name: row.name,
+        message: row.message?.trim() ?? '',
+        commitId: row.commit.id,
+        committedAt: row.commit.committed_date,
+      }))
+    },
+
+    async listMergedRequests(projectPath: string): Promise<GitLabMergedRequest[]> {
+      const response = await request(
+        `${projectUrl('', projectPath)}/merge_requests?state=merged&order_by=updated_at&sort=desc&per_page=100`,
+        { signal: AbortSignal.timeout(10_000) },
+      )
+      const rows = (await response.json()) as Array<{
+        iid: number
+        title: string
+        source_branch: string
+        target_branch: string
+        merged_at: string
+        merged_by?: { name: string } | null
+      }>
+      return rows.map((row) => ({
+        iid: row.iid,
+        title: row.title,
+        sourceBranch: row.source_branch,
+        targetBranch: row.target_branch,
+        mergedAt: row.merged_at,
+        mergedBy: row.merged_by?.name ?? 'GitLab 管理员',
+      }))
     },
 
     async createMergeRequest(

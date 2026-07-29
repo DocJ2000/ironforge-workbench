@@ -55,7 +55,7 @@ export interface PublishJobSummary {
 
 export interface HistoryEvent {
   id: string
-  type: 'commit' | 'push' | 'merge_request' | 'merge' | 'publish'
+  type: 'commit' | 'push' | 'tag' | 'merge_request' | 'merge' | 'publish'
   title: string
   description: string
   actor: string

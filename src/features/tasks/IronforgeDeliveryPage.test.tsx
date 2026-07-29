@@ -102,12 +102,47 @@ it('creates an MR from the previously uploaded charge without syncing again', as
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.change(screen.getByLabelText('本次交付标题'), { target: { value: '更新 T2 设变零件' } })
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   expect(screen.getByRole('checkbox', { name: '选择审核人 胡庆磊' })).toBeChecked()
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '确认交付' }))
   await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({ reviewerIds: [7], title: '更新 T2 设变零件' })))
   expect(api.syncGitLab).not.toHaveBeenCalled()
   localStorage.clear()
+})
+
+it('creates a version tag before submitting a key-version MR', async () => {
+  const repository = {
+    ...getDemoRepository(),
+    changes: [],
+    ahead: 0,
+    behind: 0,
+    latestCommit: 'abcdef123456',
+  }
+  const api = {
+    overview: vi.fn().mockResolvedValue({
+      packages: [],
+      reviewers: [{ id: 7, name: '胡庆磊', username: 'lulu', role: 'Maintainer', recommended: true }],
+    }),
+    createMergeRequest: vi.fn().mockResolvedValue({ iid: 10, webUrl: 'https://gitlab/mr/10' }),
+    uploadAttachment: vi.fn(),
+  } as unknown as DeliveryApi
+  render(<MemoryRouter><IronforgeDeliveryPage api={api} repository={repository} /></MemoryRouter>)
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.change(screen.getByLabelText('本次交付标题'), { target: { value: 'T2 第二次打样' } })
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('checkbox', { name: /为这次关键版本建立标记/ }))
+  fireEvent.change(screen.getByLabelText('本次版本标记'), { target: { value: 'T2-第二次打样' } })
+  fireEvent.change(screen.getByLabelText('版本标记说明'), { target: { value: '供应商第二次打样版本' } })
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '确认交付' }))
+
+  await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({
+    tag: { name: 'T2-第二次打样', message: '供应商第二次打样版本' },
+  })))
 })
 
 it('requires the same project to be uploaded before an Ironforge delivery', () => {

@@ -13,6 +13,9 @@ export interface MergeRequestWorkflowDraft {
   links: string[]
   reviewerIds: number[]
   attachmentNames?: string[]
+  tagEnabled?: boolean
+  tagName?: string
+  tagMessage?: string
 }
 
 interface StoredDraft<T> {
@@ -70,6 +73,9 @@ function isMergeRequestDraft(value: unknown): value is MergeRequestWorkflowDraft
     && draft.links.every((link) => typeof link === 'string')
     && Array.isArray(draft.reviewerIds)
     && draft.reviewerIds.every((id) => Number.isInteger(id))
+    && (draft.tagEnabled === undefined || typeof draft.tagEnabled === 'boolean')
+    && (draft.tagName === undefined || typeof draft.tagName === 'string')
+    && (draft.tagMessage === undefined || typeof draft.tagMessage === 'string')
     && (
       draft.attachmentNames === undefined
       || (

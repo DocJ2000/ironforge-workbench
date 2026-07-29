@@ -52,6 +52,7 @@ function dependencies(order: string[] = []): DeliveryWorkflowDependencies {
     scanRepository: vi.fn().mockResolvedValue({
       branch: 'dev/T2',
       gitlabPath: 'rockteam/dragon/optics/lens-mechanics',
+      latestCommit: 'abc1234',
     }),
     scanPackages: vi.fn().mockResolvedValue(packages),
     previewCharge: vi.fn().mockResolvedValue({
@@ -92,6 +93,9 @@ function dependencies(order: string[] = []): DeliveryWorkflowDependencies {
     }),
     pushTag: vi.fn().mockImplementation(async () => {
       order.push('tag-push')
+    }),
+    ensureTag: vi.fn().mockImplementation(async () => {
+      order.push('tag')
     }),
     createMergeRequest: vi.fn().mockImplementation(async () => {
       order.push('mr')
@@ -250,6 +254,25 @@ describe('createDeliveryMergeRequest', () => {
       iid: 3,
       webUrl: 'https://gitlfs.lab.tp/project/-/merge_requests/3',
     })
+  })
+
+  it('ensures the version Tag before creating the merge request', async () => {
+    const order: string[] = []
+    const deps = dependencies(order)
+    const tag = { name: 'T2-第二次打样', message: '供应商第二次打样版本' }
+
+    await createDeliveryMergeRequest(
+      'C:/fake-repository',
+      { draft: { ...mergeRequestDraft, tag }, confirmed: true },
+      deps,
+    )
+
+    expect(order).toEqual(['tag', 'mr'])
+    expect(deps.ensureTag).toHaveBeenCalledWith(
+      'C:/fake-repository',
+      tag,
+      'abc1234',
+    )
   })
 })
 

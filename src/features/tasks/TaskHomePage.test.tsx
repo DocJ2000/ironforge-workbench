@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getDemoRepository } from '../../data/demoRepository'
 import { TaskHomePage } from './TaskHomePage'
@@ -80,6 +80,29 @@ describe('TaskHomePage', () => {
     fireEvent.click(screen.getByRole('button', { name: '只从软件列表移除' }))
 
     expect(onRemove).toHaveBeenCalledWith(project.id, false)
+  })
+
+  it('refreshes all project summaries without opening a project', async () => {
+    const project = getDemoRepository()
+    const onRefresh = vi.fn().mockResolvedValue(undefined)
+    const onSelect = vi.fn()
+    render(
+      <MemoryRouter>
+        <TaskHomePage
+          onAdd={vi.fn()}
+          onRefresh={onRefresh}
+          onRemove={vi.fn()}
+          onSelect={onSelect}
+          projects={[{ id: project.id, repository: project, connected: true, lastOpened: '刚刚' }]}
+          selectedId={project.id}
+        />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '刷新项目概况' }))
+
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledOnce())
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
 })

@@ -184,3 +184,41 @@ export async function pushRepositoryTag(
 ) {
   await git(repositoryPath, ['push', 'origin', `refs/tags/${name}`], credentials)
 }
+
+export async function ensureRepositoryTag(
+  repositoryPath: string,
+  tag: { name: string; message: string },
+  commit: string,
+  credentials?: GitRemoteCredentials,
+) {
+  const name = tag.name.trim()
+  try {
+    await git(repositoryPath, ['check-ref-format', `refs/tags/${name}`])
+  } catch {
+    throw new Error('版本 Tag 名称不合法')
+  }
+
+  const local = await git(repositoryPath, ['tag', '--list', name])
+  if (local) {
+    const localCommit = await git(repositoryPath, ['rev-list', '-n', '1', name])
+    if (localCommit !== commit) throw new Error(`版本 Tag ${name} 已指向其他版本，请换一个名称`)
+  }
+
+  const remote = await git(repositoryPath, [
+    'ls-remote',
+    '--tags',
+    'origin',
+    `refs/tags/${name}*`,
+  ], credentials)
+  if (remote) {
+    const remoteCommit = remote.split(/\r?\n/)
+      .find((line) => line.endsWith(`refs/tags/${name}^{}`))
+      ?.split(/\s+/)[0]
+      ?? remote.split(/\s+/)[0]
+    if (remoteCommit !== commit) throw new Error(`远端版本 Tag ${name} 已指向其他版本，请换一个名称`)
+    return
+  }
+
+  if (!local) await createAnnotatedTag(repositoryPath, { ...tag, name }, commit)
+  await pushRepositoryTag(repositoryPath, name, credentials)
+}
