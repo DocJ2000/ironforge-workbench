@@ -43,18 +43,24 @@ interface UpdateCoordinatorOptions {
   packaged: boolean
   currentVersion: string
   beforeInstall: () => Promise<unknown>
+  onUpdateAvailable?: (version: string) => void
 }
 
 export class UpdateCoordinator {
   private readonly updater: DesktopUpdater
   private readonly packaged: boolean
   private readonly beforeInstall: () => Promise<unknown>
+  private readonly onUpdateAvailable?: (version: string) => void
+  private initialCheckTimer?: ReturnType<typeof setTimeout>
+  private periodicCheckTimer?: ReturnType<typeof setInterval>
+  private lastAnnouncedVersion?: string
   private state: UpdateStatus
 
-  constructor({ updater, packaged, currentVersion, beforeInstall }: UpdateCoordinatorOptions) {
+  constructor({ updater, packaged, currentVersion, beforeInstall, onUpdateAvailable }: UpdateCoordinatorOptions) {
     this.updater = updater
     this.packaged = packaged
     this.beforeInstall = beforeInstall
+    this.onUpdateAvailable = onUpdateAvailable
     this.state = {
       phase: packaged ? 'idle' : 'unavailable',
       currentVersion,
@@ -64,13 +70,17 @@ export class UpdateCoordinator {
     updater.autoInstallOnAppQuit = false
     updater.fullChangelog = true
     updater.on('checking-for-update', () => this.set({ phase: 'checking' }))
-    updater.on('update-available', (info) =>
+    updater.on('update-available', (info) => {
       this.set({
         phase: 'available',
         availableVersion: info.version,
         releases: normalizeReleaseNotes(info),
-      }),
-    )
+      })
+      if (info.version && info.version !== this.lastAnnouncedVersion) {
+        this.lastAnnouncedVersion = info.version
+        this.onUpdateAvailable?.(info.version)
+      }
+    })
     updater.on('update-not-available', () =>
       this.set({ phase: 'idle', message: '当前已经是最新版本' }),
     )
@@ -100,6 +110,29 @@ export class UpdateCoordinator {
 
   status() {
     return { ...this.state }
+  }
+
+  startPeriodicChecks(
+    initialDelayMs = 30_000,
+    intervalMs = 6 * 60 * 60 * 1000,
+  ) {
+    if (!this.packaged || this.initialCheckTimer || this.periodicCheckTimer) return
+    const checkWhenIdle = () => {
+      if (this.state.phase === 'idle' || this.state.phase === 'error') {
+        void this.check()
+      }
+    }
+    this.initialCheckTimer = setTimeout(checkWhenIdle, initialDelayMs)
+    this.periodicCheckTimer = setInterval(checkWhenIdle, intervalMs)
+    this.initialCheckTimer.unref?.()
+    this.periodicCheckTimer.unref?.()
+  }
+
+  stopPeriodicChecks() {
+    if (this.initialCheckTimer) clearTimeout(this.initialCheckTimer)
+    if (this.periodicCheckTimer) clearInterval(this.periodicCheckTimer)
+    this.initialCheckTimer = undefined
+    this.periodicCheckTimer = undefined
   }
 
   async check() {

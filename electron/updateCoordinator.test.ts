@@ -1,6 +1,8 @@
 import { EventEmitter } from 'node:events'
-import { expect, it, vi } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { UpdateCoordinator } from './updateCoordinator'
+
+afterEach(() => vi.useRealTimers())
 
 class FakeUpdater extends EventEmitter {
   autoDownload = true
@@ -96,4 +98,45 @@ it('reports download progress and friendly failures', () => {
   expect(coordinator.status()).toMatchObject({ phase: 'downloading', progress: 49 })
   updater.emit('error', new Error('network down'))
   expect(coordinator.status()).toMatchObject({ phase: 'error' })
+})
+
+it('checks shortly after startup and then every six hours without downloading', async () => {
+  vi.useFakeTimers()
+  const updater = new FakeUpdater()
+  const coordinator = new UpdateCoordinator({
+    updater,
+    packaged: true,
+    currentVersion: '1.0.0',
+    beforeInstall: vi.fn(),
+  })
+
+  coordinator.startPeriodicChecks()
+  await vi.advanceTimersByTimeAsync(30_000)
+  expect(updater.checkForUpdates).toHaveBeenCalledTimes(1)
+
+  updater.emit('update-not-available', {})
+  await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000)
+  expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+  expect(updater.downloadUpdate).not.toHaveBeenCalled()
+
+  coordinator.stopPeriodicChecks()
+  await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000)
+  expect(updater.checkForUpdates).toHaveBeenCalledTimes(2)
+})
+
+it('announces a newly available version once without starting the download', () => {
+  const updater = new FakeUpdater()
+  const onUpdateAvailable = vi.fn()
+  new UpdateCoordinator({
+    updater,
+    packaged: true,
+    currentVersion: '1.0.0',
+    beforeInstall: vi.fn(),
+    onUpdateAvailable,
+  })
+
+  updater.emit('update-available', { version: '1.1.0' })
+
+  expect(onUpdateAvailable).toHaveBeenCalledWith('1.1.0')
+  expect(updater.downloadUpdate).not.toHaveBeenCalled()
 })

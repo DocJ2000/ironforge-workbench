@@ -271,19 +271,27 @@ app.whenReady().then(async () => {
     new AppSettingsStore(join(userDataPath, 'app-settings.json')),
   )
   registerResetHandler(userDataPath)
-  registerUpdateHandlers(
-    new UpdateCoordinator({
-      updater: autoUpdater,
-      packaged: app.isPackaged,
-      currentVersion: app.getVersion(),
-      beforeInstall: () =>
-        createUpdateBackup({
-          userDataPath,
-          projectRegistryPath,
-          retention: 5,
-        }),
-    }),
-  )
+  const updateCoordinator = new UpdateCoordinator({
+    updater: autoUpdater,
+    packaged: app.isPackaged,
+    currentVersion: app.getVersion(),
+    beforeInstall: () =>
+      createUpdateBackup({
+        userDataPath,
+        projectRegistryPath,
+        retention: 5,
+      }),
+    onUpdateAvailable: (version) => {
+      if (!Notification.isSupported()) return
+      new Notification({
+        title: `发现新版本 ${version}`,
+        body: '打开“账户与连接”即可查看更新内容并决定是否下载。',
+      }).show()
+    },
+  })
+  registerUpdateHandlers(updateCoordinator)
+  updateCoordinator.startPeriodicChecks()
+  app.once('before-quit', () => updateCoordinator.stopPeriodicChecks())
   let sshKeygenExecutable = 'ssh-keygen'
   if (app.isPackaged) {
     const bundledGit = join(process.resourcesPath, 'git', 'cmd', 'git.exe')
