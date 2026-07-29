@@ -11,6 +11,7 @@ function Probe() {
     useRepository()
   return (
     <>
+      <span data-testid="project-ids">{projects.map((project) => project.id).join(',')}</span>
       <span>{repository.branch}</span>
       <span>{source}</span>
       <span>{error ?? 'ok'}</span>
@@ -57,6 +58,40 @@ describe('RepositoryProvider', () => {
     expect(screen.getByText('ready')).toBeVisible()
     await act(async () => screen.getByRole('button', { name: 'refresh' }).click())
     expect(screen.getByText('dev/T2')).toBeVisible()
+  })
+
+  it('reloads the project list so a newly downloaded project becomes visible', async () => {
+    const first = { ...getDemoRepository(), id: 'project-one', branch: 'dev/T2' }
+    const second = {
+      ...getDemoRepository(),
+      id: 'project-two',
+      displayName: 'Second Project',
+      branch: 'dev/T1',
+    }
+    let projectListRequests = 0
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: string) => {
+      if (input === '/api/projects') {
+        projectListRequests += 1
+        const records = [
+          { id: 'project-one', path: 'C:\\one', name: 'one', gitlabRemote: '', addedAt: '2026-07-26T00:00:00Z' },
+          ...(projectListRequests > 1
+            ? [{ id: 'project-two', path: 'C:\\two', name: 'two', gitlabRemote: '', addedAt: '2026-07-29T00:00:00Z' }]
+            : []),
+        ]
+        return { ok: true, json: async () => ({ projects: records }) }
+      }
+      const repository = input.includes('project-two') ? second : first
+      return { ok: true, json: async () => ({ source: 'live', repository }) }
+    }))
+
+    render(<RepositoryProvider><Probe /></RepositoryProvider>)
+    await waitFor(() => expect(screen.getByTestId('project-ids')).toHaveTextContent('project-one'))
+
+    await act(async () => screen.getByRole('button', { name: 'refresh' }).click())
+
+    await waitFor(() =>
+      expect(screen.getByTestId('project-ids')).toHaveTextContent('project-one,project-two'),
+    )
   })
 
   it('keeps demo data and exposes the registry error', async () => {

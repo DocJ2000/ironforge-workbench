@@ -78,4 +78,25 @@ describe('scanOutputPackages', () => {
     const root = await createRoot()
     await expect(scanOutputPackages(root)).resolves.toEqual([])
   })
+
+  it('treats electronics as a normal output category', async () => {
+    const root = await createRoot()
+    await mkdir(join(root, 'output', 'electronics', 'PCB'), {
+      recursive: true,
+    })
+    await writeFile(
+      join(root, 'output', 'electronics', 'PCB', 'board.zip'),
+      'zip',
+    )
+
+    const packages = await scanOutputPackages(root)
+
+    expect(packages).toEqual([
+      expect.objectContaining({
+        id: 'output/electronics/PCB',
+        path: 'output/electronics/PCB',
+        domain: 'electronics',
+      }),
+    ])
+  })
 })

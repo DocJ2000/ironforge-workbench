@@ -73,24 +73,8 @@ export function RepositoryProvider({ children }: PropsWithChildren) {
   }, [loadProjects])
 
   const refresh = useCallback(async () => {
-    setLoading(true)
-    try {
-      const response = await fetchRepositorySnapshot(selectedProjectId)
-      setProjects((current) =>
-        current.map((project) =>
-          project.id === selectedProjectId
-            ? { ...project, repository: response.repository }
-            : project,
-        ),
-      )
-      setSource('live')
-      setError(null)
-    } catch {
-      setError('无法读取当前本地仓库')
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedProjectId])
+    await loadProjects()
+  }, [loadProjects])
 
   const addProject = useCallback(
     async (path: string) => {
