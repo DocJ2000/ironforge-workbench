@@ -191,4 +191,16 @@ describe('GitLabClient', () => {
     expect(commits).toHaveLength(120)
     expect(fetcher).toHaveBeenCalledTimes(2)
   })
+
+  it('reads commit history from the requested cloud branch', async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse([]))
+    const client = createGitLabClient(config, fetcher)
+
+    await client.listCommits('project', 50, 'dev/T2')
+
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining('ref_name=dev%2FT2'),
+      expect.any(Object),
+    )
+  })
 })

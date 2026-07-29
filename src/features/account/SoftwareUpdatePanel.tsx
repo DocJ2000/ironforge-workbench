@@ -1,6 +1,7 @@
 import { Download, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { updateClient, type UpdateStatus } from '../../data/updateClient'
+import { notificationClient } from '../../data/notificationClient'
 
 interface UpdateClient {
   status: () => Promise<UpdateStatus>
@@ -46,6 +47,43 @@ export function SoftwareUpdatePanel({
     }
   }
 
+  async function downloadUpdate() {
+    setBusy(true)
+    setStatus((current) => ({
+      phase: 'downloading',
+      currentVersion: current?.currentVersion ?? '未知',
+      availableVersion: current?.availableVersion,
+      progress: 0,
+    }))
+    const timer = window.setInterval(() => {
+      void client.status().then((next) => {
+        if (next.phase === 'downloading' || next.phase === 'ready' || next.phase === 'error') {
+          setStatus(next)
+        }
+      }).catch(() => {
+        // The active download call remains authoritative.
+      })
+    }, 500)
+    try {
+      const next = await client.download()
+      setStatus(next)
+      if (next.phase === 'ready') {
+        void notificationClient.show('新版本已经下载完成', '返回软件，点击“重启并安装”即可完成更新。')
+      }
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : '下载没有完成，请稍后重试'
+      setStatus((current) => ({
+        phase: 'error',
+        currentVersion: current?.currentVersion ?? '未知',
+        message,
+      }))
+      void notificationClient.show('新版本下载失败', message)
+    } finally {
+      window.clearInterval(timer)
+      setBusy(false)
+    }
+  }
+
   return (
     <section className="connection-section software-update-panel">
       <header>
@@ -64,6 +102,13 @@ export function SoftwareUpdatePanel({
               ? `已下载 ${status.progress ?? 0}%`
               : status?.message ?? (status ? labels[status.phase] : '请稍候')}
         </p>
+        {status?.phase === 'downloading' ? (
+          <div className="update-download-progress">
+            <progress aria-label="新版本下载进度" max="100" value={status.progress ?? 0} />
+            <span>正在下载 {status.progress ?? 0}%</span>
+            <small>可以继续查看其他页面，下载完成后软件会提醒你。</small>
+          </div>
+        ) : null}
         {status?.phase === 'available' && status.releases?.length ? (
           <section className="update-release-notes">
             <strong>这次更新了什么</strong>
@@ -87,11 +132,16 @@ export function SoftwareUpdatePanel({
           <button
             className="button button--primary"
             disabled={busy}
-            onClick={() => void run(client.download)}
+            onClick={() => void downloadUpdate()}
             type="button"
           >
             <Download size={17} />
             下载新版本
+          </button>
+        ) : status?.phase === 'downloading' ? (
+          <button className="button button--primary" disabled type="button">
+            <Download size={17} />
+            正在下载 {status.progress ?? 0}%
           </button>
         ) : status?.phase === 'ready' ? (
           <button

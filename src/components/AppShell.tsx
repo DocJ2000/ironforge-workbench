@@ -8,17 +8,32 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
-
-const navigation = [
-  { to: '/workspace', label: 'GitLab', icon: FolderKanban, end: false },
-  { to: '/ironforge', label: '铁炉堡', icon: Factory, end: true },
-]
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { navigationMemoryClient } from '../data/navigationMemoryClient'
 
 export function AppShell() {
+  const location = useLocation()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [gitLabDestination, setGitLabDestination] = useState(
+    () => navigationMemoryClient.gitLabDestination(),
+  )
+  const navigation = [
+    { to: gitLabDestination, label: 'GitLab', icon: FolderKanban, end: false },
+    { to: '/ironforge', label: '铁炉堡', icon: Factory, end: true },
+  ]
+
+  useEffect(() => {
+    if (
+      location.pathname === '/history'
+      || location.pathname === '/stages'
+      || location.pathname.startsWith('/workspace')
+    ) {
+      navigationMemoryClient.rememberGitLab(location.pathname)
+      setGitLabDestination(location.pathname)
+    }
+  }, [location.pathname])
   return (
     <div className={`app-shell${sidebarCollapsed ? ' app-shell--collapsed' : ''}`}>
       <aside

@@ -2,6 +2,8 @@
 !include "nsDialogs.nsh"
 !pragma warning disable 6020
 
+!define MUI_TEXT_INSTALLING_SUBTITLE "正在解压并安装程序文件，通常需要 1 到 3 分钟。进度条短暂停留是正常现象，请不要关闭窗口。"
+
 Var RemoveUserDataCheckbox
 Var RemoveUserData
 

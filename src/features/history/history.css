@@ -215,3 +215,43 @@
 .history-professional {
   margin-top: 12px;
 }
+
+.history-header-actions,
+.history-pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-pending {
+  margin-top: 14px;
+  padding: 14px 16px;
+  color: #6f4c08;
+  background: #fff8e8;
+  border: 1px solid #e2bd68;
+}
+
+.history-pending > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.history-pending p {
+  overflow: hidden;
+  margin: 3px 0 0;
+  color: #755f32;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-row__reference {
+  display: grid;
+  gap: 4px;
+}
+
+.history-branch {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+}

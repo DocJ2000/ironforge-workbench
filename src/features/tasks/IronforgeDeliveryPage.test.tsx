@@ -1,9 +1,82 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { expect, it, vi } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import type { DeliveryApi } from '../../data/deliveryClient'
 import { getDemoRepository } from '../../data/demoRepository'
 import { IronforgeDeliveryPage } from './IronforgeDeliveryPage'
+
+afterEach(() => localStorage.clear())
+
+it('continues tracking an existing merge request after returning', () => {
+  const repository = {
+    ...getDemoRepository(),
+    changes: [],
+    ahead: 0,
+    behind: 0,
+    latestCommit: 'abcdef123456',
+  }
+  localStorage.setItem(`ironforge-workbench:gitlab-upload:${repository.id}`, JSON.stringify({
+    branch: repository.branch,
+    commit: repository.latestCommit,
+    createdAt: new Date().toISOString(),
+  }))
+  localStorage.setItem(`ironforge-workbench:merge-request:${repository.id}`, JSON.stringify({
+    iid: 9,
+    webUrl: 'https://gitlab/project/-/merge_requests/9',
+    sourceBranch: repository.branch,
+    sourceCommit: repository.latestCommit,
+    state: 'opened',
+    createdAt: new Date().toISOString(),
+  }))
+
+  render(<MemoryRouter><IronforgeDeliveryPage repository={repository} /></MemoryRouter>)
+
+  expect(screen.getByRole('heading', { name: '已提交管理员审核' })).toBeVisible()
+  expect(screen.getByRole('link', { name: '查看本次审核单' })).toHaveAttribute(
+    'href',
+    'https://gitlab/project/-/merge_requests/9',
+  )
+})
+
+it('restores an unfinished merge request draft after leaving the page', async () => {
+  const repository = {
+    ...getDemoRepository(),
+    changes: [],
+    ahead: 0,
+    behind: 0,
+    latestCommit: 'abcdef123456',
+  }
+  localStorage.setItem(`ironforge-workbench:gitlab-upload:${repository.id}`, JSON.stringify({
+    branch: repository.branch,
+    commit: repository.latestCommit,
+    createdAt: new Date().toISOString(),
+  }))
+  const api = {
+    overview: vi.fn().mockResolvedValue({
+      packages: [],
+      reviewers: [{ id: 7, name: '审核人', username: 'reviewer', role: 'Maintainer', recommended: true }],
+    }),
+  } as unknown as DeliveryApi
+
+  const first = render(
+    <MemoryRouter>
+      <IronforgeDeliveryPage api={api} repository={repository} />
+    </MemoryRouter>,
+  )
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.change(screen.getByLabelText('本次交付标题'), {
+    target: { value: 'T2 正式交付' },
+  })
+  first.unmount()
+
+  render(
+    <MemoryRouter>
+      <IronforgeDeliveryPage api={api} repository={repository} />
+    </MemoryRouter>,
+  )
+  expect(screen.getByLabelText('本次交付标题')).toHaveValue('T2 正式交付')
+})
 
 it('creates an MR from the previously uploaded charge without syncing again', async () => {
   const repository = {
@@ -45,7 +118,7 @@ it('requires the same project to be uploaded before an Ironforge delivery', () =
   expect(screen.getByRole('link', { name: '去上传这个项目' })).toHaveAttribute('href', '/workspace/upload/gitlab')
 })
 
-it('rejects a stale upload receipt from an older commit', () => {
+it('accepts a clean cloud-synced commit pushed by another Git tool', async () => {
   const repository = {
     ...getDemoRepository(),
     changes: [],
@@ -59,8 +132,11 @@ it('rejects a stale upload receipt from an older commit', () => {
     createdAt: new Date().toISOString(),
   }))
 
-  render(<MemoryRouter><IronforgeDeliveryPage repository={repository} /></MemoryRouter>)
+  const api = {
+    overview: vi.fn().mockResolvedValue({ packages: [], reviewers: [] }),
+  } as unknown as DeliveryApi
+  render(<MemoryRouter><IronforgeDeliveryPage api={api} repository={repository} /></MemoryRouter>)
 
-  expect(screen.getByRole('heading', { name: '项目还没有准备好交付' })).toBeVisible()
-  localStorage.clear()
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+  expect(screen.queryByRole('heading', { name: '项目还没有准备好交付' })).not.toBeInTheDocument()
 })

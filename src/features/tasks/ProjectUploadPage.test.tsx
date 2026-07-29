@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { expect, it, vi } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { getDemoRepository } from '../../data/demoRepository'
 import type { DeliveryApi } from '../../data/deliveryClient'
 import { initialUploadBranch, ProjectUploadPage, uploadBranchNames } from './ProjectUploadPage'
@@ -12,6 +12,43 @@ function readyRepository() {
     behind: 0,
   }
 }
+
+afterEach(() => localStorage.clear())
+
+it('restores the unfinished upload step after leaving the page', async () => {
+  const repository = readyRepository()
+  const api = {
+    overview: vi.fn().mockResolvedValue({
+      packages: [{
+        id: 'fixture',
+        name: '治具',
+        path: 'output/mechanical/治具',
+        domain: 'mechanical',
+        files: [],
+      }],
+      reviewers: [],
+    }),
+  } as unknown as DeliveryApi
+
+  const first = render(
+    <MemoryRouter>
+      <ProjectUploadPage api={api} repository={repository} />
+    </MemoryRouter>,
+  )
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+  for (let index = 0; index < 3; index += 1) {
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  }
+  expect(screen.getByRole('heading', { name: '核对自动生成的交付清单' })).toBeVisible()
+  first.unmount()
+
+  render(
+    <MemoryRouter>
+      <ProjectUploadPage api={api} repository={repository} />
+    </MemoryRouter>,
+  )
+  expect(screen.getByRole('heading', { name: '核对自动生成的交付清单' })).toBeVisible()
+})
 
 it('offers to continue an existing local commit after returning to the page', async () => {
   const repository = {
@@ -47,6 +84,31 @@ it('offers to continue an existing local commit after returning to the page', as
   await waitFor(() => expect(retryPush).toHaveBeenCalledWith('dev/T2'))
   expect(syncGitLab).not.toHaveBeenCalled()
   expect(screen.getByText('工程已上传')).toBeVisible()
+})
+
+it('blocks upload when both the computer and cloud have newer work', () => {
+  const repository = {
+    ...readyRepository(),
+    ahead: 1,
+    behind: 2,
+    changes: [],
+  }
+  const retryPush = vi.fn()
+  const api = {
+    overview: vi.fn().mockResolvedValue({ packages: [], reviewers: [] }),
+    retryPush,
+  } as unknown as DeliveryApi
+
+  render(
+    <MemoryRouter>
+      <ProjectUploadPage api={api} repository={repository} />
+    </MemoryRouter>,
+  )
+
+  expect(screen.getByRole('heading', { name: '电脑和云端都有新的内容' })).toBeVisible()
+  expect(screen.getByText(/不会强行覆盖任何一边/)).toBeVisible()
+  expect(screen.queryByRole('button', { name: '继续上传' })).not.toBeInTheDocument()
+  expect(retryPush).not.toHaveBeenCalled()
 })
 
 it('creates a new cloud work version from an existing cloud branch', async () => {

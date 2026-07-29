@@ -62,6 +62,7 @@ export interface HistoryEvent {
   timestamp: string
   reference: string
   tone: StatusTone
+  branches?: string[]
 }
 
 export interface RepositorySnapshot {

@@ -78,7 +78,7 @@ export function AppRoutes() {
         <Route path="/workspace/retrieve" element={operationReady ? <CredentialGate projectId={selectedProjectId}><RetrievePage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></CredentialGate> : <ProjectUnavailable repository={repository} />} />
         <Route path="/stages" element={<StagesPage repository={repository} />} />
         <Route path="/release" element={<ReleasePage repository={repository} />} />
-        <Route path="/history" element={operationReady ? <HistoryPage projectId={selectedProjectId} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
+        <Route path="/history" element={operationReady ? <HistoryPage onRefresh={refresh} projectId={selectedProjectId} repository={repository} /> : <ProjectUnavailable repository={repository} />} />
         </Route>
       </Route>
     </Routes>

@@ -538,11 +538,39 @@ export function createRepositoryMiddleware({
           token: projectCredentials.token,
           recommendedReviewers: [],
         }, fetcher)
-        const commits = await gitLab.listCommits(
-          gitLabProjectPath(repository.gitlabPath),
+        const cloudBranches = repository.branches
+          .filter((branch) => branch.remote)
+          .map((branch) => branch.name)
+        const branchNames = cloudBranches.length
+          ? cloudBranches
+          : [repository.branch]
+        const branchCommits = await Promise.all(
+          branchNames.map(async (branch) => ({
+            branch,
+            commits: await gitLab.listCommits(
+              gitLabProjectPath(repository.gitlabPath),
+              100,
+              branch,
+            ),
+          })),
         )
+        const commitsById = new Map<string, {
+          commit: (typeof branchCommits)[number]['commits'][number]
+          branches: string[]
+        }>()
+        for (const entry of branchCommits) {
+          for (const commit of entry.commits) {
+            const existing = commitsById.get(commit.id)
+            if (existing) existing.branches.push(entry.branch)
+            else commitsById.set(commit.id, { commit, branches: [entry.branch] })
+          }
+        }
+        const commits = [...commitsById.values()]
+          .sort((left, right) =>
+            Date.parse(right.commit.committedAt) - Date.parse(left.commit.committedAt))
+          .slice(0, 200)
         sendJson(response, 200, {
-          history: commits.map((commit) => ({
+          history: commits.map(({ commit, branches }) => ({
             id: commit.id,
             type: 'commit',
             title: commit.title,
@@ -553,6 +581,7 @@ export function createRepositoryMiddleware({
             }),
             reference: commit.shortId,
             tone: 'info',
+            branches,
           })),
         })
       } catch (error) {

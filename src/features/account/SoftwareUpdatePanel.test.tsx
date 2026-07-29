@@ -1,6 +1,57 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { SoftwareUpdatePanel } from './SoftwareUpdatePanel'
+
+it('shows immediate and live feedback while an update is downloading', async () => {
+  vi.useFakeTimers()
+  let finishDownload!: (value: {
+    phase: 'ready'
+    currentVersion: string
+    availableVersion: string
+  }) => void
+  const download = vi.fn().mockReturnValue(new Promise((resolve) => {
+    finishDownload = resolve
+  }))
+  const client = {
+    status: vi.fn()
+      .mockResolvedValueOnce({
+        phase: 'available',
+        currentVersion: '1.0.0',
+        availableVersion: '1.1.0',
+      })
+      .mockResolvedValue({
+        phase: 'downloading',
+        currentVersion: '1.0.0',
+        availableVersion: '1.1.0',
+        progress: 42,
+      }),
+    check: vi.fn(),
+    download,
+    install: vi.fn(),
+  }
+
+  render(<SoftwareUpdatePanel client={client} />)
+  await act(async () => { await Promise.resolve() })
+  fireEvent.click(screen.getByRole('button', { name: '下载新版本' }))
+  expect(screen.getByRole('button', { name: '正在下载 0%' })).toBeDisabled()
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(600)
+  })
+  expect(screen.getByRole('button', { name: '正在下载 42%' })).toBeDisabled()
+  expect(screen.getByRole('progressbar')).toHaveAttribute('value', '42')
+
+  await act(async () => {
+    finishDownload({
+      phase: 'ready',
+      currentVersion: '1.0.0',
+      availableVersion: '1.1.0',
+    })
+    await Promise.resolve()
+  })
+  expect(screen.getByRole('button', { name: '重启并安装' })).toBeVisible()
+  vi.useRealTimers()
+})
 
 it('requires separate clicks to check, download, and install', async () => {
   const client = {

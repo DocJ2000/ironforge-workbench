@@ -7,6 +7,7 @@ import { onboardingClient } from '../../data/onboardingClient'
 import { notificationClient } from '../../data/notificationClient'
 import { organizationClient } from '../../data/organizationClient'
 import { uploadReceiptClient } from '../../data/uploadReceiptClient'
+import { workflowDraftClient } from '../../data/workflowDraftClient'
 import type { OutputPackageCandidate } from '../../domain/delivery'
 import type { RepositorySnapshot } from '../../domain/repository'
 import { FieldHelp } from '../account/FieldHelp'
@@ -34,13 +35,21 @@ export function initialUploadBranch(repository: RepositorySnapshot, branchNames 
 }
 
 export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: Props) {
-  const [step, setStep] = useState(0)
   const branches = useMemo(() => uploadBranchNames(repository), [repository])
-  const [branch, setBranch] = useState(() => initialUploadBranch(repository))
+  const initialDraft = useMemo(
+    () => workflowDraftClient.loadUpload(repository.id),
+    [repository.id],
+  )
+  const [step, setStep] = useState(() => Math.min(initialDraft?.step ?? 0, steps.length - 1))
+  const [branch, setBranch] = useState(() => {
+    const saved = initialDraft?.branch
+    return saved && branches.includes(saved) ? saved : initialUploadBranch(repository)
+  })
   const [packages, setPackages] = useState<OutputPackageCandidate[]>([])
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set())
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  const [packagesLoaded, setPackagesLoaded] = useState(false)
+  const [title, setTitle] = useState(initialDraft?.title ?? '')
+  const [description, setDescription] = useState(initialDraft?.description ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<ReturnType<typeof friendlyErrorFrom> | null>(null)
   const [result, setResult] = useState<{ commit: string; branch: string } | null>(null)
@@ -64,10 +73,35 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     void api.overview().then((overview) => {
       if (!active) return
       setPackages(overview.packages)
-      setSelectedPackages(new Set(overview.packages.map((item) => item.id)))
+      const availableIds = new Set(overview.packages.map((item) => item.id))
+      const restoredIds = initialDraft?.selectedPackageIds.filter((id) => availableIds.has(id))
+      setSelectedPackages(new Set(
+        restoredIds?.length ? restoredIds : overview.packages.map((item) => item.id),
+      ))
+      setPackagesLoaded(true)
     }).catch((cause) => active && setError(friendlyErrorFrom(cause)))
     return () => { active = false }
-  }, [api])
+  }, [api, initialDraft])
+
+  useEffect(() => {
+    if (!packagesLoaded || result) return
+    workflowDraftClient.saveUpload(repository.id, {
+      step,
+      selectedPackageIds: [...selectedPackages],
+      branch,
+      title,
+      description,
+    })
+  }, [
+    branch,
+    description,
+    packagesLoaded,
+    repository.id,
+    result,
+    selectedPackages,
+    step,
+    title,
+  ])
 
   function togglePackage(id: string) {
     setSelectedPackages((current) => {
@@ -90,6 +124,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
         branch,
       })
       setResult(execution)
+      workflowDraftClient.clearUpload(repository.id)
       uploadReceiptClient.save(repository.id, { branch: execution.branch, commit: execution.commit })
       onboardingClient.update({ firstUpload: true })
       void notificationClient.show('项目上传成功', '本次工程改动已经上传。')
@@ -107,6 +142,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     try {
       const execution = await api.retryPush(targetBranch)
       uploadReceiptClient.save(repository.id, execution)
+      workflowDraftClient.clearUpload(repository.id)
       onboardingClient.update({ firstUpload: true })
       void notificationClient.show('项目上传成功', '本次工程改动已经上传。')
       await onRefresh?.()
@@ -150,6 +186,22 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     ? `${gitLabBase}/${repository.gitlabPath}/-/commit/${result.commit}`
     : ''
   const hasPendingUpload = repository.ahead > 0 && repository.behind === 0
+
+  const hasDiverged = repository.ahead > 0 && repository.behind > 0
+
+  if (hasDiverged && !result) {
+    return <section className="pending-upload">
+      <span className="pending-upload__icon"><GitBranch size={30} /></span>
+      <p className="task-eyebrow">需要先整理版本</p>
+      <h1>电脑和云端都有新的内容</h1>
+      <p>电脑里有 {repository.ahead} 次尚未上传的更新，云端也有 {repository.behind} 次尚未下载的更新。软件不会强行覆盖任何一边。</p>
+      <div className="delivery-alert delivery-alert--warning">
+        <strong>这时不能直接继续上传</strong>
+        <p>请返回项目页面选择“下载云端的新内容”。如果同一份文件两边都改过，软件会保留现场并告诉你需要请技术同事处理。</p>
+      </div>
+      <Link className="button button--primary" to="/workspace">返回项目页面</Link>
+    </section>
+  }
 
   if (hasPendingUpload && !result) {
     return <section className="pending-upload">

@@ -161,12 +161,16 @@ export function createGitLabClient(
         )
     },
 
-    async listCommits(projectPath: string, limit = 200): Promise<GitLabCommit[]> {
+    async listCommits(
+      projectPath: string,
+      limit = 200,
+      refName?: string,
+    ): Promise<GitLabCommit[]> {
       const commits: GitLabCommit[] = []
       let page = '1'
       while (page && commits.length < limit) {
         const response = await request(
-          `${projectUrl('', projectPath)}/repository/commits?per_page=100&page=${page}`,
+          `${projectUrl('', projectPath)}/repository/commits?per_page=100&page=${page}${refName ? `&ref_name=${encodeURIComponent(refName)}` : ''}`,
           { signal: AbortSignal.timeout(10_000) },
         )
         const rows = (await response.json()) as Array<{
