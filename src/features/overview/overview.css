@@ -33,45 +33,6 @@
   gap: 8px;
 }
 
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 13px;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.button--primary {
-  color: #fff;
-  background: var(--accent);
-  border: 1px solid #c23a26;
-}
-
-.button--primary:hover {
-  background: #c63e29;
-}
-
-.button--secondary {
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-}
-
-.button--secondary:hover {
-  background: var(--surface-soft);
-}
-
-.button--danger-quiet {
-  color: var(--danger);
-  background: #fff;
-  border: 1px solid #e5baba;
-}
-
 .status-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
