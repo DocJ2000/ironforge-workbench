@@ -27,9 +27,12 @@ try {
   )
   await mkdir(finalOutput, { recursive: true })
   const files = await readdir(temporaryOutput)
-  const releaseFiles = files.filter((file) =>
-    ['.exe', '.yml', '.yaml', '.blockmap'].includes(extname(file).toLowerCase()),
-  )
+  const releaseFiles = files.filter((file) => {
+    if (file.startsWith('builder-')) return false
+    return ['.exe', '.yml', '.yaml', '.blockmap'].includes(
+      extname(file).toLowerCase(),
+    )
+  })
   for (const file of releaseFiles) {
     await cp(join(temporaryOutput, file), join(finalOutput, file), { force: true })
   }

@@ -3,7 +3,13 @@ import { extname, join, relative, resolve } from 'node:path'
 import { homedir } from 'node:os'
 
 const root = resolve(import.meta.dirname, '..')
-const targets = ['dist', 'dist-electron', 'dist-runtime', 'package.json']
+const targets = [
+  'dist',
+  'dist-electron',
+  'dist-runtime',
+  'package.json',
+  'release/latest.yml',
+]
 const textExtensions = new Set(['.js', '.cjs', '.mjs', '.json', '.html', '.css', '.yml', '.yaml', '.txt'])
 const escapePattern = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const forbidden = [
