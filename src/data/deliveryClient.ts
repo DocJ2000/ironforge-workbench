@@ -27,6 +27,7 @@ export function friendlyErrorFrom(cause: unknown): FriendlyError {
 export interface DeliveryOverview {
   packages: OutputPackageCandidate[]
   reviewers: GitLabReviewer[]
+  projectVisibility?: 'private' | 'internal' | 'public' | 'unknown'
   reviewerError?: string
 }
 

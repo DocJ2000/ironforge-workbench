@@ -746,14 +746,17 @@ export function createRepositoryMiddleware({
             token: projectCredentials.token,
             recommendedReviewers: [],
           }, fetcher)
-          const reviewers = await gitLab.listReviewers(
-            gitLabProjectPath(repository.gitlabPath),
-          )
-          sendJson(response, 200, { packages, reviewers })
+          const projectPath = gitLabProjectPath(repository.gitlabPath)
+          const [reviewers, projectVisibility] = await Promise.all([
+            gitLab.listReviewers(projectPath),
+            gitLab.getProjectVisibility(projectPath),
+          ])
+          sendJson(response, 200, { packages, reviewers, projectVisibility })
         } catch (error) {
           sendJson(response, 200, {
             packages,
             reviewers: [],
+            projectVisibility: 'unknown',
             reviewerError:
               error instanceof Error
                 ? error.message

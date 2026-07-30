@@ -49,6 +49,8 @@ export interface GitLabCurrentUser {
   name: string
 }
 
+export type GitLabProjectVisibility = 'private' | 'internal' | 'public'
+
 interface GitLabSshKey {
   key: string
 }
@@ -141,6 +143,19 @@ export function createGitLabClient(
       return keys.some((entry) =>
         entry.key.trim().split(/\s+/).slice(0, 2).join(' ') === identity,
       )
+    },
+
+    async getProjectVisibility(
+      projectPath: string,
+    ): Promise<GitLabProjectVisibility> {
+      const response = await request(projectUrl('', projectPath))
+      const project = (await response.json()) as {
+        visibility?: GitLabProjectVisibility
+      }
+      if (!project.visibility) {
+        throw new Error('GitLab 没有返回项目可见范围')
+      }
+      return project.visibility
     },
 
     async listReviewers(projectPath: string): Promise<GitLabReviewer[]> {

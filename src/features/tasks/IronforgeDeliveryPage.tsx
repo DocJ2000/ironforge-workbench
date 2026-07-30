@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
+import { attachmentUploadReceiptClient } from '../../data/attachmentUploadReceiptClient'
 import { notificationClient } from '../../data/notificationClient'
 import { organizationClient } from '../../data/organizationClient'
 import { workflowDraftClient } from '../../data/workflowDraftClient'
@@ -42,6 +43,9 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
     () => new Set(initialDraft?.reviewerIds ?? []),
   )
   const [reviewersLoaded, setReviewersLoaded] = useState(false)
+  const [projectVisibility, setProjectVisibility] = useState<
+    'private' | 'internal' | 'public' | 'unknown'
+  >('unknown')
   const [title, setTitle] = useState(initialDraft?.title ?? '')
   const [description, setDescription] = useState(initialDraft?.description ?? '')
   const [links, setLinks] = useState<string[]>(initialDraft?.links ?? [])
@@ -68,6 +72,7 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
     void api.overview().then((overview) => {
       if (!active) return
       setReviewers(overview.reviewers)
+      setProjectVisibility(overview.projectVisibility ?? 'private')
       const availableIds = new Set(overview.reviewers.map((item) => item.id))
       const restoredIds = initialDraft?.reviewerIds.filter((id) => availableIds.has(id))
       setSelectedReviewers(new Set(
@@ -154,13 +159,21 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
   async function createMr() {
     setBusy(true); setError(null)
     try {
+      if (attachments.length > 0 && projectVisibility === 'public') {
+        throw new Error('这个 GitLab 项目是公开项目，软件不会上传可能包含内部信息的附件。请先移除附件，或让管理员把项目改为非公开。')
+      }
+      if (attachments.length > 0 && projectVisibility === 'unknown') {
+        throw new Error('软件还不能确认这个 GitLab 项目是否公开，因此没有上传附件。请检查软件访问码和项目权限后重试。')
+      }
       const attachmentMarkdown: string[] = []
       for (const file of attachments) {
         const key = `${file.name}:${file.size}:${file.lastModified}`
         let markdown = uploadedAttachments.current.get(key)
+          ?? attachmentUploadReceiptClient.load(repository.id, file)
         if (!markdown) {
           markdown = (await api.uploadAttachment(file)).markdown
           uploadedAttachments.current.set(key, markdown)
+          attachmentUploadReceiptClient.save(repository.id, file, markdown)
         }
         attachmentMarkdown.push(markdown)
       }

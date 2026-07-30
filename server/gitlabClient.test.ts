@@ -15,6 +15,21 @@ function jsonResponse(value: unknown, status = 200) {
 }
 
 describe('GitLabClient', () => {
+  it('reads project visibility before attachments are uploaded', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({ visibility: 'private' }),
+    )
+    const client = createGitLabClient(config, fetcher)
+
+    await expect(
+      client.getProjectVisibility('group/project'),
+    ).resolves.toBe('private')
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://gitlfs.lab.tp/api/v4/projects/group%2Fproject',
+      expect.any(Object),
+    )
+  })
+
   it('sorts recommended reviewers first and removes inherited duplicates', async () => {
     const fetcher = vi.fn().mockResolvedValue(
       jsonResponse([
