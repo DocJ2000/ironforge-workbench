@@ -134,7 +134,6 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         </header>
         <div className="connection-form">
           <label className="plain-field"><span className="field-label-row">公司项目服务器地址<FieldHelp label="公司项目服务器地址"><strong>这是公司 GitLab 登录页面的开头部分。</strong><ol><li>打开公司 GitLab 登录页面。</li><li>复制浏览器地址中域名部分，例如 https://gitlab.example.com。</li><li>不要复制项目后面的长路径。</li><li>不确定时询问管理员。</li></ol></FieldHelp></span><input aria-label="公司项目服务器地址" onChange={(event) => { setGitlabUrl(event.target.value); setOrganizationSaved(false) }} placeholder="例如：https://gitlab.example.com" value={gitlabUrl} /></label>
-          <label className="plain-field"><span className="field-label-row">交付平台地址<FieldHelp label="交付平台地址"><strong>这是浏览器中打开交付平台项目列表时的完整地址。</strong><ol><li>在浏览器中打开公司的交付平台。</li><li>进入项目列表页面。</li><li>复制浏览器顶部的完整地址并粘贴到这里。</li><li>不确定时询问管理员。</li></ol></FieldHelp></span><input aria-label="交付平台地址" onChange={(event) => { setIronforgeUrl(event.target.value); setOrganizationSaved(false) }} placeholder="例如：https://delivery.example.com/projects" value={ironforgeUrl} /></label>
         </div>
         <footer>
           <button className="button button--secondary" onClick={() => setView('welcome')} type="button">返回</button>
@@ -185,7 +184,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
             <span className="connection-status connection-status--ready">可以使用</span>
             <dl>
               <div><dt>公司项目服务器</dt><dd>{gitlabUrl}</dd></div>
-              <div><dt>铁炉堡</dt><dd>{ironforgeUrl || '尚未填写'}</dd></div>
+              <div><dt>铁炉堡</dt><dd>{ironforgeUrl ? '地址已设置' : '尚未设置'}</dd></div>
               <div><dt>软件访问码</dt><dd>已安全保存</dd></div>
               <div><dt>电脑身份钥匙</dt><dd>已保存在本机</dd></div>
             </dl>
@@ -199,7 +198,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
       ) : null}
 
       {view === 'summary' ? <details className="advanced-connection">
-        <summary>专业显示：手动使用已有的电脑身份钥匙</summary>
+        <summary>专业显示：服务器地址与身份钥匙</summary>
       <section className="connection-section">
         <header>
           <span className="connection-icon connection-icon--gitlab"><KeyRound size={21} /></span>
@@ -210,6 +209,7 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         </header>
         <div className="connection-form">
           <label className="plain-field"><span>GitLab 地址</span><input aria-label="GitLab 地址" onChange={(event) => setGitlabUrl(event.target.value)} value={gitlabUrl} /></label>
+          <label className="plain-field"><span className="field-label-row">铁炉堡地址<FieldHelp label="铁炉堡地址"><strong>这是铁炉堡项目列表的完整网页地址。</strong><ol><li>在浏览器中打开铁炉堡。</li><li>进入项目列表页面。</li><li>复制浏览器顶部的完整地址。</li><li>粘贴后点击“保存服务器地址”。</li></ol></FieldHelp></span><input aria-label="铁炉堡地址" onChange={(event) => setIronforgeUrl(event.target.value)} placeholder="例如：https://delivery.example.com/projects" value={ironforgeUrl} /></label>
           <label className="plain-field"><span className="field-label-row">GitLab Token<FieldHelp label="GitLab Token"><strong>也就是软件访问码，不是登录密码。</strong><p>在 GitLab 的 Access Tokens 页面创建，权限选择 api。创建后通常只显示一次。</p></FieldHelp></span><span className="secret-input"><input aria-label="GitLab Token" autoComplete="off" onChange={(event) => { setToken(event.target.value); setChecked(false) }} placeholder="粘贴个人访问令牌" type={showToken ? 'text' : 'password'} value={token} /><button aria-label={showToken ? '隐藏 Token' : '显示 Token'} onClick={() => setShowToken((value) => !value)} type="button">{showToken ? <EyeOff size={17} /> : <Eye size={17} />}</button></span></label>
           <label className="plain-field"><span className="field-label-row">SSH 私钥路径<FieldHelp label="SSH 私钥路径"><strong>选择没有 .pub 后缀的文件。</strong><p>常见位置是 C:\Users\用户名\.ssh\id_ed25519。带 .pub 的文件是可以添加到 GitLab 的公钥。</p></FieldHelp></span><span className="path-input"><input aria-label="SSH 私钥路径" onChange={(event) => { setKeyPath(event.target.value); setChecked(false) }} placeholder="例如：C:\Users\name\.ssh\id_ed25519" value={keyPath} />{desktopDialogClient.available() ? <button aria-label="选择 SSH 私钥" onClick={() => void desktopDialogClient.chooseSshKey().then((path) => { if (path) setKeyPath(path) })} title="选择 SSH 私钥" type="button"><FolderOpen size={17} /></button> : null}</span></label>
           <label className="plain-field"><span className="field-label-row">SSH 私钥密码（可选）<FieldHelp label="SSH 私钥密码"><strong>它不是 GitLab 密码。</strong><p>生成身份钥匙时没有设置密码就留空；忘记后无法找回，需要重新创建身份钥匙。</p></FieldHelp></span><input aria-label="SSH 私钥密码（可选）" autoComplete="off" onChange={(event) => setPassphrase(event.target.value)} type="password" value={passphrase} /></label>
@@ -218,6 +218,19 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
         {error ? <p className="credential-error">{error}</p> : null}
         <footer>
           {configured ? <button className="button button--secondary" disabled={busy} onClick={() => setShowClear(true)} type="button">清除这台电脑的连接</button> : null}
+          <button className="button button--secondary" disabled={!gitlabUrl.trim() || busy} onClick={() => {
+            setBusy(true)
+            setError(null)
+            void organizationClient.saveDurable({
+              gitlabUrl,
+              ironforgeUrl,
+              connectionVerified: true,
+            }).then((saved) => {
+              setGitlabUrl(saved.gitlabUrl)
+              setIronforgeUrl(saved.ironforgeUrl)
+            }).catch(() => setError('服务器地址没有保存成功，请重试。'))
+              .finally(() => setBusy(false))
+          }} type="button">保存服务器地址</button>
           <button className="button button--primary" disabled={!complete || busy} onClick={() => void saveCredentials()} type="button">{desktopStorage ? busy ? '正在安全保存' : '安全保存' : '检查填写内容'}</button>
         </footer>
       </section>

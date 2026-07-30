@@ -73,9 +73,11 @@ it('shows a compact summary and keeps software update outside professional displ
 
   expect(await screen.findByRole('heading', { name: '已完成初始设置' })).toBeVisible()
   expect(screen.getByRole('heading', { name: '软件更新' })).toBeVisible()
-  expect(screen.getByText('专业显示：手动使用已有的电脑身份钥匙')).toBeVisible()
+  expect(screen.getByText('专业显示：服务器地址与身份钥匙')).toBeVisible()
   expect(screen.getByLabelText('GitLab Token', { selector: 'input' })).not.toBeVisible()
+  expect(screen.getByLabelText('铁炉堡地址', { selector: 'input' })).not.toBeVisible()
 
-  fireEvent.click(screen.getByText('专业显示：手动使用已有的电脑身份钥匙'))
+  fireEvent.click(screen.getByText('专业显示：服务器地址与身份钥匙'))
   await waitFor(() => expect(screen.getByLabelText('GitLab Token', { selector: 'input' })).toHaveAttribute('type', 'password'))
+  expect(screen.getByLabelText('铁炉堡地址', { selector: 'input' })).toHaveValue('https://delivery.example.com/projects')
 })
