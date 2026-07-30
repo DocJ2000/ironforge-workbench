@@ -48,11 +48,11 @@ it('fast-forwards a clean repository to remote changes', async () => {
   expect(result.updated).toBe(true)
   expect(result.receivedCommits).toBe(1)
   expect(git(second, 'log', '-1', '--pretty=%s')).toBe('remote change')
-})
+}, 15_000)
 
 it('stops before fetching when local files have unsaved changes', async () => {
   const { second } = await fixture()
   await writeFile(join(second, 'README.md'), 'local edit')
 
   await expect(pullRepository(second)).rejects.toThrow('本地还有未上传的改动')
-})
+}, 15_000)

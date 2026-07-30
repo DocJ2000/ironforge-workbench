@@ -117,3 +117,24 @@ it('uses one computer connection for every project', async () => {
     token: 'computer-token',
   })
 })
+
+it('does not overwrite an unreadable credential file when saving', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ironforge-credentials-'))
+  roots.push(root)
+  const keyPath = join(root, 'computer-key')
+  const vaultPath = join(root, 'credentials.dat')
+  await Promise.all([
+    writeFile(keyPath, 'computer private key'),
+    writeFile(vaultPath, 'not-an-encrypted-payload'),
+  ])
+  const vault = new CredentialVault(vaultPath, protector)
+
+  await expect(vault.save({
+    projectId: 'computer',
+    baseUrl: 'https://git.example.com',
+    token: 'token',
+    sshKeyPath: keyPath,
+  })).rejects.toThrow('凭据文件')
+
+  expect(await readFile(vaultPath, 'utf8')).toBe('not-an-encrypted-payload')
+})

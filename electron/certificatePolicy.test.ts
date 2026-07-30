@@ -29,21 +29,22 @@ describe('mayTrustInternalCertificate', () => {
 })
 
 describe('mayTrustEmbeddedNavigationCertificate', () => {
-  it('allows an authority error only inside a tracked HTTPS login window', () => {
+  it('allows an authority error only for a host registered by the embedded login flow', () => {
+    const trustedHosts = new Set(['sso.example.test'])
     expect(mayTrustEmbeddedNavigationCertificate(
       'net::ERR_CERT_AUTHORITY_INVALID',
       'https://sso.example.test/login',
-      true,
+      trustedHosts,
     )).toBe(true)
     expect(mayTrustEmbeddedNavigationCertificate(
       'net::ERR_CERT_AUTHORITY_INVALID',
-      'https://sso.example.test/login',
-      false,
+      'https://evil.example.test/login',
+      trustedHosts,
     )).toBe(false)
     expect(mayTrustEmbeddedNavigationCertificate(
       'net::ERR_CERT_DATE_INVALID',
       'https://sso.example.test/login',
-      true,
+      trustedHosts,
     )).toBe(false)
   })
 })

@@ -40,8 +40,17 @@ export class CredentialVault {
         string,
         GitLabCredentialInput
       >
-    } catch {
-      return {}
+    } catch (cause) {
+      if (
+        cause
+        && typeof cause === 'object'
+        && 'code' in cause
+        && cause.code === 'ENOENT'
+      ) return {}
+      throw new Error(
+        '本机凭据文件无法读取。软件不会覆盖它，请重置用户信息或联系技术同事处理。',
+        { cause },
+      )
     }
   }
 

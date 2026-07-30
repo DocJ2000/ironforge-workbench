@@ -28,6 +28,7 @@ import {
   mayTrustEmbeddedNavigationCertificate,
 } from './certificatePolicy.js'
 import { AppSettingsStore, type AppSettings } from './appSettingsStore.js'
+import { parseExternalHttpUrl } from './externalUrl.js'
 
 const { autoUpdater } = electronUpdater
 
@@ -91,7 +92,6 @@ function registerIdentityHandlers(service: IdentityKeyService) {
 function registerIronforgeHandlers() {
   const ironforgeSession = session.fromPartition('persist:ironforge')
   const trustedHosts = new Set<string>()
-  const trackedContents = new Set<number>()
   ironforgeSession.setCertificateVerifyProc((request, callback) => {
     callback(mayTrustInternalCertificateForHosts(
       request.verificationResult,
@@ -112,8 +112,6 @@ function registerIronforgeHandlers() {
   }
 
   const trackLoginNavigation = (contents: WebContents) => {
-    trackedContents.add(contents.id)
-    contents.once('destroyed', () => trackedContents.delete(contents.id))
     contents.on('will-navigate', (_event, url) => trustNavigationTarget(url))
     contents.on('will-redirect', (_event, url) => trustNavigationTarget(url))
     contents.on('did-create-window', (child) => {
@@ -136,7 +134,10 @@ function registerIronforgeHandlers() {
         : dialog.showMessageBox(options)
       void prompt.then(({ response }) => {
         if (response === 0) void contents.reload()
-        if (response === 1 && validatedUrl) void shell.openExternal(validatedUrl)
+        const externalTarget = parseExternalHttpUrl(validatedUrl)
+        if (response === 1 && externalTarget) {
+          void shell.openExternal(externalTarget.toString())
+        }
       })
     })
   }
@@ -145,15 +146,15 @@ function registerIronforgeHandlers() {
     const trusted = mayTrustEmbeddedNavigationCertificate(
       error,
       url,
-      Boolean(contents && trackedContents.has(contents.id)),
+      trustedHosts,
     )
     if (trusted) event.preventDefault()
     callback(trusted)
   })
 
   ipcMain.handle('ironforge:open', (_event, url: string) => {
-    const target = new URL(url)
-    if (target.protocol !== 'https:' && target.protocol !== 'http:') {
+    const target = parseExternalHttpUrl(url)
+    if (!target) {
       throw new Error('交付平台地址必须是网页地址')
     }
     trustNavigationTarget(target.toString())
@@ -172,8 +173,8 @@ function registerIronforgeHandlers() {
     })
     trackLoginNavigation(window.webContents)
     window.webContents.setWindowOpenHandler(({ url: popupUrl }) => {
-      const popupTarget = new URL(popupUrl)
-      if (popupTarget.protocol !== 'https:' && popupTarget.protocol !== 'http:') {
+      const popupTarget = parseExternalHttpUrl(popupUrl)
+      if (!popupTarget) {
         return { action: 'deny' }
       }
       trustNavigationTarget(popupTarget.toString())
@@ -250,9 +251,8 @@ function createWindow() {
 
   window.once('ready-to-show', () => window.show())
   window.webContents.setWindowOpenHandler(({ url }) => {
-    const target = new URL(url)
-    const allowed = target.protocol === 'https:' || target.protocol === 'http:'
-    if (allowed) void shell.openExternal(url)
+    const target = parseExternalHttpUrl(url)
+    if (target) void shell.openExternal(target.toString())
     return { action: 'deny' }
   })
 

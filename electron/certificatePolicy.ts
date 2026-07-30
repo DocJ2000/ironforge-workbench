@@ -26,11 +26,13 @@ export function mayTrustInternalCertificateForHosts(
 export function mayTrustEmbeddedNavigationCertificate(
   error: string,
   requestUrl: string,
-  trackedWindow: boolean,
+  trustedHosts: ReadonlySet<string>,
 ) {
-  if (!trackedWindow || error !== 'net::ERR_CERT_AUTHORITY_INVALID') return false
+  if (error !== 'net::ERR_CERT_AUTHORITY_INVALID') return false
   try {
-    return new URL(requestUrl).protocol === 'https:'
+    const request = new URL(requestUrl)
+    return request.protocol === 'https:'
+      && trustedHosts.has(request.hostname.toLowerCase())
   } catch {
     return false
   }
