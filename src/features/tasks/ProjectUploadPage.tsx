@@ -13,37 +13,17 @@ import type { RepositorySnapshot } from '../../domain/repository'
 import { FieldHelp } from '../account/FieldHelp'
 import { PackageTree } from '../delivery/PackageTree'
 import { GuidedWorkflow } from './GuidedWorkflow'
+import {
+  branchStartNames,
+  initialUploadBranch,
+  uploadBranchNames,
+} from './uploadBranchRules'
 import './wizardForms.css'
 import './projectUpload.css'
 
 interface Props { repository: RepositorySnapshot; api?: DeliveryApi; onRefresh?: () => Promise<void> }
 type ChangeFilter = 'untracked' | 'modified' | 'deleted'
 const steps = ['确认项目', '核对修改', '选择交付包', '生成交付清单', '选择工作版本', '填写上传说明', '确认上传']
-
-export function uploadBranchNames(repository: RepositorySnapshot) {
-  return repository.branches
-    .filter((item) => item.remote && item.name.startsWith('dev/'))
-    .map((item) => item.name)
-    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
-}
-
-export function branchStartNames(repository: RepositorySnapshot) {
-  return repository.branches
-    .filter((item) => item.remote)
-    .map((item) => item.name)
-    .sort((left, right) => {
-      if (left === 'main' || left === 'master') return -1
-      if (right === 'main' || right === 'master') return 1
-      return left.localeCompare(right, undefined, { numeric: true })
-    })
-}
-
-export function initialUploadBranch(repository: RepositorySnapshot, branchNames = uploadBranchNames(repository)) {
-  if (branchNames.includes(repository.branch)) return repository.branch
-  return branchNames
-    .filter((name) => repository.branch.startsWith(name))
-    .sort((left, right) => right.length - left.length)[0] ?? branchNames[0] ?? ''
-}
 
 export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: Props) {
   const branches = useMemo(() => uploadBranchNames(repository), [repository])

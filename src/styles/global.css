@@ -13,6 +13,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: #edf0f2;
+  line-height: 1.5;
 }
 
 button,
@@ -36,6 +37,13 @@ textarea:focus-visible {
 
 button {
   letter-spacing: 0;
+}
+
+button,
+input,
+textarea,
+select {
+  min-width: 0;
 }
 
 code {
@@ -117,8 +125,8 @@ code {
   grid-template-columns: 34px minmax(0, 1fr) 32px;
   align-items: center;
   gap: 10px;
-  min-height: 68px;
-  padding: 12px 14px;
+  min-height: 72px;
+  padding: 14px;
   border-bottom: 1px solid #394149;
 }
 
@@ -128,7 +136,8 @@ code {
   width: 34px;
   height: 34px;
   color: #fff;
-  font-size: 12px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
   font-weight: 800;
   background: var(--accent);
   border-radius: 5px;
@@ -251,7 +260,7 @@ code {
 .primary-nav {
   display: grid;
   gap: 3px;
-  padding: 10px 12px;
+  padding: 14px 10px;
 }
 
 .primary-nav a {
@@ -259,8 +268,8 @@ code {
   grid-template-columns: 24px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  min-height: 42px;
-  padding: 0 11px;
+  min-height: 46px;
+  padding: 0 12px;
   color: #bdc6ce;
   font-size: 13px;
   text-decoration: none;
@@ -284,7 +293,7 @@ code {
   align-items: center;
   gap: 10px;
   margin-top: auto;
-  padding: 14px;
+  padding: 16px 14px;
   border-top: 1px solid #394149;
 }
 
@@ -312,12 +321,17 @@ code {
   font-size: 13px;
   font-weight: 700;
   background: #a9dfe7;
-  border-radius: 50%;
+  border-radius: 5px;
 }
 
 .main-content {
   min-width: 0;
-  padding: 24px 28px 40px;
+  padding: clamp(24px, 3vw, 46px) clamp(22px, 4vw, 64px) 56px;
+}
+
+.main-content > * {
+  width: min(100%, var(--content-max));
+  margin-inline: auto;
 }
 
 .mobile-header {
@@ -348,6 +362,25 @@ code {
   font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.page-loading {
+  display: grid;
+  place-items: center;
+  min-height: 50vh;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 @media (max-width: 760px) {
@@ -416,6 +449,6 @@ code {
   }
 
   .main-content {
-    padding: 16px 12px 28px;
+    padding: 18px 14px 32px;
   }
 }

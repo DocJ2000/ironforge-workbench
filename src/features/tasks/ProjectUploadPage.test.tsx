@@ -4,7 +4,8 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { getDemoRepository } from '../../data/demoRepository'
 import type { DeliveryApi } from '../../data/deliveryClient'
 import { workflowDraftClient } from '../../data/workflowDraftClient'
-import { branchStartNames, initialUploadBranch, ProjectUploadPage, uploadBranchNames } from './ProjectUploadPage'
+import { ProjectUploadPage } from './ProjectUploadPage'
+import { branchStartNames, initialUploadBranch, uploadBranchNames } from './uploadBranchRules'
 
 function readyRepository() {
   return {

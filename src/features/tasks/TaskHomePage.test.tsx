@@ -53,6 +53,8 @@ describe('TaskHomePage', () => {
     )
     expect(screen.getByText('选择一个项目')).toBeVisible()
     expect(screen.getByText('Aurora Lens Mechanics')).toBeVisible()
+    expect(screen.getByText('上次打开：昨天')).toBeVisible()
+    expect(container.querySelectorAll('.project-status-rail')).toHaveLength(2)
     expect(container.querySelector('.project-center--empty')).toBeNull()
     expect(screen.queryByRole('button', { name: '上传项目' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '选择 Aurora Lens Mechanics' }))

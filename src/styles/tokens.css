@@ -1,19 +1,19 @@
 :root {
   font-family:
-    Inter, "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
-  color: #1d232a;
+    "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  color: #1c242b;
   background: #edf0f2;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
-  --ink: #1d232a;
-  --muted: #66717c;
-  --subtle: #8a949e;
-  --line: #d9dee2;
-  --line-strong: #c5ccd2;
+  --ink: #1c242b;
+  --muted: #65727d;
+  --subtle: #87939d;
+  --line: #d5dce1;
+  --line-strong: #bfc9d0;
   --surface: #ffffff;
-  --surface-soft: #f6f7f8;
-  --surface-raised: #fbfcfc;
+  --surface-soft: #f5f7f8;
+  --surface-raised: #fafbfb;
   --charcoal: #20262c;
   --charcoal-soft: #2b333a;
   --accent: #d7462f;
@@ -26,7 +26,10 @@
   --amber-soft: #fff7e8;
   --danger: #b53636;
   --danger-soft: #fff0f0;
-  --radius: 6px;
-  --sidebar-width: 252px;
-  --shadow-soft: 0 1px 2px rgba(21, 28, 34, 0.06);
+  --radius: 5px;
+  --sidebar-width: 236px;
+  --content-max: 1560px;
+  --control-height: 42px;
+  --shadow-soft: 0 1px 2px rgba(21, 28, 34, 0.07);
+  --shadow-dialog: 0 20px 56px rgba(21, 28, 34, 0.18);
 }

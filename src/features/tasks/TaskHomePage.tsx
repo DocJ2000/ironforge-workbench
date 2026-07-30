@@ -106,7 +106,8 @@ export function TaskHomePage({ projects, onSelect, onAdd, onRemove, onRefresh }:
         {projects.map((project) => {
           const summary = summarizeRepository(project.repository)
           return (
-            <div className="project-row" key={project.id}>
+            <div className={`project-row project-row--${summary.syncTone}`} key={project.id}>
+              <span aria-hidden="true" className="project-status-rail" />
               <button aria-label={`选择 ${project.repository.displayName}`} className="project-row__main" onClick={() => openProject(project.id)} type="button">
               <span className="project-row__identity">
                 <span className="project-row__icon"><HardDrive size={20} /></span>
@@ -115,6 +116,7 @@ export function TaskHomePage({ projects, onSelect, onAdd, onRemove, onRefresh }:
               <span className="project-row__facts">
                 <span><GitBranch size={14} />{project.repository.branch}</span>
                 <span>{project.repository.changes.length} 个本机修改</span>
+                <span>上次打开：{project.lastOpened}</span>
                 <span className={`project-state project-state--${summary.syncTone}`}>{summary.syncLabel}</span>
               </span>
               <span className="project-row__open">选择项目</span>
