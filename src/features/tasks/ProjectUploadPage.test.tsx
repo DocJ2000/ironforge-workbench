@@ -38,9 +38,11 @@ it('restores the unfinished upload step after leaving the page', async () => {
     </MemoryRouter>,
   )
   await waitFor(() => expect(api.overview).toHaveBeenCalled())
-  for (let index = 0; index < 3; index += 1) {
+  for (let index = 0; index < 2; index += 1) {
     fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   }
+  expect(screen.getByText(/output\/mechanical\/机加件/)).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   expect(screen.getByRole('heading', { name: '核对自动生成的交付清单' })).toBeVisible()
   first.unmount()
 
