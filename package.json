@@ -1,7 +1,7 @@
 {
   "name": "ironforge-workbench",
   "private": true,
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Engineering delivery workbench for GitLab and delivery platforms",
   "author": "Ironforge Workbench Contributors",
   "type": "module",
@@ -17,6 +17,7 @@
     "audit:public-release": "npm run build:desktop && node scripts/audit-public-release.mjs",
     "audit:public-artifacts": "node scripts/audit-public-release.mjs",
     "package:source": "node scripts/package-public-source.mjs",
+    "release:notes": "node scripts/releaseNotes.mjs",
     "desktop": "npm run build:desktop && electron .",
     "stage:git": "node scripts/stage-git-runtime.mjs",
     "package:win": "npm run build:desktop && npm run stage:git && npm run audit:public-artifacts && node scripts/build-windows-installer.mjs"

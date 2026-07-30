@@ -173,7 +173,7 @@ function normalizeReleaseNotes(info: UpdateInfo) {
 }
 
 function markdownToPlainItems(markdown: string) {
-  return markdown
+  return htmlToPlainText(markdown)
     .split(/\r?\n/)
     .map((line) => line
       .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, '')
@@ -183,4 +183,20 @@ function markdownToPlainItems(markdown: string) {
       .trim())
     .filter(Boolean)
     .slice(0, 30)
+}
+
+function htmlToPlainText(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:h[1-6]|li|p|div|ul|ol)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_match, code) =>
+      String.fromCodePoint(Number(code)),
+    )
 }

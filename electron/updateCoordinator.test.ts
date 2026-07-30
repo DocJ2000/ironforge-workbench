@@ -56,15 +56,15 @@ it('keeps readable release notes when a new version is available', () => {
   updater.emit('update-available', {
     version: '1.2.0',
     releaseNotes: [
-      { version: '1.2.0', note: '- 文件列表更清楚' },
-      { version: '1.1.0', note: '- 修复登录页面\n\n[下载安装包](https://example.com)' },
+      { version: '1.2.0', note: '<h2>1.2.0</h2><ul><li>文件列表更清楚</li></ul>' },
+      { version: '1.1.0', note: '<ul><li>修复登录页面</li><li><a href="https://example.com">下载安装包</a></li></ul>' },
     ],
   })
 
   expect(coordinator.status()).toMatchObject({
     phase: 'available',
     releases: [
-      { version: '1.2.0', notes: ['文件列表更清楚'] },
+      { version: '1.2.0', notes: ['1.2.0', '文件列表更清楚'] },
       { version: '1.1.0', notes: ['修复登录页面', '下载安装包'] },
     ],
   })
