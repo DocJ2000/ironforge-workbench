@@ -79,5 +79,9 @@ it('shows a compact summary and keeps software update outside professional displ
 
   fireEvent.click(screen.getByText('专业显示：服务器地址与身份钥匙'))
   await waitFor(() => expect(screen.getByLabelText('GitLab Token', { selector: 'input' })).toHaveAttribute('type', 'password'))
+  expect(screen.getByRole('heading', { name: '服务器地址' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: '个人连接凭证' })).toBeVisible()
+  expect(screen.getByRole('button', { name: '保存服务器地址' })).toBeVisible()
+  expect(screen.getByRole('button', { name: '安全保存' })).toBeVisible()
   expect(screen.getByLabelText('铁炉堡地址', { selector: 'input' })).toHaveValue('https://delivery.example.com/projects')
 })

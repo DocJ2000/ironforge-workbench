@@ -13,9 +13,22 @@
 .update-download-progress span{min-width:96px;color:var(--ink);font-size:12px;font-weight:800;text-align:right}
 .update-download-progress small{grid-column:1/-1;color:var(--muted);font-size:10px}
 .connection-wizard__saved{margin-top:7px!important;color:var(--green)!important;font-weight:800}
-.advanced-connection{padding:0 14px;border:1px dashed var(--line-strong);border-radius:5px;background:var(--surface-soft)}
-.advanced-connection[open]{padding-bottom:14px}
-.advanced-connection[open] .connection-section{border:0;box-shadow:none}
+.advanced-connection{margin-bottom:14px;border:1px dashed var(--line-strong);border-radius:5px;background:var(--surface-soft)}
+.advanced-connection>summary{padding:13px 16px;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer}
+.advanced-connection[open]>summary{border-bottom:1px solid var(--line)}
+.professional-settings{display:grid;gap:12px;padding:14px}
+.professional-section{padding:20px 22px;border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:5px;background:var(--surface)}
+.professional-section--credentials{border-left-color:var(--accent)}
+.professional-section>header{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:14px}
+.professional-section h2{margin:0 0 4px;font-size:18px}
+.professional-section header p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+.professional-section__icon{color:var(--cyan);background:var(--cyan-soft)}
+.professional-server-grid,.professional-credential-grid{display:grid;gap:16px;margin-top:20px}
+.professional-server-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.professional-credential-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.professional-credential-grid>label:nth-child(2){grid-column:1/-1}
+.professional-section .plain-field,.professional-section .plain-field input,.professional-section .secret-input,.professional-section .path-input{width:100%;min-width:0}
+.professional-section>footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 .account-welcome{display:grid;justify-items:center;gap:12px;padding:48px 28px;text-align:center;border:1px solid var(--line);border-top:4px solid var(--cyan);border-radius:5px;background:var(--surface)}
 .account-welcome__icon,.account-summary__icon{display:grid;place-items:center;width:52px;height:52px;color:var(--cyan);border-radius:5px;background:var(--cyan-soft)}
 .account-welcome h2,.account-summary h2{margin:0;font-size:22px}
@@ -43,4 +56,5 @@
 .reset-user-dialog__details strong{font-size:12px}.reset-user-dialog__details p{margin:4px 0 12px;color:var(--muted);font-size:11px;line-height:1.55}.reset-user-dialog__details p:last-child{margin-bottom:0}
 .reset-user-dialog footer{display:flex;justify-content:flex-end;gap:8px}
 @media(max-width:760px){.connection-form{grid-template-columns:1fr}.connection-form>label:last-child{grid-column:auto}}
-@media(max-width:600px){.connection-section{padding:18px}.connection-section>header{grid-template-columns:46px minmax(0,1fr)}.connection-status{grid-column:2;justify-self:start}.connection-section>footer .button{width:100%}.account-welcome{padding:28px 18px}.account-summary{grid-template-columns:52px minmax(0,1fr)}.account-summary>.connection-status{grid-column:2;justify-self:start}.account-summary dl{grid-template-columns:1fr}.account-summary dl>div:nth-child(n){padding:12px 0;border-left:0}.account-summary>.button{width:100%}.account-reset{grid-template-columns:44px minmax(0,1fr)}.account-reset .button{grid-column:1/-1;width:100%}.reset-user-dialog footer .button{flex:1}}
+@media(max-width:760px){.professional-server-grid,.professional-credential-grid{grid-template-columns:1fr}.professional-credential-grid>label:nth-child(2){grid-column:auto}}
+@media(max-width:600px){.connection-section{padding:18px}.connection-section>header,.professional-section>header{grid-template-columns:46px minmax(0,1fr)}.connection-status,.professional-section .connection-status{grid-column:2;justify-self:start}.connection-section>footer .button,.professional-section>footer .button{width:100%}.professional-settings{padding:10px}.professional-section{padding:18px}.professional-section>footer{flex-direction:column}.account-welcome{padding:28px 18px}.account-summary{grid-template-columns:52px minmax(0,1fr)}.account-summary>.connection-status{grid-column:2;justify-self:start}.account-summary dl{grid-template-columns:1fr}.account-summary dl>div:nth-child(n){padding:12px 0;border-left:0}.account-summary>.button{width:100%}.account-reset{grid-template-columns:44px minmax(0,1fr)}.account-reset .button{grid-column:1/-1;width:100%}.reset-user-dialog footer .button{flex:1}}
