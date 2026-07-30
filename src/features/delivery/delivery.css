@@ -737,6 +737,13 @@
   font-size: 10px;
 }
 
+.delivery-field .delivery-field__hint {
+  margin-top: 7px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .delivery-dialog footer {
   display: flex;
   justify-content: flex-end;

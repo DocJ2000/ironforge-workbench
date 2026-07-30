@@ -10,6 +10,7 @@ import {
 import { useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { FieldHelp } from '../account/FieldHelp'
+import './delivery.css'
 
 interface MergeRequestEditorProps {
   attachments: File[]
@@ -52,6 +53,28 @@ export function MergeRequestEditor({
     onDescriptionChange(
       `${description.slice(0, start)}${before}${content}${after}${description.slice(end)}`,
     )
+  }
+
+  function addPastedImages(items: DataTransferItemList) {
+    const images = Array.from(items)
+      .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+      .map((item, index) => {
+        const file = item.getAsFile()
+        if (!file) return null
+        const extension = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png'
+        return new File(
+          [file],
+          file.name && file.name !== 'image.png'
+            ? file.name
+            : `粘贴的图片-${Date.now()}-${index + 1}.${extension}`,
+          { type: file.type },
+        )
+      })
+      .filter((file): file is File => Boolean(file))
+
+    if (!images.length) return false
+    onAttachmentsChange([...attachments, ...images])
+    return true
   }
 
   return (
@@ -107,11 +130,15 @@ export function MergeRequestEditor({
             <textarea
               aria-label="交付补充说明（可选）"
               onChange={(event) => onDescriptionChange(event.target.value)}
+              onPaste={(event) => {
+                if (addPastedImages(event.clipboardData.items)) event.preventDefault()
+              }}
               placeholder="说明本次改动、交付范围和需要审核的重点"
               ref={textarea}
               rows={8}
               value={description}
             />
+            <small className="delivery-field__hint">支持 Markdown；也可以在这里直接粘贴截图，图片会加入下方附件。</small>
           </label>
         </>
       ) : (

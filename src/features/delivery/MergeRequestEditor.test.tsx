@@ -58,4 +58,21 @@ describe('MergeRequestEditor', () => {
     expect(screen.getByText('评审资料.pdf')).toBeVisible()
     expect(screen.getByText(/待确认后上传/)).toBeVisible()
   })
+
+  it('adds pasted images to the attachment list without changing the description', () => {
+    render(<EditorHarness />)
+    const image = new File(['PNG'], 'image.png', { type: 'image/png' })
+    const item = {
+      kind: 'file',
+      type: 'image/png',
+      getAsFile: () => image,
+    }
+
+    fireEvent.paste(screen.getByLabelText('交付补充说明（可选）'), {
+      clipboardData: { items: [item] },
+    })
+
+    expect(screen.getByText(/粘贴的图片-/)).toBeVisible()
+    expect(screen.getByDisplayValue('更新结构图纸')).toBeVisible()
+  })
 })

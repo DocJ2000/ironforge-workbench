@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { GitLabReviewer } from '../../domain/delivery'
+import './delivery.css'
 
 interface ReviewerSelectorProps {
   reviewers: GitLabReviewer[]
