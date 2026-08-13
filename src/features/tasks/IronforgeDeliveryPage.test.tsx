@@ -104,9 +104,10 @@ it('creates an MR from the previously uploaded charge without syncing again', as
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   expect(screen.getByRole('checkbox', { name: '选择审核人 胡庆磊' })).toBeChecked()
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择经办人 胡庆磊' }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '确认交付' }))
-  await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({ reviewerIds: [7], title: '更新 T2 设变零件' })))
+  await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({ assigneeIds: [7], reviewerIds: [7], title: '更新 T2 设变零件' })))
   expect(api.syncGitLab).not.toHaveBeenCalled()
   localStorage.clear()
 })
@@ -137,11 +138,44 @@ it('creates a version tag before submitting a key-version MR', async () => {
   fireEvent.change(screen.getByLabelText('本次版本标记'), { target: { value: 'T2-第二次打样' } })
   fireEvent.change(screen.getByLabelText('版本标记说明'), { target: { value: '供应商第二次打样版本' } })
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择经办人 胡庆磊' }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '确认交付' }))
 
   await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({
     tag: { name: 'T2-第二次打样', message: '供应商第二次打样版本' },
+  })))
+})
+
+it('uploads pasted images into the MR description at the pasted position', async () => {
+  const repository = { ...getDemoRepository(), changes: [], ahead: 0, behind: 0 }
+  const api = {
+    overview: vi.fn().mockResolvedValue({
+      packages: [],
+      reviewers: [{ id: 7, name: '胡庆磊', username: 'lulu', role: 'Maintainer', recommended: true }],
+    }),
+    uploadAttachment: vi.fn().mockResolvedValue({ markdown: '![截图](/uploads/screenshot.png)' }),
+    createMergeRequest: vi.fn().mockResolvedValue({ iid: 11, webUrl: 'https://gitlab/mr/11' }),
+  } as unknown as DeliveryApi
+  render(<MemoryRouter><IronforgeDeliveryPage api={api} repository={repository} /></MemoryRouter>)
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.change(screen.getByLabelText('本次交付标题'), { target: { value: '带截图的交付' } })
+  fireEvent.change(screen.getByLabelText('交付补充说明（可选）'), { target: { value: '请检查这里' } })
+  const image = new File(['PNG'], 'image.png', { type: 'image/png' })
+  fireEvent.paste(screen.getByLabelText('交付补充说明（可选）'), {
+    clipboardData: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => image }] },
+  })
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('checkbox', { name: '选择经办人 胡庆磊' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '确认交付' }))
+
+  await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({
+    description: expect.stringContaining('![截图](/uploads/screenshot.png)'),
+    attachmentMarkdown: [],
   })))
 })
 

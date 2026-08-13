@@ -100,6 +100,7 @@ describe('GitLabClient', () => {
       targetBranch: 'main',
       title: '提交所有的BOM交付包',
       description: '同步注释：提交所有的BOM交付包',
+      assigneeIds: [7],
       reviewerIds: [42],
     })
 
@@ -107,6 +108,7 @@ describe('GitLabClient', () => {
     expect(JSON.parse(request[1].body)).toMatchObject({
       source_branch: 'dev/T2',
       target_branch: 'main',
+      assignee_ids: [7],
       reviewer_ids: [42],
       remove_source_branch: false,
     })
@@ -160,6 +162,7 @@ describe('GitLabClient', () => {
         targetBranch: 'main',
         title: '同步',
         description: '同步注释',
+        assigneeIds: [7],
         reviewerIds: [42],
       }),
     ).rejects.toThrow('当前分支已经存在开放中的 MR')

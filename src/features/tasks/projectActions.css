@@ -77,6 +77,25 @@
   background: var(--cyan-soft);
 }
 
+.project-action-choices > .project-action-choices__review {
+  border-left: 4px solid var(--accent);
+  background: #fff9f7;
+}
+
+.project-action-choices > .project-action-choices__review:hover {
+  background: var(--accent-soft);
+}
+
+.project-action-choices__review .project-action-choices__icon {
+  color: var(--accent);
+  border-color: #f1c9be;
+  background: var(--accent-soft);
+}
+
+.project-action-choices > .project-action-choices__review::after {
+  color: var(--accent);
+}
+
 .project-action-choices__icon {
   display: grid;
   place-items: center;

@@ -59,7 +59,7 @@ describe('MergeRequestEditor', () => {
     expect(screen.getByText(/待确认后上传/)).toBeVisible()
   })
 
-  it('adds pasted images to the attachment list without changing the description', () => {
+  it('inserts pasted images into the description instead of the attachment list', () => {
     render(<EditorHarness />)
     const image = new File(['PNG'], 'image.png', { type: 'image/png' })
     const item = {
@@ -72,7 +72,10 @@ describe('MergeRequestEditor', () => {
       clipboardData: { items: [item] },
     })
 
-    expect(screen.getByText(/粘贴的图片-/)).toBeVisible()
-    expect(screen.getByDisplayValue('更新结构图纸')).toBeVisible()
+    expect((screen.getByLabelText('交付补充说明（可选）') as HTMLTextAreaElement).value)
+      .toMatch(/(?=.*更新结构图纸)(?=.*!\[粘贴的图片-.*\]\(ironforge-inline:)/s)
+    expect(screen.queryByText(/待确认后上传/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: '预览' }))
+    expect(screen.getByRole('img', { name: /粘贴的图片-/ })).toBeVisible()
   })
 })

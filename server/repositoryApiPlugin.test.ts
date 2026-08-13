@@ -266,6 +266,7 @@ describe('createRepositoryMiddleware', () => {
         targetBranch: 'main',
         title: '同步 BOM 交付包',
         description: '同步注释：同步 BOM 交付包',
+        assigneeIds: [7],
         reviewerIds: [42],
         feishuLinks: [],
         attachmentMarkdown: [],
@@ -292,6 +293,41 @@ describe('createRepositoryMiddleware', () => {
       commit: 'abc1234',
     })
     expect(JSON.parse(mrResponse.body())).toMatchObject({ iid: 7 })
+  })
+
+  it('accepts a large GitLab sync request for a whole-project upload', async () => {
+    const sync = vi.fn().mockResolvedValue({
+      branch: 'dev/T2',
+      commit: 'abc1234',
+    })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn(),
+      sync,
+    })
+    const body = {
+      confirmed: true,
+      draft: {
+        message: '优化路径问题，缩短了文件夹与文件名称',
+        changePaths: Array.from(
+          { length: 473 },
+          (_, index) => `source/Dragon的Demo设计/${'主摄结构路径/'.repeat(20)}第${index}个设计文件.SLDPRT`,
+        ),
+        confirmedDeletions: [],
+        selectedPackageIds: ['output/mechanical/3D打印治具'],
+        branch: 'dev/T2',
+      },
+    }
+    const result = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/gitlab/sync', body),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(result.response.statusCode).toBe(200)
+    expect(sync).toHaveBeenCalledWith(body)
   })
 
   it('creates a local branch through a confirmed endpoint', async () => {

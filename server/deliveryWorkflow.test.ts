@@ -25,6 +25,7 @@ const mergeRequestDraft: MergeRequestDraft = {
   targetBranch: 'main',
   title: '提交所有的 BOM 交付包',
   description: '同步注释：提交所有的 BOM 交付包',
+  assigneeIds: [7],
   reviewerIds: [42],
   feishuLinks: [],
   attachmentMarkdown: [],
@@ -248,6 +249,7 @@ describe('createDeliveryMergeRequest', () => {
       targetBranch: 'main',
       title: '提交所有的 BOM 交付包',
       description: '同步注释：提交所有的 BOM 交付包',
+      assigneeIds: [7],
       reviewerIds: [42],
     })
     expect(result).toEqual({

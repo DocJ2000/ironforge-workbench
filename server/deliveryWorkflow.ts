@@ -219,6 +219,7 @@ export async function createDeliveryMergeRequest(
     targetBranch: draft.targetBranch,
     title: draft.title,
     description,
+    assigneeIds: draft.assigneeIds ?? [],
     reviewerIds: draft.reviewerIds,
   })
 

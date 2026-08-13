@@ -7,7 +7,7 @@ import {
   Quote,
   Trash2,
 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { FieldHelp } from '../account/FieldHelp'
 import './delivery.css'
@@ -31,6 +31,10 @@ const tools = [
   { icon: Link, label: '链接', before: '[', after: '](https://)' },
 ]
 
+export function inlineImageMarker(fileName: string) {
+  return `![${fileName}](ironforge-inline:${encodeURIComponent(fileName)})`
+}
+
 export function MergeRequestEditor({
   attachments,
   description,
@@ -43,6 +47,19 @@ export function MergeRequestEditor({
 }: MergeRequestEditorProps) {
   const textarea = useRef<HTMLTextAreaElement>(null)
   const [tab, setTab] = useState<'write' | 'preview'>('write')
+  const inlineFiles = attachments.filter((file) => description.includes(inlineImageMarker(file.name)))
+  const previewSources = useMemo(() => new Map(
+    inlineFiles.map((file) => [
+      `ironforge-inline:${encodeURIComponent(file.name)}`,
+      typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : '',
+    ]),
+  ), [attachments, description])
+
+  useEffect(() => () => {
+    previewSources.forEach((source) => {
+      if (source && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(source)
+    })
+  }, [previewSources])
 
   function insert(before: string, after: string) {
     const element = textarea.current
@@ -64,22 +81,29 @@ export function MergeRequestEditor({
         const extension = file.type.split('/')[1]?.replace('jpeg', 'jpg') || 'png'
         return new File(
           [file],
-          file.name && file.name !== 'image.png'
-            ? file.name
-            : `粘贴的图片-${Date.now()}-${index + 1}.${extension}`,
+          `粘贴的图片-${Date.now()}-${index + 1}.${extension}`,
           { type: file.type },
         )
       })
       .filter((file): file is File => Boolean(file))
 
     if (!images.length) return false
+    const element = textarea.current
+    const start = element?.selectionStart ?? description.length
+    const end = element?.selectionEnd ?? description.length
+    const prefix = start > 0 && description[start - 1] !== '\n' ? '\n\n' : ''
+    const suffix = end < description.length && description[end] !== '\n' ? '\n\n' : ''
+    const markers = images.map((file) => inlineImageMarker(file.name)).join('\n\n')
+    onDescriptionChange(
+      `${description.slice(0, start)}${prefix}${markers}${suffix}${description.slice(end)}`,
+    )
     onAttachmentsChange([...attachments, ...images])
     return true
   }
 
   return (
     <div className="mr-editor">
-      <label className="delivery-field">
+      <label className="mr-editor__title-field">
         <span className="field-label-row">给管理员看的审核标题
           <FieldHelp label="审核标题"><strong>管理员会先看到这句话。</strong><ol><li>写清楚项目、阶段和交付内容。</li><li>正确示例：“示例项目 T2 全部交付包”。</li><li>不要只写“请审核”“交付”或日期。</li><li>标题只用于说明，不会自动提交。</li></ol></FieldHelp>
         </span>
@@ -90,26 +114,20 @@ export function MergeRequestEditor({
           value={title}
         />
       </label>
-      <div className="mr-editor__tabs" role="tablist">
-        <button
-          aria-selected={tab === 'write'}
-          onClick={() => setTab('write')}
-          role="tab"
-          type="button"
-        >
-          编辑
-        </button>
-        <button
-          aria-selected={tab === 'preview'}
-          onClick={() => setTab('preview')}
-          role="tab"
-          type="button"
-        >
-          预览
-        </button>
-      </div>
-      {tab === 'write' ? (
-        <>
+      <section className="mr-editor__description">
+        <div className="mr-editor__description-heading">
+          <span className="field-label-row">还有什么需要告诉管理员（可以不填）
+            <FieldHelp label="补充说明"><strong>只有管理员需要特别注意某些内容时才填写。</strong><ol><li>可以说明本次改了哪些零件。</li><li>可以注明需要重点检查的尺寸或风险。</li><li>可以说明哪些旧文件已删除。</li><li>没有额外内容就保持空白。</li></ol></FieldHelp>
+          </span>
+          <span>支持 Markdown，也可以直接粘贴截图</span>
+        </div>
+        <div className="mr-editor__shell">
+          <div className="mr-editor__tabs" role="tablist">
+            <button aria-selected={tab === 'write'} onClick={() => setTab('write')} role="tab" type="button">编辑</button>
+            <button aria-selected={tab === 'preview'} onClick={() => setTab('preview')} role="tab" type="button">预览</button>
+          </div>
+          {tab === 'write' ? (
+            <>
           <div className="mr-editor__toolbar">
             {tools.map(({ icon: Icon, label, before, after }) => (
               <button
@@ -123,11 +141,8 @@ export function MergeRequestEditor({
               </button>
             ))}
           </div>
-          <label className="delivery-field">
-            <span className="field-label-row">还有什么需要告诉管理员（可以不填）
-              <FieldHelp label="补充说明"><strong>只有管理员需要特别注意某些内容时才填写。</strong><ol><li>可以说明本次改了哪些零件。</li><li>可以注明需要重点检查的尺寸或风险。</li><li>可以说明哪些旧文件已删除。</li><li>没有额外内容就保持空白。</li></ol></FieldHelp>
-            </span>
             <textarea
+              className="mr-editor__textarea"
               aria-label="交付补充说明（可选）"
               onChange={(event) => onDescriptionChange(event.target.value)}
               onPaste={(event) => {
@@ -135,21 +150,28 @@ export function MergeRequestEditor({
               }}
               placeholder="说明本次改动、交付范围和需要审核的重点"
               ref={textarea}
-              rows={8}
+              rows={10}
               value={description}
             />
-            <small className="delivery-field__hint">支持 Markdown；也可以在这里直接粘贴截图，图片会加入下方附件。</small>
-          </label>
-        </>
-      ) : (
-        <div className="mr-editor__preview">
-          {description.trim() ? (
-            <ReactMarkdown>{description}</ReactMarkdown>
+            </>
           ) : (
-            <span>还没有补充说明</span>
+            <div className="mr-editor__preview">
+              {description.trim() ? (
+                <ReactMarkdown components={{
+                  img: ({ alt, src }) => (
+                    <img alt={alt ?? ''} src={previewSources.get(src ?? '') || src} />
+                  ),
+                }}>{description}</ReactMarkdown>
+              ) : <span>还没有补充说明</span>}
+            </div>
           )}
+          <div className="mr-editor__footer">粘贴的图片会自动加入下面的“相关附件”，最终随审核单上传。</div>
         </div>
-      )}
+      </section>
+      <div className="mr-editor__resources-heading">
+        <strong>补充资料</strong>
+        <span>这些资料只供管理员审核，不会加入 charge.json 交付包。</span>
+      </div>
       <div className="mr-editor__resources">
         <div>
           <strong className="field-label-row">相关飞书文档（可以不填）
@@ -211,7 +233,7 @@ export function MergeRequestEditor({
               type="file"
             />
           </label>
-          {attachments.map((file, index) => (
+          {attachments.filter((file) => !description.includes(inlineImageMarker(file.name))).map((file, index) => (
             <div className="attachment-row" key={`${file.name}-${index}`}>
               <span>
                 {file.name}

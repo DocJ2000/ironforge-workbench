@@ -114,7 +114,7 @@ async function readJson<T>(request: IncomingMessage): Promise<T> {
   let body = ''
   for await (const chunk of request) {
     body += chunk.toString()
-    if (body.length > 64 * 1024) throw new Error('Request body too large')
+    if (body.length > 4 * 1024 * 1024) throw new Error('Request body too large')
   }
   return JSON.parse(body) as T
 }

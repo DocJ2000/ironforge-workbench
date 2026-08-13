@@ -27,6 +27,7 @@ it('keeps merge request drafts and clears completed workflows', () => {
     title: 'T2 交付',
     description: '请审核',
     links: ['https://example.com/doc'],
+    assigneeIds: [8],
     reviewerIds: [7],
     tagEnabled: true,
     tagName: 'T2-第二次打样',
@@ -35,6 +36,7 @@ it('keeps merge request drafts and clears completed workflows', () => {
 
   expect(workflowDraftClient.loadMergeRequest('project-a')).toMatchObject({
     step: 2,
+    assigneeIds: [8],
     reviewerIds: [7],
     tagName: 'T2-第二次打样',
   })

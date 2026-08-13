@@ -4,14 +4,15 @@
 
 html {
   min-width: 320px;
-  min-height: 100%;
+  height: 100%;
   background: #edf0f2;
 }
 
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   background: #edf0f2;
   line-height: 1.5;
 }
@@ -102,7 +103,8 @@ code {
 .app-shell {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   transition: grid-template-columns 160ms ease;
 }
 
@@ -381,8 +383,14 @@ code {
 }
 
 .main-content {
+  --main-content-top: clamp(24px, 3vw, 46px);
+  --main-content-right: clamp(22px, 4vw, 64px);
+  --main-content-bottom: 56px;
+  --main-content-left: clamp(22px, 4vw, 64px);
+  min-height: 0;
+  overflow: auto;
   min-width: 0;
-  padding: clamp(24px, 3vw, 46px) clamp(22px, 4vw, 64px) 56px;
+  padding: var(--main-content-top) var(--main-content-right) var(--main-content-bottom) var(--main-content-left);
 }
 
 .main-content > * {
@@ -442,6 +450,8 @@ code {
 @media (max-width: 760px) {
   .app-shell {
     display: block;
+    height: 100%;
+    overflow: auto;
   }
 
   .sidebar {
@@ -505,6 +515,9 @@ code {
   }
 
   .main-content {
-    padding: 18px 14px 32px;
+    --main-content-top: 18px;
+    --main-content-right: 14px;
+    --main-content-bottom: 32px;
+    --main-content-left: 14px;
   }
 }

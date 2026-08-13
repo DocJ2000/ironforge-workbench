@@ -28,7 +28,7 @@ export function GuidedWorkflow({
   nextLabel = '下一步',
 }: GuidedWorkflowProps) {
   return (
-    <div className="task-page">
+    <div className="task-page task-page--guided">
       <header className="task-page__header">
         <Link className="task-home-link" onClick={onExit} to="/workspace/project">
           <House aria-hidden="true" size={17} />

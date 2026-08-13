@@ -23,6 +23,7 @@ export interface CreateMergeRequestInput {
   targetBranch: string
   title: string
   description: string
+  assigneeIds: number[]
   reviewerIds: number[]
 }
 
@@ -279,6 +280,7 @@ export function createGitLabClient(
             target_branch: input.targetBranch,
             title: input.title,
             description: input.description,
+            assignee_ids: input.assigneeIds,
             reviewer_ids: input.reviewerIds,
             remove_source_branch: false,
           }),

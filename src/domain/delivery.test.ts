@@ -79,7 +79,7 @@ describe('split GitLab actions', () => {
     ).toContain('请选择工作版本')
   })
 
-  it('requires a reviewer only when creating an MR', () => {
+  it('requires an assignee and a reviewer when creating an MR', () => {
     expect(
       validateMergeRequestDraft({
         sourceBranch: 'dev/T2',
@@ -90,7 +90,7 @@ describe('split GitLab actions', () => {
         feishuLinks: [],
         attachmentMarkdown: [],
       }),
-    ).toEqual(['至少选择一位审核人'])
+    ).toEqual(['至少选择一位经办人', '至少选择一位审核人'])
   })
 
   it('requires a complete version Tag only when Tag creation is selected', () => {
@@ -113,6 +113,7 @@ describe('split GitLab actions', () => {
         targetBranch: 'main',
         title: '提交 BOM 交付包',
         description: '',
+        assigneeIds: [7],
         reviewerIds: [42],
         feishuLinks: ['https://example.com/not-feishu'],
         attachmentMarkdown: [],
@@ -127,6 +128,7 @@ describe('split GitLab actions', () => {
         targetBranch: 'main',
         title: '提交 BOM 交付包',
         description: '',
+        assigneeIds: [7],
         reviewerIds: [42],
         feishuLinks: ['http://example.com/document'],
         attachmentMarkdown: [],

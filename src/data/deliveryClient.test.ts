@@ -85,6 +85,7 @@ describe('deliveryApi', () => {
       targetBranch: 'main',
       title: '同步图纸',
       description: '',
+      assigneeIds: [7],
       reviewerIds: [42],
       feishuLinks: [],
       attachmentMarkdown: [],

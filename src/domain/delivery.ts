@@ -63,6 +63,7 @@ export interface MergeRequestDraft {
   targetBranch: string
   title: string
   description: string
+  assigneeIds?: number[]
   reviewerIds: number[]
   feishuLinks: string[]
   attachmentMarkdown: string[]
@@ -122,6 +123,7 @@ export function validateMergeRequestDraft(draft: MergeRequestDraft) {
   if (!draft.sourceBranch.trim()) errors.push('请选择要提交审核的工作版本')
   if (!draft.targetBranch.trim()) errors.push('请选择要交付到的正式版本')
   if (!draft.title.trim()) errors.push('请填写管理员审核单标题')
+  if (!draft.assigneeIds?.length) errors.push('至少选择一位经办人')
   if (!draft.reviewerIds.length) errors.push('至少选择一位审核人')
   if (draft.tag) {
     if (!draft.tag.name.trim()) errors.push('请填写本次版本标记')
