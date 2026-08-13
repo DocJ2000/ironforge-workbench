@@ -355,9 +355,25 @@ describe('createRepositoryMiddleware', () => {
 
   it('refreshes remote branch refs before listing upload targets', async () => {
     const refreshBranches = vi.fn().mockResolvedValue({ refreshed: true })
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify([{
+      name: 'dev/V5',
+      commit: {
+        id: 'abc123456789',
+        short_id: 'abc12345',
+        title: 'create V5',
+        committed_date: '2026-08-13T10:00:00Z',
+      },
+    }]), { headers: { 'Content-Type': 'application/json' } }))
     const middleware = createRepositoryMiddleware({
       repositoryPath: 'C:\\repository',
+      scan: vi.fn().mockResolvedValue(getDemoRepository()),
       refreshBranches,
+      fetcher,
+      credentials: vi.fn().mockResolvedValue({
+        baseUrl: 'https://gitlfs.lab.tp',
+        token: 'stored-token',
+        sshKeyPath: 'C:\\keys\\id_ed25519',
+      }),
     })
     const result = responseDouble()
 
@@ -368,8 +384,53 @@ describe('createRepositoryMiddleware', () => {
     )
 
     expect(result.response.statusCode).toBe(200)
-    expect(JSON.parse(result.body())).toEqual({ refreshed: true })
+    expect(JSON.parse(result.body())).toEqual(expect.objectContaining({
+      refreshed: true,
+      branches: expect.arrayContaining([
+        expect.objectContaining({ name: 'dev/V5', remote: true }),
+      ]),
+    }))
     expect(refreshBranches).toHaveBeenCalledWith('C:\\repository', 'default')
+  })
+
+  it('keeps listing cloud branches even when local fetch fails', async () => {
+    const refreshBranches = vi.fn().mockRejectedValue(new Error('ssh failed'))
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify([{
+      name: 'dev/V5',
+      commit: {
+        id: 'abc123456789',
+        short_id: 'abc12345',
+        title: 'create V5',
+        committed_date: '2026-08-13T10:00:00Z',
+      },
+    }]), { headers: { 'Content-Type': 'application/json' } }))
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn().mockResolvedValue(getDemoRepository()),
+      refreshBranches,
+      fetcher,
+      credentials: vi.fn().mockResolvedValue({
+        baseUrl: 'https://gitlfs.lab.tp',
+        token: 'stored-token',
+        sshKeyPath: 'C:\\keys\\id_ed25519',
+      }),
+    })
+    const result = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/gitlab/branches/refresh', { confirmed: true }),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(result.response.statusCode).toBe(200)
+    expect(JSON.parse(result.body())).toEqual(expect.objectContaining({
+      refreshed: true,
+      localRefreshError: 'ssh failed',
+      branches: expect.arrayContaining([
+        expect.objectContaining({ name: 'dev/V5' }),
+      ]),
+    }))
   })
 
   it('uploads one PDF through a separate multipart endpoint', async () => {

@@ -9,7 +9,7 @@ import { organizationClient } from '../../data/organizationClient'
 import { uploadReceiptClient } from '../../data/uploadReceiptClient'
 import { workflowDraftClient } from '../../data/workflowDraftClient'
 import type { OutputPackageCandidate } from '../../domain/delivery'
-import type { RepositorySnapshot } from '../../domain/repository'
+import type { BranchSummary, RepositorySnapshot } from '../../domain/repository'
 import { FieldHelp } from '../account/FieldHelp'
 import { PackageTree } from '../delivery/PackageTree'
 import { GuidedWorkflow } from './GuidedWorkflow'
@@ -26,8 +26,15 @@ type ChangeFilter = 'untracked' | 'modified' | 'deleted'
 const steps = ['确认项目', '核对修改', '选择交付包', '生成交付清单', '选择工作版本', '填写上传说明', '确认上传']
 
 export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: Props) {
-  const branches = useMemo(() => uploadBranchNames(repository), [repository])
-  const branchStarts = useMemo(() => branchStartNames(repository), [repository])
+  const [cloudBranches, setCloudBranches] = useState<BranchSummary[]>(
+    () => repository.branches,
+  )
+  const cloudRepository = useMemo(
+    () => ({ ...repository, branches: cloudBranches }),
+    [cloudBranches, repository],
+  )
+  const branches = useMemo(() => uploadBranchNames(cloudRepository), [cloudRepository])
+  const branchStarts = useMemo(() => branchStartNames(cloudRepository), [cloudRepository])
   const initialDraft = useMemo(
     () => workflowDraftClient.loadUpload(repository.id),
     [repository.id],
@@ -62,6 +69,14 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     () => branch && !branches.includes(branch) ? [...branches, branch] : branches,
     [branch, branches],
   )
+
+  useEffect(() => {
+    setCloudBranches((current) => {
+      const branchesByName = new Map(current.map((item) => [item.name, item]))
+      for (const item of repository.branches) branchesByName.set(item.name, item)
+      return [...branchesByName.values()]
+    })
+  }, [repository.branches])
 
   useEffect(() => {
     let active = true
@@ -166,6 +181,18 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
         name: `dev/${suffix}`,
         startPoint: newBranchStart,
       })
+      setCloudBranches((current) => [
+        ...current.filter((item) => item.name !== created.branch),
+        {
+          name: created.branch,
+          stage: '开发分支',
+          commit: '',
+          commitMessage: '',
+          updatedAt: '',
+          remote: true,
+          current: false,
+        },
+      ])
       await onRefresh?.()
       setBranch(created.branch)
       setNewBranchName('')
@@ -181,7 +208,10 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     setRefreshingBranches(true)
     setBranchRefreshMessage('')
     try {
-      await api.refreshBranches?.()
+      const refreshed = await api.refreshBranches?.()
+      if (refreshed?.branches) {
+        setCloudBranches(refreshed.branches)
+      }
       await onRefresh?.()
       if (showSuccess) setBranchRefreshMessage('已从 GitLab 重新读取云端工作版本。')
     } catch (cause) {

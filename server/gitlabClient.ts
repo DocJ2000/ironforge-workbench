@@ -72,6 +72,14 @@ export interface GitLabTag {
   committedAt: string
 }
 
+export interface GitLabBranch {
+  name: string
+  commitId: string
+  shortId: string
+  title: string
+  committedAt: string
+}
+
 export interface GitLabMergedRequest {
   iid: number
   title: string
@@ -242,6 +250,52 @@ export function createGitLabClient(
         commitId: row.commit.id,
         committedAt: row.commit.committed_date,
       }))
+    },
+
+    async listBranches(projectPath: string): Promise<GitLabBranch[]> {
+      const branches: GitLabBranch[] = []
+      let page = '1'
+      while (page) {
+        const response = await request(
+          `${projectUrl('', projectPath)}/repository/branches?per_page=100&page=${page}`,
+          { signal: AbortSignal.timeout(10_000) },
+        )
+        const rows = (await response.json()) as Array<{
+          name: string
+          commit: {
+            id: string
+            short_id?: string
+            title?: string
+            committed_date?: string
+          }
+        }>
+        branches.push(...rows.map((row) => ({
+          name: row.name,
+          commitId: row.commit.id,
+          shortId: row.commit.short_id ?? row.commit.id.slice(0, 8),
+          title: row.commit.title ?? '',
+          committedAt: row.commit.committed_date ?? '',
+        })))
+        page = response.headers.get('x-next-page') ?? ''
+      }
+      return branches
+    },
+
+    async createBranch(
+      projectPath: string,
+      name: string,
+      ref: string,
+    ): Promise<{ branch: string }> {
+      const response = await request(
+        `${projectUrl('', projectPath)}/repository/branches`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ branch: name, ref }),
+        },
+      )
+      const result = (await response.json()) as { name?: string }
+      return { branch: result.name ?? name }
     },
 
     async listMergedRequests(projectPath: string): Promise<GitLabMergedRequest[]> {

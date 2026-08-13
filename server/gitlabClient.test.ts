@@ -222,6 +222,44 @@ describe('GitLabClient', () => {
     )
   })
 
+  it('lists cloud branches directly from GitLab', async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse([{
+      name: 'dev/V5',
+      commit: {
+        id: 'abc123456789',
+        short_id: 'abc12345',
+        title: 'create V5',
+        committed_date: '2026-08-13T10:00:00Z',
+      },
+    }]))
+    const client = createGitLabClient(config, fetcher)
+
+    await expect(client.listBranches('project')).resolves.toEqual([{
+      name: 'dev/V5',
+      commitId: 'abc123456789',
+      shortId: 'abc12345',
+      title: 'create V5',
+      committedAt: '2026-08-13T10:00:00Z',
+    }])
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://gitlfs.lab.tp/api/v4/projects/project/repository/branches?per_page=100&page=1',
+      expect.any(Object),
+    )
+  })
+
+  it('creates cloud branches through GitLab without pushing local refs', async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ name: 'dev/V5' }))
+    const client = createGitLabClient(config, fetcher)
+
+    await expect(
+      client.createBranch('project', 'dev/V5', 'main'),
+    ).resolves.toEqual({ branch: 'dev/V5' })
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({
+      branch: 'dev/V5',
+      ref: 'main',
+    })
+  })
+
   it('reads version Tags and merged reviews for classified history', async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(jsonResponse([{

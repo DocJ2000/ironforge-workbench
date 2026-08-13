@@ -1,7 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 import Busboy from 'busboy'
-import type { RepositorySnapshot } from '../src/domain/repository.js'
+import type {
+  BranchSummary,
+  RepositorySnapshot,
+} from '../src/domain/repository.js'
 import type {
   GitLabSyncDraft,
   MergeRequestDraft,
@@ -19,7 +22,6 @@ import {
 import {
   assertTagAvailable,
   checkoutRepositoryBranch,
-  createAndPublishRepositoryBranch,
   createAnnotatedTag,
   ensureRepositoryTag,
   pushRepositoryTag,
@@ -111,6 +113,41 @@ function sendJson(response: ServerResponse, statusCode: number, value: unknown) 
   response.setHeader('Content-Type', 'application/json; charset=utf-8')
   response.setHeader('Cache-Control', 'no-store')
   response.end(JSON.stringify(value))
+}
+
+function branchStage(name: string) {
+  if (name === 'main' || name === 'master') return '正式主线'
+  const stage = name.match(/(?:^|\/)(T\d+)$/i)?.[1]
+  return stage ? `${stage.toUpperCase()} 设计` : '开发分支'
+}
+
+function mergeCloudBranches(
+  repository: RepositorySnapshot,
+  cloudBranches: Array<{
+    name: string
+    commitId: string
+    shortId: string
+    title: string
+    committedAt: string
+  }>,
+): BranchSummary[] {
+  const branches = new Map(repository.branches.map((branch) => [
+    branch.name,
+    branch,
+  ]))
+  for (const branch of cloudBranches) {
+    const existing = branches.get(branch.name)
+    branches.set(branch.name, {
+      name: branch.name,
+      stage: existing?.stage ?? branchStage(branch.name),
+      commit: branch.shortId,
+      commitMessage: branch.title,
+      updatedAt: branch.committedAt,
+      remote: true,
+      current: existing?.current ?? repository.branch === branch.name,
+    })
+  }
+  return [...branches.values()]
 }
 
 async function readJson<T>(request: IncomingMessage): Promise<T> {
@@ -258,18 +295,22 @@ export function createRepositoryMiddleware({
     input: CreateBranchInput,
   ) => {
     if (createBranch) return createBranch(input)
+    const name = input.name.trim()
+    if (!/^dev\/[A-Za-z0-9._+/-]+$/.test(name)) {
+      throw new Error('只能创建 dev/ 开头的工作版本')
+    }
+    const repository = await scan(path)
     const projectCredentials = await resolveCredentials(projectId)
-    return createAndPublishRepositoryBranch(path, input, {
-      sshKeyPath: projectCredentials.sshKeyPath,
-      ...(projectCredentials.sshPassphrase
-        ? { sshPassphrase: projectCredentials.sshPassphrase }
-        : {}),
-      ...(projectCredentials.sshAskPassPath
-        ? { sshAskPassPath: projectCredentials.sshAskPassPath }
-        : sshAskPassPath
-          ? { sshAskPassPath }
-          : {}),
-    })
+    const gitLab = createGitLabClient({
+      baseUrl: projectCredentials.baseUrl,
+      token: projectCredentials.token,
+      recommendedReviewers: [],
+    }, fetcher)
+    return gitLab.createBranch(
+      gitLabProjectPath(repository.gitlabPath),
+      name,
+      input.startPoint.trim(),
+    )
   }
   const executeUpload = (
     path: string,
@@ -698,17 +739,41 @@ export function createRepositoryMiddleware({
         return
       }
       try {
+        let localRefreshError: unknown
         if (refreshBranches) {
-          await refreshBranches(activeRepositoryPath, activeProjectId)
+          try {
+            await refreshBranches(activeRepositoryPath, activeProjectId)
+          } catch (error) {
+            localRefreshError = error
+          }
         } else {
           const projectCredentials = await resolveCredentials(activeProjectId)
-          await refreshRepositoryRemoteBranches(activeRepositoryPath, {
-            sshKeyPath: projectCredentials.sshKeyPath,
-            ...(projectCredentials.sshPassphrase ? { sshPassphrase: projectCredentials.sshPassphrase } : {}),
-            ...(projectCredentials.sshAskPassPath ? { sshAskPassPath: projectCredentials.sshAskPassPath } : {}),
-          })
+          try {
+            await refreshRepositoryRemoteBranches(activeRepositoryPath, {
+              sshKeyPath: projectCredentials.sshKeyPath,
+              ...(projectCredentials.sshPassphrase ? { sshPassphrase: projectCredentials.sshPassphrase } : {}),
+              ...(projectCredentials.sshAskPassPath ? { sshAskPassPath: projectCredentials.sshAskPassPath } : {}),
+            })
+          } catch (error) {
+            localRefreshError = error
+          }
         }
-        sendJson(response, 200, { refreshed: true })
+        const repository = await scan(activeRepositoryPath)
+        const projectCredentials = await resolveCredentials(activeProjectId)
+        const gitLab = createGitLabClient({
+          baseUrl: projectCredentials.baseUrl,
+          token: projectCredentials.token,
+          recommendedReviewers: [],
+        }, fetcher)
+        const cloudBranches = await gitLab.listBranches(
+          gitLabProjectPath(repository.gitlabPath),
+        )
+        sendJson(response, 200, {
+          refreshed: true,
+          branches: mergeCloudBranches(repository, cloudBranches),
+          localRefreshError:
+            localRefreshError instanceof Error ? localRefreshError.message : undefined,
+        })
       } catch (error) {
         sendJson(response, 400, { error: toFriendlyError(error) })
       }

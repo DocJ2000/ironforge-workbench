@@ -1,5 +1,11 @@
 # 更新记录
 
+## 0.1.22
+
+- 选择上传工作版本时直接从 GitLab API 读取云端分支，GitLab 网页刚创建的 `dev/*` 分支会立即出现在下拉列表。
+- Workbench 新建工作版本改为通过 GitLab API 创建，不再依赖本地 `git push --set-upstream`，避免 SSH 域名解析影响新分支创建。
+- 分支刷新时即使本地 fetch 失败，也会继续使用 GitLab API 返回的云端分支列表。
+
 ## 0.1.21
 
 - 上传页面进入“选择工作版本”时会自动刷新 GitLab 云端分支。

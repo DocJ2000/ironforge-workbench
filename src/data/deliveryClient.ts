@@ -10,6 +10,7 @@ import type {
   OutputPackageCandidate,
 } from '../domain/delivery'
 import type { ConnectionCheckResult, FriendlyError } from '../domain/connection'
+import type { BranchSummary } from '../domain/repository'
 
 export class FriendlyOperationError extends Error {
   readonly friendly: FriendlyError
@@ -67,7 +68,10 @@ export interface DeliveryApi {
     name: string
     startPoint: string
   }) => Promise<{ branch: string }>
-  refreshBranches: () => Promise<{ refreshed: boolean }>
+  refreshBranches: () => Promise<{
+    refreshed: boolean
+    branches?: BranchSummary[]
+  }>
   uploadAttachment: (file: File) => Promise<{ markdown: string }>
   pull: () => Promise<{
     branch: string
