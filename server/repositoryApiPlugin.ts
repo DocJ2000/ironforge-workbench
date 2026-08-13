@@ -253,7 +253,8 @@ export function createRepositoryMiddleware({
       restoreCharge: restoreChargeFile,
       previewCommit: previewRepositoryCommit,
       commit: commitRepositoryChanges,
-      checkout: checkoutRepositoryBranch,
+      checkout: (path: string, branch: string) =>
+        checkoutRepositoryBranch(path, branch, remoteCredentials),
       push: (path: string, branch: string) =>
         pushRepositoryBranch(path, branch, remoteCredentials),
       assertTagAvailable: (path: string, name: string) =>

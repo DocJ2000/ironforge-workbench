@@ -151,14 +151,18 @@ export async function syncGitLab(
   assertConfirmed(request.confirmed, '同步到 GitLab')
   const { draft } = request
   assertValid(validateGitLabSyncDraft(draft))
-  const repository = await dependencies.scanRepository(repositoryPath)
-  const risks = inspectUploadRisks(repository, draft)
-  if (risks.length) throw new Error(risks.map((risk) => `${risk.title}：${risk.nextAction}`).join('；'))
 
   if (draft.tag) {
     await dependencies.assertTagAvailable(repositoryPath, draft.tag.name)
   }
   await dependencies.checkout(repositoryPath, draft.branch)
+
+  const repository = await dependencies.scanRepository(repositoryPath)
+  const risks = inspectUploadRisks(repository, draft)
+  if (risks.length) {
+    throw new Error(risks.map((risk) => `${risk.title}：${risk.nextAction}`).join('；'))
+  }
+
   const packages = await dependencies.scanPackages(repositoryPath)
   const charge = await dependencies.previewCharge(
     repositoryPath,
@@ -178,7 +182,7 @@ export async function syncGitLab(
     } catch (restoreError) {
       throw new AggregateError(
         [error, restoreError],
-        '提交失败，并且 charge.json 未能恢复，请让技术同事检查工程文件。',
+        '提交失败，并且 charge.json 不能恢复，请让技术同事检查工程文件。',
       )
     }
     throw error

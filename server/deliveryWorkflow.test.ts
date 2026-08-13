@@ -161,6 +161,29 @@ describe('syncGitLab', () => {
     expect(result).toEqual({ branch: 'dev/T2', commit: 'abc1234' })
   })
 
+  it('checks out a selected cloud branch before comparing repository state', async () => {
+    const order: string[] = []
+    const deps = dependencies(order)
+    vi.mocked(deps.scanRepository)
+      .mockResolvedValueOnce({
+        branch: 'dev/V5',
+        gitlabPath: 'rockteam/dragon/optics/lens-mechanics',
+        latestCommit: 'abc1234',
+      })
+    const draft = { ...syncDraft, branch: 'dev/V5' }
+
+    await expect(
+      syncGitLab(
+        'C:/fake-repository',
+        { draft, confirmed: true },
+        deps,
+      ),
+    ).resolves.toMatchObject({ branch: 'dev/V5' })
+
+    expect(order).toEqual(['checkout', 'charge', 'commit', 'push'])
+    expect(deps.checkout).toHaveBeenCalledWith('C:/fake-repository', 'dev/V5')
+  })
+
   it('restores charge.json when commit preparation fails', async () => {
     const deps = dependencies()
     vi.mocked(deps.previewCommit).mockRejectedValueOnce(

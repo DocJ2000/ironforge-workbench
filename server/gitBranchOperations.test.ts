@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   assertTagAvailable,
+  checkoutRepositoryBranch,
   createAndPublishRepositoryBranch,
   createAnnotatedTag,
   createRepositoryBranch,
@@ -89,6 +90,22 @@ describe('createRepositoryBranch', () => {
     })
 
     expect(git(repositoryPath, 'branch', '--show-current')).toBe('dev/T3')
+  })
+
+  it('checks out a branch that exists only on origin', async () => {
+    const { repositoryPath, remotePath } = await createRepositoryWithRemote()
+    git(repositoryPath, 'switch', '-c', 'dev/V5')
+    git(repositoryPath, 'push', '-u', 'origin', 'dev/V5')
+    git(repositoryPath, 'switch', 'dev/T2')
+    git(repositoryPath, 'branch', '-D', 'dev/V5')
+    expect(git(remotePath, 'show-ref', '--verify', 'refs/heads/dev/V5'))
+      .toContain('refs/heads/dev/V5')
+
+    await checkoutRepositoryBranch(repositoryPath, 'dev/V5')
+
+    expect(git(repositoryPath, 'branch', '--show-current')).toBe('dev/V5')
+    expect(git(repositoryPath, 'rev-parse', '--abbrev-ref', '@{upstream}'))
+      .toBe('origin/dev/V5')
   })
 
   it('refuses existing and invalid branch names', async () => {

@@ -45,6 +45,18 @@ async function git(
   return stdout.trim()
 }
 
+async function optionalGit(
+  repositoryPath: string,
+  args: string[],
+  credentials?: GitRemoteCredentials,
+) {
+  try {
+    return await git(repositoryPath, args, credentials)
+  } catch {
+    return ''
+  }
+}
+
 export async function probeRepositoryRemote(
   repositoryPath: string,
   credentials: GitRemoteCredentials,
@@ -128,8 +140,22 @@ export async function createAndPublishRepositoryBranch(
 export async function checkoutRepositoryBranch(
   repositoryPath: string,
   branch: string,
+  credentials?: GitRemoteCredentials,
 ) {
-  await git(repositoryPath, ['switch', branch])
+  const name = branch.trim()
+  if (!name) throw new Error('请选择工作版本')
+  if (await optionalGit(repositoryPath, ['rev-parse', '--verify', name])) {
+    await git(repositoryPath, ['switch', name])
+    return
+  }
+  const remoteRef = `origin/${name}`
+  if (await optionalGit(repositoryPath, ['ls-remote', '--heads', 'origin', name], credentials)) {
+    await git(repositoryPath, ['fetch', 'origin', `${name}:${name}`], credentials)
+    await git(repositoryPath, ['branch', '--set-upstream-to', remoteRef, name])
+    await git(repositoryPath, ['switch', name])
+    return
+  }
+  await git(repositoryPath, ['switch', name])
 }
 
 export async function pushRepositoryBranch(
