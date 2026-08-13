@@ -1,5 +1,5 @@
 import { CheckCircle2, FileText, GitBranch, Plus, UploadCloud } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
@@ -47,6 +47,9 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
   const [result, setResult] = useState<{ commit: string; branch: string } | null>(null)
   const [showCreateBranch, setShowCreateBranch] = useState(false)
   const [newBranchName, setNewBranchName] = useState('')
+  const [refreshingBranches, setRefreshingBranches] = useState(false)
+  const [branchRefreshMessage, setBranchRefreshMessage] = useState('')
+  const autoRefreshedBranches = useRef(false)
   const [newBranchStart, setNewBranchStart] = useState(
     () => branchStarts[0] ?? '',
   )
@@ -94,6 +97,14 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     step,
     title,
   ])
+
+  useEffect(() => {
+    if (step !== 4 || result || refreshingBranches || !api.refreshBranches) return
+    if (autoRefreshedBranches.current) return
+    if (branchRefreshMessage) return
+    autoRefreshedBranches.current = true
+    void refreshCloudBranches(false)
+  }, [api, branchRefreshMessage, refreshingBranches, result, step])
 
   function togglePackage(id: string) {
     setSelectedPackages((current) => {
@@ -163,6 +174,21 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
       setError(friendlyErrorFrom(cause))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function refreshCloudBranches(showSuccess = true) {
+    setRefreshingBranches(true)
+    setBranchRefreshMessage('')
+    try {
+      await api.refreshBranches?.()
+      await onRefresh?.()
+      if (showSuccess) setBranchRefreshMessage('已从 GitLab 重新读取云端工作版本。')
+    } catch (cause) {
+      const friendly = friendlyErrorFrom(cause)
+      setBranchRefreshMessage(`${friendly.title}：${friendly.detail}`)
+    } finally {
+      setRefreshingBranches(false)
     }
   }
 
@@ -237,7 +263,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     {!result && step === 1 ? <ChangeReview changes={repository.changes} filter={changeFilter} onFilterChange={setChangeFilter} /> : null}
     {!result && step === 2 ? <div><Intro title="选择本次交付包">交付包是 <code>output</code> 文件夹里的第二级子文件夹。例如 <code>output/mechanical/机加件</code> 中，“机加件”才是一个交付包；<code>output</code>、<code>mechanical</code> 和里面的单个文件都不是。只需勾选需要交付的包，软件会把选择结果写入交付清单。</Intro>{packages.map((item) => <PackageTree changes={repository.changes} item={item} key={item.id} onToggle={() => togglePackage(item.id)} selected={selectedPackages.has(item.id)} />)}{!packages.length ? <p>OUTPUT 中没有找到可交付的第二级子文件夹。</p> : null}</div> : null}
     {!result && step === 3 ? <div><Intro title="核对自动生成的交付清单">上传时会在项目最外层自动创建或更新 <code>charge.json</code>。它支持 <code>output</code> 下任意分类文件夹，例如 <code>mechanical</code>、<code>electronics</code>；铁炉堡将按下面列出的完整路径读取交付包。</Intro><dl className="confirm-list">{selected.map((item) => <div key={item.id}><dt>{item.name}</dt><dd>{item.path}</dd></div>)}</dl></div> : null}
-    {!result && step === 4 ? <div><Intro title="选择上传到哪个工作版本">这里只显示 GitLab 云端已有的开发分支。正式主分支 main 只能作为新版本的复制来源，不能直接上传。</Intro><div className="branch-picker-row"><label className="plain-field"><span className="field-label-row">本次工程阶段<FieldHelp label="本次工程阶段"><strong>选择 GitLab 页面中对应的开发分支。</strong><ol><li>T1、T2 代表不同工程阶段。</li><li>main 是正式主分支，不能直接上传。</li><li>如果列表为空，请点击右侧“新建工作版本”，并从 main 复制。</li></ol></FieldHelp></span><select aria-label="上传到哪个工作版本" disabled={!selectableBranches.length} onChange={(event) => setBranch(event.target.value)} value={branch}>{!selectableBranches.length ? <option value="">还没有工作版本，请先新建</option> : null}{selectableBranches.map((item) => <option key={item}>{item}</option>)}</select></label><button className="button button--secondary branch-action-button" onClick={() => setShowCreateBranch((current) => !current)} type="button"><Plus size={16} />新建工作版本</button></div>{showCreateBranch ? <div className="create-branch-panel"><h3>创建新的云端工作版本</h3><p>软件会先在 GitLab 创建成功，再把它选为本次上传目标。</p><div className="create-branch-fields"><label className="plain-field"><span>新工作版本名称</span><div className="branch-name-input"><span>dev/</span><input aria-label="新工作版本名称" onChange={(event) => setNewBranchName(event.target.value)} placeholder="例如：T1" value={newBranchName} /></div></label><label className="plain-field"><span>从哪个工作版本复制</span><select aria-label="从哪个工作版本复制" disabled={!branchStarts.length} onChange={(event) => setNewBranchStart(event.target.value)} value={newBranchStart}>{!branchStarts.length ? <option value="">没有找到云端版本</option> : null}{branchStarts.map((item) => <option key={item}>{item}</option>)}</select></label></div><div className="create-branch-actions"><button className="button button--secondary" onClick={() => setShowCreateBranch(false)} type="button">取消</button><button className="button button--primary" disabled={busy || !newBranchName.trim() || !newBranchStart} onClick={() => void createCloudBranch()} type="button">{busy ? '正在创建' : '创建到 GitLab'}</button></div></div> : null}{repository.branch !== branch ? <p className="change-review-note">本机当前是 {repository.branch}，本次将选择云端工作分支 {branch || '尚未创建'}。软件不会把本地临时分支显示成云端分支。</p> : null}</div> : null}
+    {!result && step === 4 ? <div><Intro title="选择上传到哪个工作版本">这里只显示 GitLab 云端已有的开发分支。正式主分支 main 只能作为新版本的复制来源，不能直接上传。</Intro><div className="branch-picker-row"><label className="plain-field"><span className="field-label-row">本次工程阶段<FieldHelp label="本次工程阶段"><strong>选择 GitLab 页面中对应的开发分支。</strong><ol><li>T1、T2 代表不同工程阶段。</li><li>main 是正式主分支，不能直接上传。</li><li>如果刚在 GitLab 网页新建了分支，请点击“刷新云端分支”。</li></ol></FieldHelp></span><select aria-label="上传到哪个工作版本" disabled={!selectableBranches.length} onChange={(event) => setBranch(event.target.value)} value={branch}>{!selectableBranches.length ? <option value="">还没有工作版本，请先新建</option> : null}{selectableBranches.map((item) => <option key={item}>{item}</option>)}</select></label><button className="button button--secondary branch-action-button" disabled={refreshingBranches} onClick={() => void refreshCloudBranches()} type="button">{refreshingBranches ? '正在刷新' : '刷新云端分支'}</button><button className="button button--secondary branch-action-button" onClick={() => setShowCreateBranch((current) => !current)} type="button"><Plus size={16} />新建工作版本</button></div>{branchRefreshMessage ? <p className="branch-refresh-message">{branchRefreshMessage}</p> : null}{showCreateBranch ? <div className="create-branch-panel"><h3>创建新的云端工作版本</h3><p>软件会先在 GitLab 创建成功，再把它选为本次上传目标。</p><div className="create-branch-fields"><label className="plain-field"><span>新工作版本名称</span><div className="branch-name-input"><span>dev/</span><input aria-label="新工作版本名称" onChange={(event) => setNewBranchName(event.target.value)} placeholder="例如：T1" value={newBranchName} /></div></label><label className="plain-field"><span>从哪个工作版本复制</span><select aria-label="从哪个工作版本复制" disabled={!branchStarts.length} onChange={(event) => setNewBranchStart(event.target.value)} value={newBranchStart}>{!branchStarts.length ? <option value="">没有找到云端版本</option> : null}{branchStarts.map((item) => <option key={item}>{item}</option>)}</select></label></div><div className="create-branch-actions"><button className="button button--secondary" onClick={() => setShowCreateBranch(false)} type="button">取消</button><button className="button button--primary" disabled={busy || !newBranchName.trim() || !newBranchStart} onClick={() => void createCloudBranch()} type="button">{busy ? '正在创建' : '创建到 GitLab'}</button></div></div> : null}{repository.branch !== branch ? <p className="change-review-note">本机当前是 {repository.branch}，本次将选择云端工作分支 {branch || '尚未创建'}。软件不会把本地临时分支显示成云端分支。</p> : null}</div> : null}
     {!result && step === 5 ? <div><Intro title="填写本次上传说明">标题用于快速识别，描述可补充更详细的变更内容。</Intro><label className="plain-field"><span>本次更新标题</span><input aria-label="本次更新标题" onChange={(event) => setTitle(event.target.value)} placeholder="例如：更新 T2 结构件图纸" value={title} /></label><label className="plain-field spaced-field"><span>本次更新描述（可以不填）</span><textarea aria-label="本次更新描述" onChange={(event) => setDescription(event.target.value)} placeholder="补充修改原因、影响范围或注意事项" rows={5} value={description} /></label></div> : null}
     {!result && step === 6 ? <div><Intro title="确认上传">点击确认后，软件才会生成 charge.json、保存本次改动并上传。</Intro><dl className="confirm-list"><div><dt>项目</dt><dd>{repository.displayName}</dd></div><div><dt><FileText size={16} />改动文件</dt><dd>{repository.changes.length} 个</dd></div><div><dt>交付包</dt><dd>{selectedPackages.size} 个</dd></div><div><dt><GitBranch size={16} />工作版本</dt><dd>{branch}</dd></div><div><dt><UploadCloud size={16} />更新标题</dt><dd>{title}</dd></div></dl></div> : null}
   </GuidedWorkflow>

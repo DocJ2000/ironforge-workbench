@@ -191,6 +191,74 @@ it('creates a new cloud work version from an existing cloud branch', async () =>
   })
 })
 
+it('refreshes cloud branches when the branch picker is opened', async () => {
+  const repository = readyRepository()
+  const refreshBranches = vi.fn().mockResolvedValue({ refreshed: true })
+  const onRefresh = vi.fn().mockResolvedValue(undefined)
+  const api = {
+    overview: vi.fn().mockResolvedValue({
+      packages: [{
+        id: 'package',
+        name: '结构件',
+        path: 'output/mechanical/结构件',
+        domain: 'mechanical',
+        files: [],
+      }],
+      reviewers: [],
+    }),
+    refreshBranches,
+  } as unknown as DeliveryApi
+
+  render(
+    <MemoryRouter>
+      <ProjectUploadPage api={api} onRefresh={onRefresh} repository={repository} />
+    </MemoryRouter>,
+  )
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+  for (let index = 0; index < 4; index += 1) {
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  }
+
+  await waitFor(() => expect(refreshBranches).toHaveBeenCalledOnce())
+  expect(onRefresh).toHaveBeenCalledOnce()
+  expect(screen.getByRole('button', { name: '刷新云端分支' })).toBeVisible()
+})
+
+it('lets users manually refresh branches created on the GitLab website', async () => {
+  const repository = readyRepository()
+  const refreshBranches = vi.fn().mockResolvedValue({ refreshed: true })
+  const onRefresh = vi.fn().mockResolvedValue(undefined)
+  const api = {
+    overview: vi.fn().mockResolvedValue({
+      packages: [{
+        id: 'package',
+        name: '结构件',
+        path: 'output/mechanical/结构件',
+        domain: 'mechanical',
+        files: [],
+      }],
+      reviewers: [],
+    }),
+    refreshBranches,
+  } as unknown as DeliveryApi
+
+  render(
+    <MemoryRouter>
+      <ProjectUploadPage api={api} onRefresh={onRefresh} repository={repository} />
+    </MemoryRouter>,
+  )
+  await waitFor(() => expect(api.overview).toHaveBeenCalled())
+  for (let index = 0; index < 4; index += 1) {
+    fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  }
+  await waitFor(() => expect(refreshBranches).toHaveBeenCalledOnce())
+
+  fireEvent.click(screen.getByRole('button', { name: '刷新云端分支' }))
+
+  await waitFor(() => expect(refreshBranches).toHaveBeenCalledTimes(2))
+  expect(screen.getByText('已从 GitLab 重新读取云端工作版本。')).toBeVisible()
+})
+
 it('only offers cloud development branches and falls back from a local-only branch', () => {
   const repository = structuredClone(getDemoRepository())
   repository.branch = 'dev/T2+'

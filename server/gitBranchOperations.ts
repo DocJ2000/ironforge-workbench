@@ -52,6 +52,13 @@ export async function probeRepositoryRemote(
   await git(repositoryPath, ['ls-remote', '--heads', 'origin'], credentials)
 }
 
+export async function refreshRepositoryRemoteBranches(
+  repositoryPath: string,
+  credentials?: GitRemoteCredentials,
+) {
+  await git(repositoryPath, ['fetch', 'origin', '--prune'], credentials)
+}
+
 export interface CreateBranchInput {
   name: string
   startPoint: string

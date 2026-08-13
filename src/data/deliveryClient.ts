@@ -67,6 +67,7 @@ export interface DeliveryApi {
     name: string
     startPoint: string
   }) => Promise<{ branch: string }>
+  refreshBranches: () => Promise<{ refreshed: boolean }>
   uploadAttachment: (file: File) => Promise<{ markdown: string }>
   pull: () => Promise<{
     branch: string
@@ -124,6 +125,11 @@ export function createDeliveryApi(projectId?: string): DeliveryApi {
     requestJson(projectPath('/api/gitlab/branches', projectId), {
       method: 'POST',
       body: JSON.stringify({ input, confirmed: true }),
+    }),
+  refreshBranches: () =>
+    requestJson(projectPath('/api/gitlab/branches/refresh', projectId), {
+      method: 'POST',
+      body: JSON.stringify({ confirmed: true }),
     }),
   pull: () =>
     requestJson(projectPath('/api/gitlab/pull', projectId), {

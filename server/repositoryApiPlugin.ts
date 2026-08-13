@@ -23,6 +23,7 @@ import {
   createAnnotatedTag,
   ensureRepositoryTag,
   pushRepositoryTag,
+  refreshRepositoryRemoteBranches,
   type CreateBranchInput,
   pushRepositoryBranch,
   repositoryBranchCommit,
@@ -67,6 +68,7 @@ type MergeRequestExecutor = (
   request: { draft: MergeRequestDraft; confirmed: boolean },
 ) => Promise<unknown>
 type BranchCreator = (input: CreateBranchInput) => Promise<unknown>
+type BranchRefresher = (repositoryPath: string, projectId: string) => Promise<unknown>
 type AttachmentUploader = (input: {
   name: string
   type: string
@@ -83,6 +85,7 @@ interface RepositoryMiddlewareOptions {
   sync?: GitLabSyncExecutor
   createMergeRequest?: MergeRequestExecutor
   createBranch?: BranchCreator
+  refreshBranches?: BranchRefresher
   uploadAttachment?: AttachmentUploader
   pull?: (repositoryPath: string) => Promise<unknown>
   clone?: (input: {
@@ -174,6 +177,7 @@ export function createRepositoryMiddleware({
   sync,
   createMergeRequest,
   createBranch,
+  refreshBranches,
   uploadAttachment,
   pull,
   clone,
@@ -305,6 +309,7 @@ export function createRepositoryMiddleware({
     const isMergeRequest = path === '/api/gitlab/merge-requests'
     const isMergeRequestStatus = path === '/api/gitlab/merge-request-status'
     const isBranchRequest = path === '/api/gitlab/branches'
+    const isBranchRefreshRequest = path === '/api/gitlab/branches/refresh'
     const isUploadRequest = path === '/api/gitlab/uploads'
     const isPullRequest = path === '/api/gitlab/pull'
   const isCloneRequest = path === '/api/gitlab/clone'
@@ -322,6 +327,7 @@ export function createRepositoryMiddleware({
       !isMergeRequest &&
       !isMergeRequestStatus &&
       !isBranchRequest &&
+      !isBranchRefreshRequest &&
       !isUploadRequest
       && !isPullRequest
       && !isCloneRequest
@@ -675,6 +681,36 @@ export function createRepositoryMiddleware({
         sendJson(response, 400, {
           error: error instanceof Error ? error.message : 'Branch creation failed',
         })
+      }
+      return
+    }
+
+    if (isBranchRefreshRequest) {
+      let body: { confirmed: boolean }
+      try {
+        body = await readJson(request)
+      } catch {
+        sendJson(response, 400, { error: 'Invalid JSON request' })
+        return
+      }
+      if (!body.confirmed) {
+        sendJson(response, 400, { error: '请先确认刷新云端分支' })
+        return
+      }
+      try {
+        if (refreshBranches) {
+          await refreshBranches(activeRepositoryPath, activeProjectId)
+        } else {
+          const projectCredentials = await resolveCredentials(activeProjectId)
+          await refreshRepositoryRemoteBranches(activeRepositoryPath, {
+            sshKeyPath: projectCredentials.sshKeyPath,
+            ...(projectCredentials.sshPassphrase ? { sshPassphrase: projectCredentials.sshPassphrase } : {}),
+            ...(projectCredentials.sshAskPassPath ? { sshAskPassPath: projectCredentials.sshAskPassPath } : {}),
+          })
+        }
+        sendJson(response, 200, { refreshed: true })
+      } catch (error) {
+        sendJson(response, 400, { error: toFriendlyError(error) })
       }
       return
     }

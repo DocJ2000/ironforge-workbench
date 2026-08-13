@@ -1,5 +1,5 @@
 .branch-action-button{min-width:112px;white-space:nowrap}
-.branch-picker-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}
+.branch-picker-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:end;gap:12px}
 .create-branch-panel{margin-top:16px;padding:18px;border:1px solid #ccd4da;background:#f7f9fa;border-radius:6px}
 .create-branch-panel h3{margin:0 0 4px;font-size:17px}
 .create-branch-panel>p{margin:0 0 16px;color:#66737e}
@@ -13,4 +13,5 @@
 .pending-upload h1{margin:4px 0 8px;font-size:28px}
 .pending-upload>p:not(.task-eyebrow){margin:0 0 20px;color:#66737e}
 .pending-upload__details{margin-bottom:20px}
+.branch-refresh-message{margin:9px 0 0;color:var(--muted);font-size:12px}
 @media(max-width:760px){.branch-picker-row,.create-branch-fields{grid-template-columns:1fr}.branch-action-button{width:100%}.pending-upload{width:calc(100% - 24px);padding:22px}}

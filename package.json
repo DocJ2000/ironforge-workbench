@@ -1,7 +1,7 @@
 {
   "name": "ironforge-workbench",
   "private": true,
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "Engineering delivery workbench for GitLab and delivery platforms",
   "author": "Ironforge Workbench Contributors",
   "type": "module",

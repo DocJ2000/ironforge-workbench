@@ -353,6 +353,25 @@ describe('createRepositoryMiddleware', () => {
     expect(JSON.parse(result.body())).toEqual({ branch: 'dev/T3' })
   })
 
+  it('refreshes remote branch refs before listing upload targets', async () => {
+    const refreshBranches = vi.fn().mockResolvedValue({ refreshed: true })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      refreshBranches,
+    })
+    const result = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/gitlab/branches/refresh', { confirmed: true }),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(result.response.statusCode).toBe(200)
+    expect(JSON.parse(result.body())).toEqual({ refreshed: true })
+    expect(refreshBranches).toHaveBeenCalledWith('C:\\repository', 'default')
+  })
+
   it('uploads one PDF through a separate multipart endpoint', async () => {
     const uploadAttachment = vi.fn().mockResolvedValue({
       markdown: '[资料.pdf](/uploads/example/资料.pdf)',
