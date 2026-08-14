@@ -13,6 +13,8 @@ import {
   createRepositoryBranch,
   ensureRepositoryTag,
   gitRemoteEnvironment,
+  pruneDeletedTrackedBranches,
+  refreshRepositoryRemoteBranches,
   validateRetryPushBranch,
 } from './gitBranchOperations'
 
@@ -106,6 +108,20 @@ describe('createRepositoryBranch', () => {
     expect(git(repositoryPath, 'branch', '--show-current')).toBe('dev/V5')
     expect(git(repositoryPath, 'rev-parse', '--abbrev-ref', '@{upstream}'))
       .toBe('origin/dev/V5')
+  })
+
+  it('removes local tracked branches whose remote counterpart disappeared', async () => {
+    const { repositoryPath } = await createRepositoryWithRemote()
+    git(repositoryPath, 'switch', '-c', 'dev/V5')
+    git(repositoryPath, 'push', '-u', 'origin', 'dev/V5')
+    git(repositoryPath, 'switch', 'dev/T2')
+    git(repositoryPath, 'push', 'origin', ':dev/V5')
+    await refreshRepositoryRemoteBranches(repositoryPath)
+
+    await pruneDeletedTrackedBranches(repositoryPath)
+
+    expect(git(repositoryPath, 'branch', '--list', 'dev/V5')).toBe('')
+    expect(git(repositoryPath, 'branch', '--show-current')).toBe('dev/T2')
   })
 
   it('refuses existing and invalid branch names', async () => {

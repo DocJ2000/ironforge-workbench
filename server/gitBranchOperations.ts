@@ -71,6 +71,40 @@ export async function refreshRepositoryRemoteBranches(
   await git(repositoryPath, ['fetch', 'origin', '--prune'], credentials)
 }
 
+export async function pruneDeletedTrackedBranches(
+  repositoryPath: string,
+) {
+  const currentBranch = await optionalGit(repositoryPath, [
+    'branch',
+    '--show-current',
+  ])
+  const output = await optionalGit(repositoryPath, [
+    'for-each-ref',
+    '--format=%(refname:short)%00%(upstream:short)',
+    'refs/heads',
+  ])
+  if (!output) return []
+
+  const deleted: string[] = []
+  for (const line of output.split('\n')) {
+    const [name, upstream] = line.split('\0')
+    if (!name) continue
+    if (name === currentBranch) continue
+    if (name === 'main' || name === 'master') continue
+    if (!upstream?.startsWith('origin/')) continue
+    const remoteRef = `refs/remotes/${upstream}`
+    const remoteExists = await optionalGit(repositoryPath, [
+      'rev-parse',
+      '--verify',
+      remoteRef,
+    ])
+    if (remoteExists) continue
+    await git(repositoryPath, ['branch', '-D', name])
+    deleted.push(name)
+  }
+  return deleted
+}
+
 export interface CreateBranchInput {
   name: string
   startPoint: string

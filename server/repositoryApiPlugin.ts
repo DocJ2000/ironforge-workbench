@@ -25,6 +25,7 @@ import {
   createAnnotatedTag,
   ensureRepositoryTag,
   pushRepositoryTag,
+  pruneDeletedTrackedBranches,
   refreshRepositoryRemoteBranches,
   type CreateBranchInput,
   pushRepositoryBranch,
@@ -759,6 +760,7 @@ export function createRepositoryMiddleware({
             localRefreshError = error
           }
         }
+        await pruneDeletedTrackedBranches(activeRepositoryPath)
         const repository = await scan(activeRepositoryPath)
         const projectCredentials = await resolveCredentials(activeProjectId)
         const gitLab = createGitLabClient({
@@ -872,6 +874,21 @@ export function createRepositoryMiddleware({
     }
 
     try {
+      try {
+        const projectCredentials = await resolveCredentials(activeProjectId)
+        await refreshRepositoryRemoteBranches(activeRepositoryPath, {
+          sshKeyPath: projectCredentials.sshKeyPath,
+          ...(projectCredentials.sshPassphrase
+            ? { sshPassphrase: projectCredentials.sshPassphrase }
+            : {}),
+          ...(projectCredentials.sshAskPassPath
+            ? { sshAskPassPath: projectCredentials.sshAskPassPath }
+            : {}),
+        })
+        await pruneDeletedTrackedBranches(activeRepositoryPath)
+      } catch {
+        // Best effort only. The repository snapshot still needs to load if pruning fails.
+      }
       const repository = await scan(activeRepositoryPath)
       sendJson(response, 200, { source: 'live', repository })
     } catch {

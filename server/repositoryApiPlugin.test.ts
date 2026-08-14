@@ -139,6 +139,31 @@ describe('createRepositoryMiddleware', () => {
     })
   })
 
+  it('still returns a live repository snapshot when remote pruning fails', async () => {
+    const scan = vi.fn().mockResolvedValue(getDemoRepository())
+    const credentials = vi.fn().mockResolvedValue({
+      baseUrl: 'https://gitlfs.lab.tp',
+      token: 'stored-token',
+      sshKeyPath: 'C:\\keys\\id_ed25519',
+    })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan,
+      credentials,
+    })
+    const result = responseDouble()
+
+    await middleware(
+      { method: 'GET', url: '/api/repository' } as IncomingMessage,
+      result.response,
+      vi.fn(),
+    )
+
+    expect(result.response.statusCode).toBe(200)
+    expect(scan).toHaveBeenCalledWith('C:\\repository')
+    expect(credentials).toHaveBeenCalledWith('default')
+  })
+
   it('rejects non-GET requests', async () => {
     const middleware = createRepositoryMiddleware({
       repositoryPath: 'C:\\repository',
