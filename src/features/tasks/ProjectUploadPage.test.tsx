@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
-import { getDemoRepository } from '../../data/demoRepository'
 import type { DeliveryApi } from '../../data/deliveryClient'
+import { getDemoRepository } from '../../data/demoRepository'
 import { workflowDraftClient } from '../../data/workflowDraftClient'
 import { ProjectUploadPage } from './ProjectUploadPage'
 import { branchStartNames, initialUploadBranch, uploadBranchNames } from './uploadBranchRules'
@@ -90,7 +90,7 @@ it('offers to continue an existing local commit after returning to the page', as
     ...readyRepository(),
     ahead: 1,
     latestCommit: 'a5e149a6212b',
-    latestCommitMessage: '更新结构件图纸',
+    latestCommitMessage: '更新结构图纸',
     changes: [],
   }
   const retryPush = vi.fn().mockResolvedValue({
@@ -113,7 +113,7 @@ it('offers to continue an existing local commit after returning to the page', as
   expect(screen.getByRole('heading', {
     name: '有 1 次更新还没有传到公司服务器',
   })).toBeVisible()
-  expect(screen.getByText('更新结构件图纸')).toBeVisible()
+  expect(screen.getByText('更新结构图纸')).toBeVisible()
   fireEvent.click(screen.getByRole('button', { name: '继续上传' }))
 
   await waitFor(() => expect(retryPush).toHaveBeenCalledWith('dev/T2'))
@@ -144,119 +144,6 @@ it('blocks upload when both the computer and cloud have newer work', () => {
   expect(screen.getByText(/不会强行覆盖任何一边/)).toBeVisible()
   expect(screen.queryByRole('button', { name: '继续上传' })).not.toBeInTheDocument()
   expect(retryPush).not.toHaveBeenCalled()
-})
-
-it('creates a new cloud work version from an existing cloud branch', async () => {
-  const repository = readyRepository()
-  const createBranch = vi.fn().mockResolvedValue({ branch: 'dev/T3' })
-  const api = {
-    overview: vi.fn().mockResolvedValue({
-      packages: [{
-        id: 'package',
-        name: '结构件',
-        path: 'output/mechanical/结构件',
-        domain: 'mechanical',
-        files: [],
-      }],
-      reviewers: [],
-    }),
-    createBranch,
-  } as unknown as DeliveryApi
-
-  render(
-    <MemoryRouter>
-      <ProjectUploadPage api={api} repository={repository} />
-    </MemoryRouter>,
-  )
-  await waitFor(() => expect(api.overview).toHaveBeenCalled())
-  for (let index = 0; index < 4; index += 1) {
-    fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  }
-
-  fireEvent.click(screen.getByRole('button', { name: '新建工作版本' }))
-  fireEvent.change(screen.getByLabelText('新工作版本名称'), {
-    target: { value: 'T3' },
-  })
-  fireEvent.change(screen.getByLabelText('从哪个工作版本复制'), {
-    target: { value: 'dev/T2' },
-  })
-  fireEvent.click(screen.getByRole('button', { name: '创建到 GitLab' }))
-
-  await waitFor(() => expect(createBranch).toHaveBeenCalledWith({
-    name: 'dev/T3',
-    startPoint: 'dev/T2',
-  }))
-  await waitFor(() => {
-    expect(screen.getByLabelText('上传到哪个工作版本')).toHaveValue('dev/T3')
-  })
-})
-
-it('refreshes cloud branches when the branch picker is opened', async () => {
-  const repository = readyRepository()
-  const refreshBranches = vi.fn().mockResolvedValue({ refreshed: true })
-  const onRefresh = vi.fn().mockResolvedValue(undefined)
-  const api = {
-    overview: vi.fn().mockResolvedValue({
-      packages: [{
-        id: 'package',
-        name: '结构件',
-        path: 'output/mechanical/结构件',
-        domain: 'mechanical',
-        files: [],
-      }],
-      reviewers: [],
-    }),
-    refreshBranches,
-  } as unknown as DeliveryApi
-
-  render(
-    <MemoryRouter>
-      <ProjectUploadPage api={api} onRefresh={onRefresh} repository={repository} />
-    </MemoryRouter>,
-  )
-  await waitFor(() => expect(api.overview).toHaveBeenCalled())
-  for (let index = 0; index < 4; index += 1) {
-    fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  }
-
-  await waitFor(() => expect(refreshBranches).toHaveBeenCalledOnce())
-  expect(onRefresh).toHaveBeenCalledOnce()
-  expect(screen.getByRole('button', { name: '刷新云端分支' })).toBeVisible()
-})
-
-it('lets users manually refresh branches created on the GitLab website', async () => {
-  const repository = readyRepository()
-  const refreshBranches = vi.fn().mockResolvedValue({ refreshed: true })
-  const onRefresh = vi.fn().mockResolvedValue(undefined)
-  const api = {
-    overview: vi.fn().mockResolvedValue({
-      packages: [{
-        id: 'package',
-        name: '结构件',
-        path: 'output/mechanical/结构件',
-        domain: 'mechanical',
-        files: [],
-      }],
-      reviewers: [],
-    }),
-    refreshBranches,
-  } as unknown as DeliveryApi
-
-  render(
-    <MemoryRouter>
-      <ProjectUploadPage api={api} onRefresh={onRefresh} repository={repository} />
-    </MemoryRouter>,
-  )
-  await waitFor(() => expect(api.overview).toHaveBeenCalled())
-  for (let index = 0; index < 4; index += 1) {
-    fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  }
-  await waitFor(() => expect(refreshBranches).toHaveBeenCalledOnce())
-
-  fireEvent.click(screen.getByRole('button', { name: '刷新云端分支' }))
-
-  await waitFor(() => expect(refreshBranches).toHaveBeenCalledTimes(2))
-  expect(screen.getByText('已从 GitLab 重新读取云端工作版本。')).toBeVisible()
 })
 
 it('only offers cloud development branches and falls back from a local-only branch', () => {
@@ -305,14 +192,14 @@ it('keeps main as a source for creating the first cloud work version', () => {
   expect(branchStartNames(repository)).toEqual(['main'])
 })
 
-it('separates added, modified, and deleted files during review', () => {
+it('separates added, modified, and deleted files during review', async () => {
   const api = { overview: vi.fn().mockResolvedValue({ packages: [], reviewers: [] }) } as unknown as DeliveryApi
   render(<MemoryRouter><ProjectUploadPage api={api} repository={readyRepository()} /></MemoryRouter>)
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
 
   expect(screen.getByRole('tab', { name: /新增/ })).toHaveAttribute('aria-selected', 'true')
   fireEvent.click(screen.getByRole('tab', { name: /已删除/ }))
-  expect(screen.getByText(/这些文件会随本次上传从 GitLab/)).toBeVisible()
+  expect(screen.getByText(/这些文件会随本次上传从 GitLab 对应工作版本中移除/)).toBeVisible()
   expect(screen.getByRole('tabpanel')).toBeVisible()
 })
 
@@ -330,7 +217,6 @@ it('uploads all project changes without a tag', async () => {
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   expect(screen.getByRole('checkbox', { name: '选择 机加件' })).toBeChecked()
-  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   fireEvent.change(screen.getByLabelText('本次更新标题'), { target: { value: '更新整个结构工程' } })
