@@ -68,6 +68,9 @@ export interface DeliveryApi {
     name: string
     startPoint: string
   }) => Promise<{ branch: string }>
+  checkoutBranch?: (branch: string) => Promise<{
+    branch: string
+  }>
   refreshBranches: () => Promise<{
     refreshed: boolean
     branches?: BranchSummary[]
@@ -129,6 +132,11 @@ export function createDeliveryApi(projectId?: string): DeliveryApi {
     requestJson(projectPath('/api/gitlab/branches', projectId), {
       method: 'POST',
       body: JSON.stringify({ input, confirmed: true }),
+    }),
+  checkoutBranch: (branch) =>
+    requestJson(projectPath('/api/gitlab/branches/checkout', projectId), {
+      method: 'POST',
+      body: JSON.stringify({ branch, confirmed: true }),
     }),
   refreshBranches: () =>
     requestJson(projectPath('/api/gitlab/branches/refresh', projectId), {

@@ -72,6 +72,7 @@ type MergeRequestExecutor = (
 ) => Promise<unknown>
 type BranchCreator = (input: CreateBranchInput) => Promise<unknown>
 type BranchRefresher = (repositoryPath: string, projectId: string) => Promise<unknown>
+type BranchCheckout = (repositoryPath: string, projectId: string, branch: string) => Promise<unknown>
 type AttachmentUploader = (input: {
   name: string
   type: string
@@ -89,6 +90,7 @@ interface RepositoryMiddlewareOptions {
   createMergeRequest?: MergeRequestExecutor
   createBranch?: BranchCreator
   refreshBranches?: BranchRefresher
+  checkoutBranch?: BranchCheckout
   uploadAttachment?: AttachmentUploader
   pull?: (repositoryPath: string) => Promise<unknown>
   clone?: (input: {
@@ -216,6 +218,7 @@ export function createRepositoryMiddleware({
   createMergeRequest,
   createBranch,
   refreshBranches,
+  checkoutBranch,
   uploadAttachment,
   pull,
   clone,
@@ -314,6 +317,20 @@ export function createRepositoryMiddleware({
       input.startPoint.trim(),
     )
   }
+  const executeCheckoutBranch = async (
+    path: string,
+    projectId: string,
+    branch: string,
+  ) => {
+    if (checkoutBranch) return checkoutBranch(path, projectId, branch)
+    const projectCredentials = await resolveCredentials(projectId)
+    await checkoutRepositoryBranch(path, branch, {
+      sshKeyPath: projectCredentials.sshKeyPath,
+      ...(projectCredentials.sshPassphrase ? { sshPassphrase: projectCredentials.sshPassphrase } : {}),
+      ...(projectCredentials.sshAskPassPath ? { sshAskPassPath: projectCredentials.sshAskPassPath } : {}),
+    })
+    return { branch }
+  }
   const executeUpload = (
     path: string,
     projectId: string,
@@ -352,6 +369,7 @@ export function createRepositoryMiddleware({
     const isMergeRequest = path === '/api/gitlab/merge-requests'
     const isMergeRequestStatus = path === '/api/gitlab/merge-request-status'
     const isBranchRequest = path === '/api/gitlab/branches'
+    const isBranchCheckoutRequest = path === '/api/gitlab/branches/checkout'
     const isBranchRefreshRequest = path === '/api/gitlab/branches/refresh'
     const isUploadRequest = path === '/api/gitlab/uploads'
     const isPullRequest = path === '/api/gitlab/pull'
@@ -370,6 +388,7 @@ export function createRepositoryMiddleware({
       !isMergeRequest &&
       !isMergeRequestStatus &&
       !isBranchRequest &&
+      !isBranchCheckoutRequest &&
       !isBranchRefreshRequest &&
       !isUploadRequest
       && !isPullRequest
@@ -724,6 +743,34 @@ export function createRepositoryMiddleware({
         sendJson(response, 400, {
           error: error instanceof Error ? error.message : 'Branch creation failed',
         })
+      }
+      return
+    }
+
+    if (isBranchCheckoutRequest) {
+      let body: { branch: string; confirmed: boolean }
+      try {
+        body = await readJson(request)
+      } catch {
+        sendJson(response, 400, { error: 'Invalid JSON request' })
+        return
+      }
+      if (!body.confirmed || !body.branch?.trim()) {
+        sendJson(response, 400, { error: '请先确认切换工作版本' })
+        return
+      }
+      try {
+        sendJson(
+          response,
+          200,
+          await executeCheckoutBranch(
+            activeRepositoryPath,
+            activeProjectId,
+            body.branch.trim(),
+          ),
+        )
+      } catch (error) {
+        sendJson(response, 400, { error: toFriendlyError(error) })
       }
       return
     }

@@ -4,6 +4,7 @@ import type {
   OutputPackageCandidate,
   OutputPackageFile,
 } from '../src/domain/delivery.js'
+import { loadForgeRoots } from './forgeConfig.js'
 
 const fileTypeLabels: Record<string, string> = {
   '.asm': 'Creo 装配',
@@ -60,11 +61,19 @@ async function collectFiles(
   )
 }
 
+function isPathInside(candidate: string, roots: string[]) {
+  return roots.some((root) => (
+    candidate === root
+    || candidate.startsWith(`${root}/`)
+  ))
+}
+
 export async function scanOutputPackages(
   repositoryPath: string,
 ): Promise<OutputPackageCandidate[]> {
   const root = resolve(repositoryPath)
   const outputPath = join(root, 'output')
+  const forgeRoots = await loadForgeRoots(root)
   let domains
 
   try {
@@ -83,6 +92,8 @@ export async function scanOutputPackages(
     for (const packageEntry of packageEntries) {
       if (!packageEntry.isDirectory()) continue
       const packagePath = join(domainPath, packageEntry.name)
+      const normalizedPackagePath = normalizePath(resolve(packagePath))
+      if (forgeRoots && !isPathInside(normalizedPackagePath, forgeRoots)) continue
       const files = await collectFiles(root, packagePath)
       if (!files.length) continue
 

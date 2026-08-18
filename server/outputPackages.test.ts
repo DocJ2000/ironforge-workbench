@@ -99,4 +99,25 @@ describe('scanOutputPackages', () => {
       }),
     ])
   })
+
+  it('filters packages by forge.json roots when they are configured', async () => {
+    const root = await createRoot()
+    await writeFile(
+      join(root, 'forge.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        roots: {
+          mechanical: { root: 'output/mechanical' },
+        },
+      }, null, 2),
+    )
+    await mkdir(join(root, 'output', 'mechanical', 'A'), { recursive: true })
+    await mkdir(join(root, 'output', 'electrical', 'B'), { recursive: true })
+    await writeFile(join(root, 'output', 'mechanical', 'A', 'a.pdf'), 'pdf')
+    await writeFile(join(root, 'output', 'electrical', 'B', 'b.pdf'), 'pdf')
+
+    const packages = await scanOutputPackages(root)
+
+    expect(packages.map(({ path }) => path)).toEqual(['output/mechanical/A'])
+  })
 })

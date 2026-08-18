@@ -121,6 +121,29 @@ describe('deliveryApi', () => {
     )
   })
 
+  it('checks out a branch through a confirmed endpoint before uploading', async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ branch: 'dev/T3' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetcher)
+
+    await deliveryApi.checkoutBranch?.('dev/T3')
+
+    expect(fetcher).toHaveBeenCalledWith(
+      '/api/gitlab/branches/checkout',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          branch: 'dev/T3',
+          confirmed: true,
+        }),
+      }),
+    )
+  })
+
   it('confirms retrieval from the selected project endpoint', async () => {
     const fetcher = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({

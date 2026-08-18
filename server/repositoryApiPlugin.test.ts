@@ -378,6 +378,32 @@ describe('createRepositoryMiddleware', () => {
     expect(JSON.parse(result.body())).toEqual({ branch: 'dev/T3' })
   })
 
+  it('checks out a selected branch through a confirmed endpoint', async () => {
+    const checkoutBranch = vi.fn().mockResolvedValue({ branch: 'dev/T3' })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn(),
+      checkoutBranch,
+    })
+    const result = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/gitlab/branches/checkout', {
+        confirmed: true,
+        branch: 'dev/T3',
+      }),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(checkoutBranch).toHaveBeenCalledWith(
+      'C:\\repository',
+      'default',
+      'dev/T3',
+    )
+    expect(JSON.parse(result.body())).toEqual({ branch: 'dev/T3' })
+  })
+
   it('refreshes remote branch refs before listing upload targets', async () => {
     const refreshBranches = vi.fn().mockResolvedValue({ refreshed: true })
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify([{

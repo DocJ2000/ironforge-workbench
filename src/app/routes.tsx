@@ -79,7 +79,7 @@ export function AppRoutes() {
           }
         />
         <Route path="/workspace/legacy" element={<DeferredPage><DeliveryPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></DeferredPage>} />
-        <Route path="/workspace/project" element={<DeferredPage><ProjectActionsPage repository={repository} /></DeferredPage>} />
+        <Route path="/workspace/project" element={<DeferredPage><ProjectActionsPage api={projectDeliveryApi} onRefresh={refresh} repository={repository} /></DeferredPage>} />
         <Route path="/workspace/download-new" element={<CredentialGate projectId="computer"><CloneProjectPage api={projectDeliveryApi} onRefresh={refresh} /></CredentialGate>} />
         <Route path="/ironforge" element={<DeferredPage><IronforgePortalPage /></DeferredPage>} />
         <Route path="/workspace/upload" element={<Navigate replace to="/workspace/project" />} />
