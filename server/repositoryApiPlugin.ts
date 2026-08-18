@@ -38,6 +38,7 @@ import {
   type RepositoryCommitRequest,
 } from './repositoryCommit.js'
 import { createGitLabClient } from './gitlabClient.js'
+import { loadForgeRoots } from './forgeConfig.js'
 import { loadGitLabConfig } from './gitlabConfig.js'
 import { scanOutputPackages } from './outputPackages.js'
 import { scanRepository } from './repositoryScanner.js'
@@ -886,10 +887,15 @@ export function createRepositoryMiddleware({
 
     if (isDeliveryRequest) {
       try {
-        const [repository, packages] = await Promise.all([
+        const [repository, packages, forgeRoots] = await Promise.all([
           scan(activeRepositoryPath),
           scanOutputPackages(activeRepositoryPath),
+          loadForgeRoots(activeRepositoryPath),
         ])
+        const configuredRoots = forgeRoots?.map(({ title, relativePath }) => ({
+          title,
+          root: relativePath,
+        }))
         try {
           const projectCredentials = await resolveCredentials(activeProjectId)
           const gitLab = createGitLabClient({
@@ -902,12 +908,13 @@ export function createRepositoryMiddleware({
             gitLab.listReviewers(projectPath),
             gitLab.getProjectVisibility(projectPath),
           ])
-          sendJson(response, 200, { packages, reviewers, projectVisibility })
+          sendJson(response, 200, { packages, reviewers, projectVisibility, forgeRoots: configuredRoots })
         } catch (error) {
           sendJson(response, 200, {
             packages,
             reviewers: [],
             projectVisibility: 'unknown',
+            forgeRoots: configuredRoots,
             reviewerError:
               error instanceof Error
                 ? error.message

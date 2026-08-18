@@ -28,6 +28,10 @@ it('restores the unfinished upload step after leaving the page', async () => {
         domain: 'mechanical',
         files: [],
       }],
+      forgeRoots: [{
+        title: '3D打印治具',
+        root: 'output/mechanical/3D打印治具',
+      }],
       reviewers: [],
     }),
   } as unknown as DeliveryApi
@@ -41,7 +45,8 @@ it('restores the unfinished upload step after leaving the page', async () => {
   for (let index = 0; index < 2; index += 1) {
     fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   }
-  expect(screen.getByText(/output\/mechanical\/机加件/)).toBeVisible()
+  expect(screen.getByText(/forge\.json/)).toBeVisible()
+  expect(screen.getByText(/3D打印治具/)).toBeVisible()
   fireEvent.click(screen.getByRole('button', { name: '下一步' }))
   expect(screen.getByRole('heading', { name: '核对自动生成的交付清单' })).toBeVisible()
   first.unmount()
@@ -64,6 +69,10 @@ it('clears the upload draft when the user returns to project operations', async 
         path: 'output/mechanical/治具',
         domain: 'mechanical',
         files: [],
+      }],
+      forgeRoots: [{
+        title: '3D打印治具',
+        root: 'output/mechanical/3D打印治具',
       }],
       reviewers: [],
     }),

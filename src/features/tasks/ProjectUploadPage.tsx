@@ -16,8 +16,34 @@ import './wizardForms.css'
 import './projectUpload.css'
 
 interface Props { repository: RepositorySnapshot; api?: DeliveryApi; onRefresh?: () => Promise<void> }
+interface ForgeRootSummary {
+  title: string
+  root: string
+}
 type ChangeFilter = 'untracked' | 'modified' | 'deleted'
 const steps = ['确认项目', '核对修改', '选择交付包', '生成交付清单', '填写上传说明', '确认上传']
+
+function buildPackageIntro(packages: OutputPackageCandidate[], forgeRoots: ForgeRootSummary[]) {
+  if (!forgeRoots.length) {
+    return '交付包会根据 forge.json 自动读取；只需要勾选要交付的子文件夹，软件会把选择结果写入交付清单。'
+  }
+
+  const rootTitles = forgeRoots.map((root) => root.title).filter(Boolean)
+  const examplePackage = packages[0]
+  const examplePath = examplePackage?.path ?? `${forgeRoots[0].root}/示例包`
+  const exampleLeaf = examplePackage?.path.split('/').at(-1) ?? examplePackage?.name ?? '子文件夹'
+
+  return `交付包会按 forge.json 里配置的根目录自动读取。当前识别到的分类有：${rootTitles.join('、')}。例如 ${examplePath} 中，最后一级文件夹“${exampleLeaf}”才是一个交付包；只需勾选需要交付的包，软件会把选择结果写入交付清单。`
+}
+
+function buildChargeIntro(forgeRoots: ForgeRootSummary[]) {
+  if (!forgeRoots.length) {
+    return '上传时会在项目最外层自动创建或更新 charge.json，并把选中的交付包写入清单。'
+  }
+
+  const rootTitles = forgeRoots.map((root) => root.title).filter(Boolean)
+  return `上传时会在项目最外层自动创建或更新 charge.json。它会按照 forge.json 里配置的根目录读取交付包，并把下面列出的完整路径写入清单。当前配置的分类有：${rootTitles.join('、')}。`
+}
 
 export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: Props) {
   const initialDraft = useMemo(
@@ -26,6 +52,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
   )
   const [step, setStep] = useState(() => Math.min(initialDraft?.step ?? 0, steps.length - 1))
   const [packages, setPackages] = useState<OutputPackageCandidate[]>([])
+  const [forgeRoots, setForgeRoots] = useState<ForgeRootSummary[]>([])
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set())
   const [packagesLoaded, setPackagesLoaded] = useState(false)
   const [title, setTitle] = useState(initialDraft?.title ?? '')
@@ -44,6 +71,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     void api.overview().then((overview) => {
       if (!active) return
       setPackages(overview.packages)
+      setForgeRoots(overview.forgeRoots ?? [])
       const availableIds = new Set(overview.packages.map((item) => item.id))
       const restoredIds = initialDraft?.selectedPackageIds.filter((id) => availableIds.has(id))
       setSelectedPackages(new Set(
@@ -126,6 +154,8 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
   }
 
   const selected = packages.filter((item) => selectedPackages.has(item.id))
+  const packageIntro = buildPackageIntro(packages, forgeRoots)
+  const chargeIntro = buildChargeIntro(forgeRoots)
   const nextDisabled =
     (step === 1 && !repository.changes.length)
     || (step === 2 && !selectedPackages.size)
@@ -193,8 +223,8 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
     {result ? <div className="wizard-success"><CheckCircle2 size={42} /><h2>工程已上传</h2><p>已上传到 <strong>{result.branch}</strong>，保存编号为 <strong>{result.commit.slice(0, 8)}</strong>。</p><div className="success-actions">{commitUrl ? <a className="button button--secondary" href={commitUrl} rel="noreferrer" target="_blank">查看本次上传</a> : null}<Link className="button button--primary" to="/workspace/upload/ironforge">继续提交铁炉堡审核</Link></div></div> : null}
     {!result && step === 0 ? <div><Intro title="确认本次上传的项目">后面的文件、交付包和工作版本都属于这个项目。</Intro><dl className="confirm-list"><div><dt>项目名称</dt><dd>{repository.displayName}</dd></div><div><dt>本机文件夹</dt><dd>{repository.path}</dd></div><div><dt>GitLab 项目</dt><dd>{repository.gitlabPath}</dd></div></dl></div> : null}
     {!result && step === 1 ? <ChangeReview changes={repository.changes} filter={changeFilter} onFilterChange={setChangeFilter} /> : null}
-    {!result && step === 2 ? <div><Intro title="选择本次交付包">交付包是 <code>output</code> 文件夹里的第二级子文件夹。例如 <code>output/mechanical/机加件</code> 中，“机加件”才是一个交付包；<code>output</code>、<code>mechanical</code> 和里面的单个文件都不是。只需勾选需要交付的包，软件会把选择结果写入交付清单。</Intro>{packages.map((item) => <PackageTree changes={repository.changes} item={item} key={item.id} onToggle={() => togglePackage(item.id)} selected={selectedPackages.has(item.id)} />)}{!packages.length ? <p>OUTPUT 中没有找到可交付的第二级子文件夹。</p> : null}</div> : null}
-    {!result && step === 3 ? <div><Intro title="核对自动生成的交付清单">上传时会在项目最外层自动创建或更新 <code>charge.json</code>。它支持 <code>output</code> 下任意分类文件夹，例如 <code>mechanical</code>、<code>electronics</code>；铁炉堡将按下面列出的完整路径读取交付包。</Intro><dl className="confirm-list">{selected.map((item) => <div key={item.id}><dt>{item.name}</dt><dd>{item.path}</dd></div>)}</dl></div> : null}
+    {!result && step === 2 ? <div><Intro title="选择本次交付包">{packageIntro}</Intro>{packages.map((item) => <PackageTree changes={repository.changes} item={item} key={item.id} onToggle={() => togglePackage(item.id)} selected={selectedPackages.has(item.id)} />)}{!packages.length ? <p>forge.json 里没有找到可交付的子文件夹。</p> : null}</div> : null}
+    {!result && step === 3 ? <div><Intro title="核对自动生成的交付清单">{chargeIntro}</Intro><dl className="confirm-list">{selected.map((item) => <div key={item.id}><dt>{item.name}</dt><dd>{item.path}</dd></div>)}</dl></div> : null}
     {!result && step === 4 ? <div><Intro title="填写本次上传说明">标题用于快速识别，描述可补充更详细的变更内容。</Intro><label className="plain-field"><span>本次更新标题</span><input aria-label="本次更新标题" onChange={(event) => setTitle(event.target.value)} placeholder="例如：更新 T2 结构件图纸" value={title} /></label><label className="plain-field spaced-field"><span>本次更新描述（可以不填）</span><textarea aria-label="本次更新描述" onChange={(event) => setDescription(event.target.value)} placeholder="补充修改原因、影响范围或注意事项" rows={5} value={description} /></label></div> : null}
     {!result && step === 5 ? <div><Intro title="确认上传">点击确认后，软件才会生成 charge.json、保存本次改动并上传。</Intro><dl className="confirm-list"><div><dt>项目</dt><dd>{repository.displayName}</dd></div><div><dt><FileText size={16} />改动文件</dt><dd>{repository.changes.length} 个</dd></div><div><dt>交付包</dt><dd>{selectedPackages.size} 个</dd></div><div><dt><GitBranch size={16} />当前工作版本</dt><dd>{repository.branch}</dd></div><div><dt><UploadCloud size={16} />更新标题</dt><dd>{title}</dd></div></dl></div> : null}
   </GuidedWorkflow>

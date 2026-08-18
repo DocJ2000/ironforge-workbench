@@ -30,6 +30,10 @@ export interface DeliveryOverview {
   reviewers: GitLabReviewer[]
   projectVisibility?: 'private' | 'internal' | 'public' | 'unknown'
   reviewerError?: string
+  forgeRoots?: Array<{
+    title: string
+    root: string
+  }>
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
