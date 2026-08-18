@@ -1,12 +1,19 @@
 import { readFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { relative, resolve } from 'node:path'
 
 interface ForgeRootEntry {
   root?: string
+  title?: string
 }
 
 interface ForgeConfig {
   roots?: Record<string, ForgeRootEntry> | ForgeRootEntry[]
+}
+
+export interface ForgePackageRoot {
+  absolutePath: string
+  relativePath: string
+  title: string
 }
 
 function normalizePath(path: string) {
@@ -19,10 +26,20 @@ function collectRootPaths(config: ForgeConfig | null, repositoryPath: string) {
     ? config.roots
     : Object.values(config.roots)
   const roots = entries
-    .map((entry) => entry.root?.trim())
-    .filter((root): root is string => Boolean(root))
-    .map((root) => normalizePath(resolve(repositoryPath, root)))
-  return roots.length ? [...new Set(roots)] : []
+    .map((entry): ForgePackageRoot | null => {
+      const configuredRoot = entry.root?.trim()
+      if (!configuredRoot) return null
+      const absolutePath = resolve(repositoryPath, configuredRoot)
+      const relativePath = normalizePath(relative(repositoryPath, absolutePath))
+      return {
+        absolutePath: normalizePath(absolutePath),
+        relativePath,
+        title: entry.title?.trim() || relativePath.split('/').at(-1) || relativePath,
+      }
+    })
+    .filter((root): root is ForgePackageRoot => Boolean(root))
+  const uniqueRoots = new Map(roots.map((root) => [root.absolutePath, root]))
+  return roots.length ? [...uniqueRoots.values()] : []
 }
 
 export async function loadForgeRoots(repositoryPath: string) {

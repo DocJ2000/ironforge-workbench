@@ -120,4 +120,41 @@ describe('scanOutputPackages', () => {
 
     expect(packages.map(({ path }) => path)).toEqual(['output/mechanical/A'])
   })
+
+  it('uses forge.json roots as package categories and scans their child folders', async () => {
+    const root = await createRoot()
+    await writeFile(
+      join(root, 'forge.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        roots: {
+          fpc: {
+            title: 'FPC资料',
+            root: 'output/mechanical/FPC资料',
+          },
+          dieCut: {
+            title: '模切件',
+            root: 'output/mechanical/模切件',
+          },
+        },
+      }, null, 2),
+    )
+    await mkdir(join(root, 'output', 'mechanical', 'FPC资料', 'FPC-ICR'), { recursive: true })
+    await mkdir(join(root, 'output', 'mechanical', '模切件', 'G2遮光罩背胶'), { recursive: true })
+    await writeFile(join(root, 'output', 'mechanical', 'FPC资料', 'FPC-ICR', 'icr.pdf'), 'pdf')
+    await writeFile(join(root, 'output', 'mechanical', '模切件', 'G2遮光罩背胶', 'backing.pdf'), 'pdf')
+
+    const packages = await scanOutputPackages(root)
+
+    expect(packages.map(({ name, path }) => ({ name, path }))).toEqual([
+      {
+        name: '模切件-G2遮光罩背胶',
+        path: 'output/mechanical/模切件/G2遮光罩背胶',
+      },
+      {
+        name: 'FPC资料-FPC-ICR',
+        path: 'output/mechanical/FPC资料/FPC-ICR',
+      },
+    ])
+  })
 })

@@ -4,6 +4,7 @@ import type {
   OutputPackageCandidate,
   OutputPackageFile,
 } from '../src/domain/delivery.js'
+import type { ForgePackageRoot } from './forgeConfig.js'
 import { loadForgeRoots } from './forgeConfig.js'
 
 const fileTypeLabels: Record<string, string> = {
@@ -61,11 +62,42 @@ async function collectFiles(
   )
 }
 
-function isPathInside(candidate: string, roots: string[]) {
-  return roots.some((root) => (
-    candidate === root
-    || candidate.startsWith(`${root}/`)
-  ))
+function domainFromPath(path: string) {
+  const parts = path.split('/')
+  return parts[0] === 'output' && parts[1] ? parts[1] : parts[0]
+}
+
+async function scanConfiguredRoot(
+  repositoryPath: string,
+  forgeRoot: ForgePackageRoot,
+): Promise<OutputPackageCandidate[]> {
+  let packageEntries
+
+  try {
+    packageEntries = await readdir(forgeRoot.absolutePath, { withFileTypes: true })
+  } catch {
+    return []
+  }
+
+  const packages: OutputPackageCandidate[] = []
+
+  for (const packageEntry of packageEntries) {
+    if (!packageEntry.isDirectory()) continue
+    const packagePath = join(forgeRoot.absolutePath, packageEntry.name)
+    const files = await collectFiles(repositoryPath, packagePath)
+    if (!files.length) continue
+
+    const normalizedPath = normalizePath(relative(repositoryPath, packagePath))
+    packages.push({
+      id: normalizedPath,
+      name: `${forgeRoot.title}-${packageEntry.name}`,
+      path: normalizedPath,
+      domain: domainFromPath(forgeRoot.relativePath),
+      files,
+    })
+  }
+
+  return packages
 }
 
 export async function scanOutputPackages(
@@ -75,6 +107,17 @@ export async function scanOutputPackages(
   const outputPath = join(root, 'output')
   const forgeRoots = await loadForgeRoots(root)
   let domains
+
+  if (forgeRoots) {
+    const configuredPackages = (
+      await Promise.all(
+        forgeRoots.map((forgeRoot) => scanConfiguredRoot(root, forgeRoot)),
+      )
+    ).flat()
+    return configuredPackages.sort((left, right) =>
+      left.path.localeCompare(right.path, 'zh-CN'),
+    )
+  }
 
   try {
     domains = await readdir(outputPath, { withFileTypes: true })
@@ -92,8 +135,6 @@ export async function scanOutputPackages(
     for (const packageEntry of packageEntries) {
       if (!packageEntry.isDirectory()) continue
       const packagePath = join(domainPath, packageEntry.name)
-      const normalizedPackagePath = normalizePath(resolve(packagePath))
-      if (forgeRoots && !isPathInside(normalizedPackagePath, forgeRoots)) continue
       const files = await collectFiles(root, packagePath)
       if (!files.length) continue
 
