@@ -88,3 +88,19 @@ it('requires separate clicks to check, download, and install', async () => {
   fireEvent.click(screen.getByRole('button', { name: '重启并安装' }))
   await waitFor(() => expect(client.install).toHaveBeenCalledOnce())
 })
+
+it('shows a GitHub project link in the update panel', async () => {
+  const client = {
+    status: vi.fn().mockResolvedValue({ phase: 'idle', currentVersion: '1.0.0' }),
+    check: vi.fn(),
+    download: vi.fn(),
+    install: vi.fn(),
+  }
+
+  render(<SoftwareUpdatePanel client={client} />)
+
+  expect(screen.getByRole('link', { name: 'GitHub 项目' })).toHaveAttribute(
+    'href',
+    'https://github.com/DocJ2000/ironforge-workbench',
+  )
+})

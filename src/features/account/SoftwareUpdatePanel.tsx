@@ -1,4 +1,4 @@
-import { Download, RefreshCw } from 'lucide-react'
+import { Download, ExternalLink, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { updateClient, type UpdateStatus } from '../../data/updateClient'
 import { notificationClient } from '../../data/notificationClient'
@@ -25,6 +25,7 @@ export function SoftwareUpdatePanel({
 }: {
   client?: UpdateClient
 }) {
+  const projectUrl = 'https://github.com/DocJ2000/ironforge-workbench'
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -127,7 +128,16 @@ export function SoftwareUpdatePanel({
           <p className="update-release-notes__missing">暂时没拿到完整更新说明，但仍可以正常下载安装。</p>
         ) : null}
       </div>
-      <footer>
+      <footer className="software-update-panel__footer">
+        <a
+          className="button button--secondary software-update-panel__link"
+          href={projectUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <ExternalLink size={17} />
+          GitHub 项目
+        </a>
         {status?.phase === 'available' ? (
           <button
             className="button button--primary"

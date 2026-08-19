@@ -12,6 +12,8 @@
 .update-download-progress progress{width:100%;height:12px;accent-color:var(--cyan)}
 .update-download-progress span{min-width:96px;color:var(--ink);font-size:12px;font-weight:800;text-align:right}
 .update-download-progress small{grid-column:1/-1;color:var(--muted);font-size:10px}
+.software-update-panel__footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.software-update-panel__link{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;text-decoration:none}
 .connection-wizard__saved{margin-top:7px!important;color:var(--green)!important;font-weight:800}
 .advanced-connection{margin-bottom:14px;border:1px dashed var(--line-strong);border-radius:5px;background:var(--surface-soft)}
 .advanced-connection>summary{padding:13px 16px;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer}
