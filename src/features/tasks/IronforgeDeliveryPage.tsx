@@ -1,5 +1,5 @@
-import { ArrowRight, CheckCircle2, GitBranch, PackageCheck, UploadCloud } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { ArrowRight, CheckCircle2, PackageCheck, UploadCloud } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
@@ -26,13 +26,44 @@ const steps = ['确认交付文件', '填写交付说明', '建立版本标记',
 
 export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) {
   const ironforgeUrl = organizationClient.load().ironforgeUrl
+  const sourceBranchOptions = useMemo(
+    () => {
+      const remoteBranches = repository.branches
+        .filter((branch) => branch.remote)
+        .map((branch) => branch.name)
+      const sourceBranches = remoteBranches.length ? remoteBranches : [repository.branch]
+      return [...new Set(sourceBranches)]
+    },
+    [repository.branch, repository.branches],
+  )
+  const targetBranchOptions = useMemo(
+    () => {
+      const remoteBranches = repository.branches
+        .filter((branch) => branch.remote)
+        .map((branch) => branch.name)
+      const targetBranches = ['main', ...remoteBranches]
+      return [...new Set(targetBranches)]
+    },
+    [repository.branches],
+  )
+  const initialDraft = useRef(workflowDraftClient.loadMergeRequest(repository.id)).current
+  const [sourceBranch, setSourceBranch] = useState(() => {
+    const draftSource = initialDraft?.sourceBranch
+    if (draftSource && sourceBranchOptions.includes(draftSource)) return draftSource
+    if (sourceBranchOptions.includes(repository.branch)) return repository.branch
+    return sourceBranchOptions[0] ?? repository.branch
+  })
+  const [targetBranch, setTargetBranch] = useState(() => {
+    const draftTarget = initialDraft?.targetBranch
+    if (draftTarget && targetBranchOptions.includes(draftTarget)) return draftTarget
+    return targetBranchOptions[0] ?? 'main'
+  })
   const storedMergeRequest = mergeRequestReceiptClient.load(repository.id)
   const activeMergeRequest =
-    storedMergeRequest && storedMergeRequest.sourceBranch === repository.branch && (storedMergeRequest.sourceCommit.startsWith(repository.latestCommit) || repository.latestCommit.startsWith(storedMergeRequest.sourceCommit))
+    storedMergeRequest && storedMergeRequest.sourceBranch === sourceBranch && (storedMergeRequest.sourceCommit.startsWith(repository.latestCommit) || repository.latestCommit.startsWith(storedMergeRequest.sourceCommit))
       ? storedMergeRequest
       : null
   const uploadReady = Boolean(repository.changes.length === 0 && repository.ahead === 0 && repository.behind === 0 && repository.deliveryPackages.length > 0)
-  const initialDraft = useRef(workflowDraftClient.loadMergeRequest(repository.id)).current
   const [step, setStep] = useState(() => Math.min(initialDraft?.step ?? 0, steps.length - 1))
   const [reviewers, setReviewers] = useState<GitLabReviewer[]>([])
   const [selectedAssignees, setSelectedAssignees] = useState<Set<number>>(() => new Set(initialDraft?.assigneeIds ?? []))
@@ -78,6 +109,8 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
     if (!uploadReady || !reviewersLoaded || result) return
     workflowDraftClient.saveMergeRequest(repository.id, {
       step,
+      sourceBranch,
+      targetBranch,
       title,
       description,
       links,
@@ -88,7 +121,7 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
       tagName,
       tagMessage,
     })
-  }, [attachments, description, links, repository.id, result, reviewersLoaded, selectedAssignees, selectedReviewers, step, tagEnabled, tagMessage, tagName, title, uploadReady])
+  }, [attachments, description, links, repository.id, result, reviewersLoaded, selectedAssignees, selectedReviewers, sourceBranch, step, tagEnabled, tagMessage, tagName, targetBranch, title, uploadReady])
 
   useEffect(() => {
     if (!result || !api.getMergeRequestStatus) return
@@ -165,8 +198,8 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
         }
       }
       const created = await api.createMergeRequest({
-        sourceBranch: repository.branch,
-        targetBranch: 'main',
+        sourceBranch,
+        targetBranch,
         title: title.trim(),
         description: resolvedDescription,
         assigneeIds: [...selectedAssignees],
@@ -179,7 +212,7 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
       mergeRequestReceiptClient.save(repository.id, {
         iid: created.iid,
         webUrl: created.webUrl,
-        sourceBranch: repository.branch,
+        sourceBranch,
         sourceCommit: repository.latestCommit,
         state: 'opened',
       })
@@ -283,13 +316,37 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
       {!result && step === 1 ? (
         <div>
           <Intro title="填写管理员看到的交付说明">标题必填；备注可以填写修改原因、影响范围，并可附飞书链接或 PDF。</Intro>
-          <div className="merge-direction" aria-label={`从 ${repository.branch} 合并到 main`}>
-            <GitBranch aria-hidden="true" size={17} />
-            <span>本次工作版本</span>
-            <strong>{repository.branch}</strong>
+          <div className="branch-control" aria-label="选择提交审核的工作版本和合入版本">
+            <label className="branch-select">
+              <span>提交审核的工作版本</span>
+              <select
+                aria-label="提交审核的工作版本"
+                onChange={(event) => setSourceBranch(event.target.value)}
+                value={sourceBranch}
+              >
+                {sourceBranchOptions.map((branch) => (
+                  <option key={branch} value={branch}>
+                    {branch}
+                    {branch === repository.branch ? '（当前）' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
             <ArrowRight aria-hidden="true" size={16} />
-            <span>合入主版本</span>
-            <strong>main</strong>
+            <label className="branch-select">
+              <span>合入到哪个版本</span>
+              <select
+                aria-label="合入到哪个版本"
+                onChange={(event) => setTargetBranch(event.target.value)}
+                value={targetBranch}
+              >
+                {targetBranchOptions.map((branch) => (
+                  <option key={branch} value={branch}>
+                    {branch}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           {initialDraft?.attachmentNames?.length && !attachments.length ? (
             <div className="delivery-alert delivery-alert--warning">
@@ -359,7 +416,7 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
         <div>
           <Intro title="确认创建审核单">
             {tagEnabled ? '软件会先建立并上传版本标记，再创建审核单。' : '本次不建立版本标记，直接创建审核单。'}
-            源工作版本是 {repository.branch}，目标固定为受保护的 main。
+            源工作版本是 {sourceBranch}，目标版本是 {targetBranch}。
           </Intro>
           <dl className="confirm-list">
             <div>
@@ -387,7 +444,7 @@ export function IronforgeDeliveryPage({ repository, api = deliveryApi }: Props) 
             </div>
             <div>
               <dt>合入目标</dt>
-              <dd>main（受保护主分支）</dd>
+              <dd>{targetBranch}</dd>
             </div>
           </dl>
         </div>

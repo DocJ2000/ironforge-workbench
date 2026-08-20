@@ -27,6 +27,8 @@ it('keeps merge request drafts and clears completed workflows', () => {
     title: 'T2 交付',
     description: '请审核',
     links: ['https://example.com/doc'],
+    sourceBranch: 'dev/T2',
+    targetBranch: 'main',
     assigneeIds: [8],
     reviewerIds: [7],
     tagEnabled: true,
@@ -36,6 +38,8 @@ it('keeps merge request drafts and clears completed workflows', () => {
 
   expect(workflowDraftClient.loadMergeRequest('project-a')).toMatchObject({
     step: 2,
+    sourceBranch: 'dev/T2',
+    targetBranch: 'main',
     assigneeIds: [8],
     reviewerIds: [7],
     tagName: 'T2-第二次打样',

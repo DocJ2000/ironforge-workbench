@@ -11,6 +11,8 @@ export interface MergeRequestWorkflowDraft {
   title: string
   description: string
   links: string[]
+  sourceBranch?: string
+  targetBranch?: string
   assigneeIds?: number[]
   reviewerIds: number[]
   attachmentNames?: string[]

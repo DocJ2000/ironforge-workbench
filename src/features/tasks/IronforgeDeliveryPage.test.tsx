@@ -92,22 +92,25 @@ it('creates an MR from the previously uploaded charge without syncing again', as
     createdAt: new Date().toISOString(),
   }))
   const api = {
-    overview: vi.fn().mockResolvedValue({ packages: [{ id: 'p', name: '机加件', path: 'output/mechanical/机加件', domain: 'mechanical', files: [{ name: '零件.pdf', path: 'output/mechanical/机加件/零件.pdf', type: 'PDF', size: '1 KB' }] }], reviewers: [{ id: 7, name: '胡庆磊', username: 'lulu', role: 'Maintainer', recommended: true }] }),
+    overview: vi.fn().mockResolvedValue({ packages: [{ id: 'p', name: '\u673a\u52a0\u4ef6', path: 'output/mechanical/\u673a\u52a0\u4ef6', domain: 'mechanical', files: [{ name: '\u96f6\u4ef6.pdf', path: 'output/mechanical/\u673a\u52a0\u4ef6/\u96f6\u4ef6.pdf', type: 'PDF', size: '1 KB' }] }], reviewers: [{ id: 7, name: '\u80e1\u5e86\u78ca', username: 'lulu', role: 'Maintainer', recommended: true }] }),
     syncGitLab: vi.fn(),
     createMergeRequest: vi.fn().mockResolvedValue({ iid: 9, webUrl: 'https://gitlab/mr/9' }),
     uploadAttachment: vi.fn(),
   } as unknown as DeliveryApi
   render(<MemoryRouter><IronforgeDeliveryPage api={api} repository={repository} /></MemoryRouter>)
   await waitFor(() => expect(api.overview).toHaveBeenCalled())
-  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  fireEvent.change(screen.getByLabelText('本次交付标题'), { target: { value: '更新 T2 设变零件' } })
-  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  expect(screen.getByRole('checkbox', { name: '选择审核人 胡庆磊' })).toBeChecked()
-  fireEvent.click(screen.getByRole('checkbox', { name: '选择经办人 胡庆磊' }))
-  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
-  fireEvent.click(screen.getByRole('button', { name: '确认交付' }))
-  await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({ assigneeIds: [7], reviewerIds: [7], title: '更新 T2 设变零件' })))
+  fireEvent.click(screen.getByRole('button', { name: /\u4e0b\u4e00\u6b65/ }))
+  fireEvent.change(screen.getByLabelText('\u672c\u6b21\u4ea4\u4ed8\u6807\u9898'), { target: { value: '\u66f4\u65b0 T2 \u8bbe\u53d8\u96f6\u4ef6' } })
+  const [sourceSelect, targetSelect] = screen.getAllByRole('combobox')
+  fireEvent.change(sourceSelect, { target: { value: 'dev/T1' } })
+  fireEvent.change(targetSelect, { target: { value: 'main' } })
+  fireEvent.click(screen.getByRole('button', { name: /\u4e0b\u4e00\u6b65/ }))
+  fireEvent.click(screen.getByRole('button', { name: /\u4e0b\u4e00\u6b65/ }))
+  expect(screen.getByRole('checkbox', { name: '\u9009\u62e9\u5ba1\u6838\u4eba \u80e1\u5e86\u78ca' })).toBeChecked()
+  fireEvent.click(screen.getByRole('checkbox', { name: '\u9009\u62e9\u7ecf\u529e\u4eba \u80e1\u5e86\u78ca' }))
+  fireEvent.click(screen.getByRole('button', { name: /\u4e0b\u4e00\u6b65/ }))
+  fireEvent.click(screen.getByRole('button', { name: '\u786e\u8ba4\u4ea4\u4ed8' }))
+  await waitFor(() => expect(api.createMergeRequest).toHaveBeenCalledWith(expect.objectContaining({ assigneeIds: [7], reviewerIds: [7], sourceBranch: 'dev/T1', targetBranch: 'main', title: '\u66f4\u65b0 T2 \u8bbe\u53d8\u96f6\u4ef6' })))
   expect(api.syncGitLab).not.toHaveBeenCalled()
   localStorage.clear()
 })
