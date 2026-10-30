@@ -22,37 +22,59 @@ function Probe() {
   )
 }
 
-function liveFetch() {
-  const first = { ...getDemoRepository(), id: 'project-one', branch: 'dev/T2' }
-  const second = {
-    ...getDemoRepository(),
-    id: 'project-two',
-    displayName: 'Second Project',
-    branch: 'dev/T1',
+function projects() {
+  return {
+    list: [
+      { id: 'project-one', path: 'C:\\one', name: 'one', gitlabRemote: '', addedAt: '2026-07-26T00:00:00Z' },
+      { id: 'project-two', path: 'C:\\two', name: 'two', gitlabRemote: '', addedAt: '2026-07-26T00:00:00Z' },
+    ],
   }
-  return vi.fn().mockImplementation(async (input: string) => {
-    if (input === '/api/projects') {
-      return {
-        ok: true,
-        json: async () => ({
-          projects: [
-            { id: 'project-one', path: 'C:\\one', name: 'one', gitlabRemote: '', addedAt: '2026-07-26T00:00:00Z' },
-            { id: 'project-two', path: 'C:\\two', name: 'two', gitlabRemote: '', addedAt: '2026-07-26T00:00:00Z' },
-          ],
-        }),
-      }
-    }
-    const repository = input.includes('project-two') ? second : first
+}
+
+function snapshot(id: string, branch: string, displayName = 'Example') {
+  return { ...getDemoRepository(), id, displayName, branch }
+}
+
+function respond(input: string, records: ReturnType<typeof projects>['list']) {
+  if (input === '/api/projects') {
     return {
       ok: true,
-      json: async () => ({ source: 'live', repository }),
+      json: async () => ({ projects: records }),
     }
-  })
+  }
+  if (input.startsWith('/api/projects/summaries')) {
+    return {
+      ok: true,
+      json: async () => ({
+        projects: records.map((record) => ({
+          id: record.id,
+          repository: snapshot(
+            record.id,
+            record.id === 'project-two' ? 'dev/T1' : 'dev/T2',
+            record.id === 'project-two' ? 'Second Project' : 'First Project',
+          ),
+        })),
+      }),
+    }
+  }
+  const second = input.includes('project-two')
+  return {
+    ok: true,
+    json: async () => ({
+      source: 'live',
+      repository: snapshot(
+        second ? 'project-two' : 'project-one',
+        second ? 'dev/T1' : 'dev/T2',
+        second ? 'Second Project' : 'First Project',
+      ),
+    }),
+  }
 }
 
 describe('RepositoryProvider', () => {
   it('loads registered projects and refreshes the selected project', async () => {
-    vi.stubGlobal('fetch', liveFetch())
+    const fetcher = vi.fn().mockImplementation(async (input: string) => respond(input, projects().list))
+    vi.stubGlobal('fetch', fetcher)
     render(<RepositoryProvider><Probe /></RepositoryProvider>)
     await waitFor(() => expect(screen.getByText('live')).toBeVisible())
     expect(screen.getByText('ready')).toBeVisible()
@@ -60,28 +82,30 @@ describe('RepositoryProvider', () => {
     expect(screen.getByText('dev/T2')).toBeVisible()
   })
 
+  it('lists every project from summaries and hydrates only the selected one', async () => {
+    const fetcher = vi.fn().mockImplementation(async (input: string) => respond(input, projects().list))
+    vi.stubGlobal('fetch', fetcher)
+
+    render(<RepositoryProvider><Probe /></RepositoryProvider>)
+    await waitFor(() => expect(screen.getByTestId('project-ids')).toHaveTextContent('project-one,project-two'))
+    await waitFor(() => expect(screen.getByText('dev/T2')).toBeVisible())
+
+    const repositoryReads = fetcher.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.startsWith('/api/repository'))
+    expect(repositoryReads).toHaveLength(1)
+    expect(repositoryReads[0]).toContain('project-one')
+    expect(fetcher.mock.calls.some((call) => String(call[0]).startsWith('/api/projects/summaries'))).toBe(true)
+  })
+
   it('reloads the project list so a newly downloaded project becomes visible', async () => {
-    const first = { ...getDemoRepository(), id: 'project-one', branch: 'dev/T2' }
-    const second = {
-      ...getDemoRepository(),
-      id: 'project-two',
-      displayName: 'Second Project',
-      branch: 'dev/T1',
-    }
     let projectListRequests = 0
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: string) => {
       if (input === '/api/projects') {
         projectListRequests += 1
-        const records = [
-          { id: 'project-one', path: 'C:\\one', name: 'one', gitlabRemote: '', addedAt: '2026-07-26T00:00:00Z' },
-          ...(projectListRequests > 1
-            ? [{ id: 'project-two', path: 'C:\\two', name: 'two', gitlabRemote: '', addedAt: '2026-07-29T00:00:00Z' }]
-            : []),
-        ]
-        return { ok: true, json: async () => ({ projects: records }) }
       }
-      const repository = input.includes('project-two') ? second : first
-      return { ok: true, json: async () => ({ source: 'live', repository }) }
+      const records = projectListRequests > 1 ? projects().list : [projects().list[0]]
+      return respond(input, records)
     }))
 
     render(<RepositoryProvider><Probe /></RepositoryProvider>)
@@ -103,7 +127,7 @@ describe('RepositoryProvider', () => {
   })
 
   it('switches between two registered operational projects', async () => {
-    vi.stubGlobal('fetch', liveFetch())
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (input: string) => respond(input, projects().list)))
     render(<RepositoryProvider><Probe /></RepositoryProvider>)
     await waitFor(() => expect(screen.getByText('ready')).toBeVisible())
     await act(async () =>

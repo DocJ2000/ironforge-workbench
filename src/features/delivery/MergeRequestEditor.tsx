@@ -10,6 +10,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { FieldHelp } from '../account/FieldHelp'
+import { inlineImageMarker } from './inlineImage'
 import './delivery.css'
 
 interface MergeRequestEditorProps {
@@ -31,10 +32,6 @@ const tools = [
   { icon: Link, label: '链接', before: '[', after: '](https://)' },
 ]
 
-export function inlineImageMarker(fileName: string) {
-  return `![${fileName}](ironforge-inline:${encodeURIComponent(fileName)})`
-}
-
 export function MergeRequestEditor({
   attachments,
   description,
@@ -47,13 +44,15 @@ export function MergeRequestEditor({
 }: MergeRequestEditorProps) {
   const textarea = useRef<HTMLTextAreaElement>(null)
   const [tab, setTab] = useState<'write' | 'preview'>('write')
-  const inlineFiles = attachments.filter((file) => description.includes(inlineImageMarker(file.name)))
-  const previewSources = useMemo(() => new Map(
-    inlineFiles.map((file) => [
-      `ironforge-inline:${encodeURIComponent(file.name)}`,
-      typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : '',
-    ]),
-  ), [attachments, description])
+  const previewSources = useMemo(() => {
+    const inline = attachments.filter((file) => description.includes(inlineImageMarker(file.name)))
+    return new Map(
+      inline.map((file) => [
+        `ironforge-inline:${encodeURIComponent(file.name)}`,
+        typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : '',
+      ]),
+    )
+  }, [attachments, description])
 
   useEffect(() => () => {
     previewSources.forEach((source) => {
@@ -257,3 +256,4 @@ export function MergeRequestEditor({
     </div>
   )
 }
+

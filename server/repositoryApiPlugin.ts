@@ -1,8 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
-import Busboy from 'busboy'
 import type {
-  BranchSummary,
   RepositorySnapshot,
 } from '../src/domain/repository.js'
 import type {
@@ -27,10 +25,8 @@ import {
   pushRepositoryTag,
   pruneDeletedTrackedBranches,
   refreshRepositoryRemoteBranches,
-  type CreateBranchInput,
   pushRepositoryBranch,
-  repositoryBranchCommit,
-  validateRetryPushBranch,
+  type CreateBranchInput,
 } from './gitBranchOperations.js'
 import {
   commitRepositoryChanges,
@@ -41,9 +37,8 @@ import { createGitLabClient } from './gitlabClient.js'
 import { loadForgeRoots } from './forgeConfig.js'
 import { loadGitLabConfig } from './gitlabConfig.js'
 import { scanOutputPackages } from './outputPackages.js'
-import { scanRepository } from './repositoryScanner.js'
+import { scanRepository, scanRepositorySummary } from './repositoryScanner.js'
 import { ProjectRegistry } from './projectRegistry.js'
-import { pullRepository } from './repositoryPull.js'
 import { cloneRepository } from './repositoryClone.js'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -52,10 +47,24 @@ import { checkConnection } from './connectionCheck.js'
 import { probeCompanyNetwork } from './networkProbe.js'
 import { toFriendlyError } from './friendlyError.js'
 import { gitLabProjectPath } from './gitLabProjectPath.js'
+import { mapWithConcurrency } from './asyncPool.js'
+import { QueryCache } from './queryCache.js'
+import { readJson, sendJson, type NextFunction } from './http.js'
+import { handleProjectsRoute, handleProjectSummaries } from './routes/projects.js'
+import {
+  handleBranchCheckout,
+  handleBranchCreate,
+  handleBranchRefresh,
+  handleMergeRequestStatus,
+  handlePull,
+  handleRetryPush,
+  handleSyncOrMergeRequest,
+  handleUpload,
+  type GitLabRouteContext,
+} from './routes/gitlab.js'
 
 export { gitLabProjectPath } from './gitLabProjectPath.js'
 
-type NextFunction = (error?: unknown) => void
 type RepositoryScanner = (repositoryPath: string) => Promise<RepositorySnapshot>
 type CommitPreviewer = (
   repositoryPath: string,
@@ -112,102 +121,6 @@ interface RepositoryMiddlewareOptions {
   sshAskPassPath?: string
 }
 
-function sendJson(response: ServerResponse, statusCode: number, value: unknown) {
-  response.statusCode = statusCode
-  response.setHeader('Content-Type', 'application/json; charset=utf-8')
-  response.setHeader('Cache-Control', 'no-store')
-  response.end(JSON.stringify(value))
-}
-
-function branchStage(name: string) {
-  if (name === 'main' || name === 'master') return '正式主线'
-  const stage = name.match(/(?:^|\/)(T\d+)$/i)?.[1]
-  return stage ? `${stage.toUpperCase()} 设计` : '开发分支'
-}
-
-function mergeCloudBranches(
-  repository: RepositorySnapshot,
-  cloudBranches: Array<{
-    name: string
-    commitId: string
-    shortId: string
-    title: string
-    committedAt: string
-  }>,
-): BranchSummary[] {
-  const branches = new Map(repository.branches.map((branch) => [
-    branch.name,
-    branch,
-  ]))
-  for (const branch of cloudBranches) {
-    const existing = branches.get(branch.name)
-    branches.set(branch.name, {
-      name: branch.name,
-      stage: existing?.stage ?? branchStage(branch.name),
-      commit: branch.shortId,
-      commitMessage: branch.title,
-      updatedAt: branch.committedAt,
-      remote: true,
-      current: existing?.current ?? repository.branch === branch.name,
-    })
-  }
-  return [...branches.values()]
-}
-
-async function readJson<T>(request: IncomingMessage): Promise<T> {
-  let body = ''
-  for await (const chunk of request) {
-    body += chunk.toString()
-    if (body.length > 4 * 1024 * 1024) throw new Error('Request body too large')
-  }
-  return JSON.parse(body) as T
-}
-
-async function readUpload(request: IncomingMessage) {
-  const contentType = request.headers['content-type']
-  if (!contentType?.startsWith('multipart/form-data')) {
-    throw new Error('附件请求格式不正确')
-  }
-  return new Promise<{ name: string; type: string; bytes: Uint8Array }>(
-    (resolve, reject) => {
-      const parser = Busboy({
-        headers: request.headers,
-        limits: { files: 1, fileSize: 20 * 1024 * 1024 },
-      })
-      let upload:
-        | { name: string; type: string; chunks: Buffer[] }
-        | undefined
-      parser.on('file', (_field, stream, info) => {
-        upload = {
-          name: Buffer.from(info.filename, 'latin1').toString('utf8'),
-          type: info.mimeType,
-          chunks: [],
-        }
-        stream.on('data', (chunk: Buffer) => upload?.chunks.push(chunk))
-        stream.on('limit', () => reject(new Error('附件不能超过 20 MB')))
-      })
-      parser.on('error', reject)
-      parser.on('finish', () => {
-        if (!upload) {
-          reject(new Error('请选择附件'))
-          return
-        }
-        const extension = upload.name.toLowerCase().match(/\.[^.]+$/)?.[0]
-        if (!['.pdf', '.png', '.jpg', '.jpeg', '.webp'].includes(extension ?? '')) {
-          reject(new Error('只支持 PDF、PNG、JPEG 和 WebP 附件'))
-          return
-        }
-        resolve({
-          name: upload.name,
-          type: upload.type,
-          bytes: Buffer.concat(upload.chunks),
-        })
-      })
-      request.pipe(parser)
-    },
-  )
-}
-
 export function createRepositoryMiddleware({
   repositoryPath,
   fetcher = fetch,
@@ -231,6 +144,59 @@ export function createRepositoryMiddleware({
     return {
       ...loadGitLabConfig(),
       sshKeyPath: process.env.GIT_SSH_KEY_PATH ?? '',
+    }
+  }
+  // Several endpoints and pages read the same repository within one
+  // interaction. Collapse those duplicate scans and GitLab reads; every write
+  // below invalidates the project so a refresh right after an action is live.
+  const snapshots = new QueryCache(1500)
+  const summaries = new QueryCache(2000)
+  const histories = new QueryCache(30_000)
+  const remoteCheckedAt = new Map<string, number>()
+  const remoteFreshMs = 60_000
+
+  const loadSnapshot = (path: string, force = false) =>
+    snapshots.read(path, () => scan(path), { force })
+
+  const invalidateProject = (path: string) => {
+    snapshots.invalidate(path)
+    summaries.invalidate(path)
+    histories.invalidate(path)
+  }
+
+  const remoteCredentialsFor = async (projectId: string) => {
+    const projectCredentials = await resolveCredentials(projectId)
+    return {
+      sshKeyPath: projectCredentials.sshKeyPath,
+      ...(projectCredentials.sshPassphrase
+        ? { sshPassphrase: projectCredentials.sshPassphrase }
+        : {}),
+      ...(projectCredentials.sshAskPassPath
+        ? { sshAskPassPath: projectCredentials.sshAskPassPath }
+        : {}),
+    }
+  }
+
+  /**
+   * `git fetch` is the slowest part of reading a project and it was running on
+   * every page load for every registered project. Throttle it per repository;
+   * the explicit "刷新项目概况" action passes `refresh=1` to force a fetch.
+   */
+  const refreshRemoteBranches = async (
+    path: string,
+    projectId: string,
+    force = false,
+  ) => {
+    const lastChecked = remoteCheckedAt.get(path) ?? 0
+    if (!force && Date.now() - lastChecked < remoteFreshMs) return false
+    remoteCheckedAt.set(path, Date.now())
+    try {
+      await refreshRepositoryRemoteBranches(path, await remoteCredentialsFor(projectId))
+      await pruneDeletedTrackedBranches(path)
+      return true
+    } catch {
+      // Reading the local snapshot must still work when fetch or pruning fails.
+      return false
     }
   }
   const workflowDependencies = async (projectId: string) => {
@@ -361,6 +327,7 @@ export function createRepositoryMiddleware({
     const requestUrl = new URL(request.url ?? '/', 'http://localhost')
     const path = requestUrl.pathname
     const isProjectsRequest = path === '/api/projects'
+    const isProjectSummariesRequest = path === '/api/projects/summaries'
     const isRepositoryRequest = path === '/api/repository'
     const isDeliveryRequest = path === '/api/delivery'
     const isPreviewRequest = path === '/api/commit/preview'
@@ -380,6 +347,7 @@ export function createRepositoryMiddleware({
 
     if (
       !isProjectsRequest &&
+      !isProjectSummariesRequest &&
       !isRepositoryRequest &&
       !isDeliveryRequest &&
       !isPreviewRequest &&
@@ -401,36 +369,22 @@ export function createRepositoryMiddleware({
       return
     }
 
+    if (isProjectSummariesRequest) {
+      await handleProjectSummaries({
+        request,
+        response,
+        registry,
+        repositoryPath,
+        loadSummary: async (path, projectId, refresh) => {
+          if (refresh) await refreshRemoteBranches(path, projectId, true)
+          return summaries.read(path, () => scanRepositorySummary(path), { force: refresh })
+        },
+      })
+      return
+    }
+
     if (isProjectsRequest) {
-      if (!registry) {
-        sendJson(response, 200, {
-          projects: [{ id: 'default', path: repositoryPath }],
-        })
-        return
-      }
-      try {
-        if (request.method === 'GET') {
-          sendJson(response, 200, { projects: await registry.list() })
-          return
-        }
-        if (request.method === 'POST') {
-          const body = await readJson<{ path: string }>(request)
-          sendJson(response, 201, { project: await registry.add(body.path) })
-          return
-        }
-        if (request.method === 'DELETE') {
-          const body = await readJson<{ id: string; deleteLocalFiles?: boolean }>(request)
-          sendJson(response, 200, {
-            project: await registry.remove(body.id, body.deleteLocalFiles === true),
-          })
-          return
-        }
-        sendJson(response, 405, { error: 'Method not allowed' })
-      } catch (error) {
-        sendJson(response, 400, {
-          error: error instanceof Error ? error.message : '项目操作失败',
-        })
-      }
+      await handleProjectsRoute({ request, response, registry, repositoryPath })
       return
     }
 
@@ -453,6 +407,7 @@ export function createRepositoryMiddleware({
           ? await clone(body.input, remoteCredentials)
           : await cloneRepository({ ...body.input, credentials: remoteCredentials })
         const project = registry ? await registry.add(cloned.path, true) : cloned
+        invalidateProject(cloned.path)
         sendJson(response, 201, { project })
       } catch (error) {
         sendJson(response, 400, {
@@ -520,171 +475,149 @@ export function createRepositoryMiddleware({
       }
     }
 
+    // Route context for the GitLab write/read handlers in routes/gitlab.ts.
+    const gitlabContext = (): GitLabRouteContext => ({
+      request,
+      response,
+      url: requestUrl,
+      repositoryPath: activeRepositoryPath,
+      projectId: activeProjectId,
+      deps: {
+        resolveCredentials,
+        fetcher,
+        loadSnapshot,
+        invalidateProject,
+        markRemoteChecked: (path) => remoteCheckedAt.set(path, Date.now()),
+        sync: (path, projectId, operation) => executeSync(path, projectId, operation),
+        createMergeRequest: (path, projectId, operation) => executeMergeRequest(path, projectId, operation),
+        createBranch: (path, projectId, input) => executeCreateBranch(path, projectId, input),
+        checkoutBranch: (path, projectId, branch) => executeCheckoutBranch(path, projectId, branch),
+        refreshBranches: refreshBranches
+          ? (path, projectId) => refreshBranches(path, projectId)
+          : undefined,
+        uploadAttachment: (path, projectId, upload) => executeUpload(path, projectId, upload),
+        pull,
+      },
+    })
+
     if (isRetryPushRequest) {
-      let body: { branch: string; confirmed: boolean }
-      try {
-        body = await readJson(request)
-      } catch {
-        sendJson(response, 400, { error: 'Invalid JSON request' })
-        return
-      }
-      if (!body.confirmed || !body.branch?.trim()) {
-        sendJson(response, 400, { error: 'Retry push must be confirmed' })
-        return
-      }
-      try {
-        const branch = validateRetryPushBranch(body.branch)
-        const projectCredentials = await resolveCredentials(activeProjectId)
-        await pushRepositoryBranch(activeRepositoryPath, branch, {
-          sshKeyPath: projectCredentials.sshKeyPath,
-          ...(projectCredentials.sshPassphrase ? { sshPassphrase: projectCredentials.sshPassphrase } : {}),
-          ...(projectCredentials.sshAskPassPath ? { sshAskPassPath: projectCredentials.sshAskPassPath } : {}),
-        })
-        const commit = await repositoryBranchCommit(
-          activeRepositoryPath,
-          branch,
-        )
-        sendJson(response, 200, { branch, commit })
-      } catch (error) {
-        sendJson(response, 400, { error: toFriendlyError(error) })
-      }
+      await handleRetryPush(gitlabContext())
       return
     }
+
 
     if (isMergeRequestStatus) {
-      const iid = Number(requestUrl.searchParams.get('iid'))
-      if (!Number.isInteger(iid) || iid < 1) {
-        sendJson(response, 400, { error: 'Invalid merge request number' })
-        return
-      }
-      try {
-        const repository = await scan(activeRepositoryPath)
-        const projectCredentials = await resolveCredentials(activeProjectId)
-        const gitLab = createGitLabClient({
-          baseUrl: projectCredentials.baseUrl,
-          token: projectCredentials.token,
-          recommendedReviewers: [],
-        }, fetcher)
-        const mergeRequest = await gitLab.getMergeRequest(
-          gitLabProjectPath(repository.gitlabPath),
-          iid,
-        )
-        sendJson(response, 200, {
-          state: mergeRequest.state,
-          webUrl: mergeRequest.webUrl,
-        })
-      } catch (error) {
-        sendJson(response, 400, { error: toFriendlyError(error) })
-      }
+      await handleMergeRequestStatus(gitlabContext())
       return
     }
 
+
     if (isUploadRequest) {
-      try {
-        const result = await executeUpload(
-          activeRepositoryPath,
-          activeProjectId,
-          await readUpload(request),
-        )
-        sendJson(response, 200, result)
-      } catch (error) {
-        sendJson(response, 400, {
-          error: error instanceof Error ? error.message : 'Attachment upload failed',
-        })
-      }
+      await handleUpload(gitlabContext())
       return
     }
+
 
     if (isHistoryRequest) {
       try {
-        const projectCredentials = await resolveCredentials('computer')
-        const repository = await scan(activeRepositoryPath)
-        const gitLab = createGitLabClient({
-          baseUrl: projectCredentials.baseUrl,
-          token: projectCredentials.token,
-          recommendedReviewers: [],
-        }, fetcher)
-        const cloudBranches = repository.branches
-          .filter((branch) => branch.remote)
-          .map((branch) => branch.name)
-        const branchNames = cloudBranches.length
-          ? cloudBranches
-          : [repository.branch]
-        const branchCommits = await Promise.all(
-          branchNames.map(async (branch) => ({
-            branch,
-            commits: await gitLab.listCommits(
-              gitLabProjectPath(repository.gitlabPath),
-              100,
-              branch,
-            ),
-          })),
+        // Reading history used to run one GitLab request per cloud branch on
+        // every page visit. Cache the assembled timeline briefly, let the
+        // explicit refresh button bypass it, and keep the branch fan-out small.
+        const force = requestUrl.searchParams.get('refresh') === '1'
+        const history = await histories.read(
+          activeRepositoryPath,
+          async () => {
+            const projectCredentials = await resolveCredentials('computer')
+            const repository = await loadSnapshot(activeRepositoryPath)
+            const gitLab = createGitLabClient({
+              baseUrl: projectCredentials.baseUrl,
+              token: projectCredentials.token,
+              recommendedReviewers: [],
+            }, fetcher)
+            const cloudBranches = repository.branches
+              .filter((branch) => branch.remote)
+              .map((branch) => branch.name)
+            const branchNames = cloudBranches.length
+              ? cloudBranches
+              : [repository.branch]
+            const branchCommits = await mapWithConcurrency(
+              branchNames,
+              3,
+              async (branch) => ({
+                branch,
+                commits: await gitLab.listCommits(
+                  gitLabProjectPath(repository.gitlabPath),
+                  100,
+                  branch,
+                ),
+              }),
+            )
+            const commitsById = new Map<string, {
+              commit: (typeof branchCommits)[number]['commits'][number]
+              branches: string[]
+            }>()
+            for (const entry of branchCommits) {
+              for (const commit of entry.commits) {
+                const existing = commitsById.get(commit.id)
+                if (existing) existing.branches.push(entry.branch)
+                else commitsById.set(commit.id, { commit, branches: [entry.branch] })
+              }
+            }
+            const commits = [...commitsById.values()]
+              .sort((left, right) =>
+                Date.parse(right.commit.committedAt) - Date.parse(left.commit.committedAt))
+              .slice(0, 200)
+            const [tags, mergedRequests] = await Promise.all([
+              gitLab.listTags(gitLabProjectPath(repository.gitlabPath)).catch(() => []),
+              gitLab.listMergedRequests(gitLabProjectPath(repository.gitlabPath)).catch(() => []),
+            ])
+            const formatTime = (value: string) => new Date(value).toLocaleString('zh-CN', {
+              hour12: false,
+            })
+            return [
+              ...commits.map(({ commit, branches }) => ({
+                id: commit.id,
+                type: 'commit' as const,
+                title: commit.title,
+                description: commit.message.trim() || commit.title,
+                actor: commit.authorName,
+                timestamp: formatTime(commit.committedAt),
+                reference: commit.shortId,
+                tone: 'info' as const,
+                branches,
+                sortAt: commit.committedAt,
+              })),
+              ...tags.map((tag) => ({
+                id: `tag:${tag.name}`,
+                type: 'tag' as const,
+                title: `版本标记 ${tag.name}`,
+                description: tag.message || '关键版本标记',
+                actor: 'GitLab',
+                timestamp: formatTime(tag.committedAt),
+                reference: tag.name,
+                tone: 'warning' as const,
+                sortAt: tag.committedAt,
+              })),
+              ...mergedRequests.map((mergeRequest) => ({
+                id: `merge:${mergeRequest.iid}`,
+                type: 'merge' as const,
+                title: mergeRequest.title,
+                description: `${mergeRequest.sourceBranch} 已合并到 ${mergeRequest.targetBranch}`,
+                actor: mergeRequest.mergedBy,
+                timestamp: formatTime(mergeRequest.mergedAt),
+                reference: `审核单 #${mergeRequest.iid}`,
+                tone: 'success' as const,
+                branches: [mergeRequest.sourceBranch, mergeRequest.targetBranch],
+                sortAt: mergeRequest.mergedAt,
+              })),
+            ]
+              .sort((left, right) => Date.parse(right.sortAt) - Date.parse(left.sortAt))
+              .slice(0, 200)
+              .map(({ sortAt: _sortAt, ...event }) => event)
+          },
+          { force },
         )
-        const commitsById = new Map<string, {
-          commit: (typeof branchCommits)[number]['commits'][number]
-          branches: string[]
-        }>()
-        for (const entry of branchCommits) {
-          for (const commit of entry.commits) {
-            const existing = commitsById.get(commit.id)
-            if (existing) existing.branches.push(entry.branch)
-            else commitsById.set(commit.id, { commit, branches: [entry.branch] })
-          }
-        }
-        const commits = [...commitsById.values()]
-          .sort((left, right) =>
-            Date.parse(right.commit.committedAt) - Date.parse(left.commit.committedAt))
-          .slice(0, 200)
-        const [tags, mergedRequests] = await Promise.all([
-          gitLab.listTags(gitLabProjectPath(repository.gitlabPath)).catch(() => []),
-          gitLab.listMergedRequests(gitLabProjectPath(repository.gitlabPath)).catch(() => []),
-        ])
-        const formatTime = (value: string) => new Date(value).toLocaleString('zh-CN', {
-          hour12: false,
-        })
-        const history = [
-          ...commits.map(({ commit, branches }) => ({
-            id: commit.id,
-            type: 'commit' as const,
-            title: commit.title,
-            description: commit.message.trim() || commit.title,
-            actor: commit.authorName,
-            timestamp: formatTime(commit.committedAt),
-            reference: commit.shortId,
-            tone: 'info' as const,
-            branches,
-            sortAt: commit.committedAt,
-          })),
-          ...tags.map((tag) => ({
-            id: `tag:${tag.name}`,
-            type: 'tag' as const,
-            title: `版本标记 ${tag.name}`,
-            description: tag.message || '关键版本标记',
-            actor: 'GitLab',
-            timestamp: formatTime(tag.committedAt),
-            reference: tag.name,
-            tone: 'warning' as const,
-            sortAt: tag.committedAt,
-          })),
-          ...mergedRequests.map((mergeRequest) => ({
-            id: `merge:${mergeRequest.iid}`,
-            type: 'merge' as const,
-            title: mergeRequest.title,
-            description: `${mergeRequest.sourceBranch} 已合并到 ${mergeRequest.targetBranch}`,
-            actor: mergeRequest.mergedBy,
-            timestamp: formatTime(mergeRequest.mergedAt),
-            reference: `审核单 #${mergeRequest.iid}`,
-            tone: 'success' as const,
-            branches: [mergeRequest.sourceBranch, mergeRequest.targetBranch],
-            sortAt: mergeRequest.mergedAt,
-          })),
-        ]
-          .sort((left, right) => Date.parse(right.sortAt) - Date.parse(left.sortAt))
-          .slice(0, 200)
-          .map(({ sortAt: _sortAt, ...event }) => event)
-        sendJson(response, 200, {
-          history,
-        })
+        sendJson(response, 200, { history })
       } catch (error) {
         sendJson(response, 400, {
           error: error instanceof Error ? error.message : '无法读取 GitLab 历史',
@@ -694,174 +627,34 @@ export function createRepositoryMiddleware({
     }
 
     if (isPullRequest) {
-      try {
-        const body = await readJson<{ confirmed: boolean }>(request)
-        if (!body.confirmed) throw new Error('请先确认获取云端改动')
-        const projectCredentials = await resolveCredentials(activeProjectId)
-        const result = pull
-          ? await pull(activeRepositoryPath)
-          : await pullRepository(activeRepositoryPath, {
-              sshKeyPath: projectCredentials.sshKeyPath,
-              ...(projectCredentials.sshPassphrase
-                ? { sshPassphrase: projectCredentials.sshPassphrase }
-                : {}),
-              ...(projectCredentials.sshAskPassPath
-                ? { sshAskPassPath: projectCredentials.sshAskPassPath }
-                : {}),
-            })
-        sendJson(response, 200, result)
-      } catch (error) {
-        sendJson(response, 400, {
-          error: error instanceof Error ? error.message : '获取云端改动失败',
-        })
-      }
+      await handlePull(gitlabContext())
       return
     }
+
 
     if (isBranchRequest) {
-      let body: { input: CreateBranchInput; confirmed: boolean }
-      try {
-        body = await readJson(request)
-      } catch {
-        sendJson(response, 400, { error: 'Invalid JSON request' })
-        return
-      }
-      if (!body.confirmed) {
-        sendJson(response, 400, { error: '请先确认创建分支' })
-        return
-      }
-      try {
-        sendJson(
-          response,
-          200,
-          await executeCreateBranch(
-            activeRepositoryPath,
-            activeProjectId,
-            body.input,
-          ),
-        )
-      } catch (error) {
-        sendJson(response, 400, {
-          error: error instanceof Error ? error.message : 'Branch creation failed',
-        })
-      }
+      await handleBranchCreate(gitlabContext())
       return
     }
+
 
     if (isBranchCheckoutRequest) {
-      let body: { branch: string; confirmed: boolean }
-      try {
-        body = await readJson(request)
-      } catch {
-        sendJson(response, 400, { error: 'Invalid JSON request' })
-        return
-      }
-      if (!body.confirmed || !body.branch?.trim()) {
-        sendJson(response, 400, { error: '请先确认切换工作版本' })
-        return
-      }
-      try {
-        sendJson(
-          response,
-          200,
-          await executeCheckoutBranch(
-            activeRepositoryPath,
-            activeProjectId,
-            body.branch.trim(),
-          ),
-        )
-      } catch (error) {
-        sendJson(response, 400, { error: toFriendlyError(error) })
-      }
+      await handleBranchCheckout(gitlabContext())
       return
     }
+
 
     if (isBranchRefreshRequest) {
-      let body: { confirmed: boolean }
-      try {
-        body = await readJson(request)
-      } catch {
-        sendJson(response, 400, { error: 'Invalid JSON request' })
-        return
-      }
-      if (!body.confirmed) {
-        sendJson(response, 400, { error: '请先确认刷新云端分支' })
-        return
-      }
-      try {
-        let localRefreshError: unknown
-        if (refreshBranches) {
-          try {
-            await refreshBranches(activeRepositoryPath, activeProjectId)
-          } catch (error) {
-            localRefreshError = error
-          }
-        } else {
-          const projectCredentials = await resolveCredentials(activeProjectId)
-          try {
-            await refreshRepositoryRemoteBranches(activeRepositoryPath, {
-              sshKeyPath: projectCredentials.sshKeyPath,
-              ...(projectCredentials.sshPassphrase ? { sshPassphrase: projectCredentials.sshPassphrase } : {}),
-              ...(projectCredentials.sshAskPassPath ? { sshAskPassPath: projectCredentials.sshAskPassPath } : {}),
-            })
-          } catch (error) {
-            localRefreshError = error
-          }
-        }
-        await pruneDeletedTrackedBranches(activeRepositoryPath)
-        const repository = await scan(activeRepositoryPath)
-        const projectCredentials = await resolveCredentials(activeProjectId)
-        const gitLab = createGitLabClient({
-          baseUrl: projectCredentials.baseUrl,
-          token: projectCredentials.token,
-          recommendedReviewers: [],
-        }, fetcher)
-        const cloudBranches = await gitLab.listBranches(
-          gitLabProjectPath(repository.gitlabPath),
-        )
-        sendJson(response, 200, {
-          refreshed: true,
-          branches: mergeCloudBranches(repository, cloudBranches),
-          localRefreshError:
-            localRefreshError instanceof Error ? localRefreshError.message : undefined,
-        })
-      } catch (error) {
-        sendJson(response, 400, { error: toFriendlyError(error) })
-      }
+      await handleBranchRefresh(gitlabContext())
       return
     }
+
 
     if (isSyncRequest || isMergeRequest) {
-      let body:
-        | { draft: GitLabSyncDraft; confirmed: boolean }
-        | { draft: MergeRequestDraft; confirmed: boolean }
-      try {
-        body = await readJson(request)
-      } catch {
-        sendJson(response, 400, { error: 'Invalid JSON request' })
-        return
-      }
-
-      try {
-        const result = isSyncRequest
-          ? await executeSync(
-              activeRepositoryPath,
-              activeProjectId,
-              body as { draft: GitLabSyncDraft; confirmed: boolean },
-            )
-          : await executeMergeRequest(
-              activeRepositoryPath,
-              activeProjectId,
-              body as { draft: MergeRequestDraft; confirmed: boolean },
-            )
-        sendJson(response, 200, result)
-      } catch (error) {
-        sendJson(response, 400, {
-          error: toFriendlyError(error),
-        })
-      }
+      await handleSyncOrMergeRequest(gitlabContext())
       return
     }
+
 
     if (isPreviewRequest || isCommitRequest) {
       let body: RepositoryCommitRequest
@@ -876,6 +669,7 @@ export function createRepositoryMiddleware({
         const result = isPreviewRequest
           ? await preview(activeRepositoryPath, body)
           : await commit(activeRepositoryPath, body)
+        if (!isPreviewRequest) invalidateProject(activeRepositoryPath)
         sendJson(response, 200, result)
       } catch (error) {
         sendJson(response, 400, {
@@ -888,7 +682,7 @@ export function createRepositoryMiddleware({
     if (isDeliveryRequest) {
       try {
         const [repository, packages, forgeRoots] = await Promise.all([
-          scan(activeRepositoryPath),
+          loadSnapshot(activeRepositoryPath),
           scanOutputPackages(activeRepositoryPath),
           loadForgeRoots(activeRepositoryPath),
         ])
@@ -896,6 +690,18 @@ export function createRepositoryMiddleware({
           title,
           root: relativePath,
         }))
+        // The upload wizard only needs the package list. Asking GitLab for
+        // reviewers and visibility there cost two extra requests per visit and
+        // failed whenever the access code was not configured yet.
+        if (requestUrl.searchParams.get('scope') === 'packages') {
+          sendJson(response, 200, {
+            packages,
+            reviewers: [],
+            projectVisibility: 'unknown',
+            forgeRoots: configuredRoots,
+          })
+          return
+        }
         try {
           const projectCredentials = await resolveCredentials(activeProjectId)
           const gitLab = createGitLabClient({
@@ -928,22 +734,12 @@ export function createRepositoryMiddleware({
     }
 
     try {
-      try {
-        const projectCredentials = await resolveCredentials(activeProjectId)
-        await refreshRepositoryRemoteBranches(activeRepositoryPath, {
-          sshKeyPath: projectCredentials.sshKeyPath,
-          ...(projectCredentials.sshPassphrase
-            ? { sshPassphrase: projectCredentials.sshPassphrase }
-            : {}),
-          ...(projectCredentials.sshAskPassPath
-            ? { sshAskPassPath: projectCredentials.sshAskPassPath }
-            : {}),
-        })
-        await pruneDeletedTrackedBranches(activeRepositoryPath)
-      } catch {
-        // Best effort only. The repository snapshot still needs to load if pruning fails.
-      }
-      const repository = await scan(activeRepositoryPath)
+      await refreshRemoteBranches(
+        activeRepositoryPath,
+        activeProjectId,
+        requestUrl.searchParams.get('refresh') === '1',
+      )
+      const repository = await loadSnapshot(activeRepositoryPath)
       sendJson(response, 200, { source: 'live', repository })
     } catch {
       sendJson(response, 500, { error: 'Unable to read the local repository' })

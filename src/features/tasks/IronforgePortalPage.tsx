@@ -1,4 +1,5 @@
 import { ExternalLink, LogIn, PanelTopOpen } from 'lucide-react'
+import { PageHeader } from '../../components/PageHeader'
 import { ironforgeWindowClient } from '../../data/ironforgeWindowClient'
 import { organizationClient } from '../../data/organizationClient'
 import './ironforgePortal.css'
@@ -6,12 +7,12 @@ import './ironforgePortal.css'
 export function IronforgePortalPage() {
   const ironforgeUrl = organizationClient.load().ironforgeUrl
   return (
-    <div className="task-page ironforge-portal">
-      <header>
-        <span className="task-eyebrow">铁炉堡</span>
-        <h1>正式图纸</h1>
-        <p>铁炉堡使用单独的权限和登录页面，不会使用你的 GitLab 访问码。</p>
-      </header>
+    <div className="page-frame page-frame--narrow ironforge-portal">
+      <PageHeader
+        description="铁炉堡使用单独的权限和登录页面，不会使用你的 GitLab 访问码。"
+        eyebrow="铁炉堡"
+        title="正式图纸"
+      />
       <section className="ironforge-portal__panel">
         <span className="ironforge-portal__mark">IF</span>
         <div><h2>打开铁炉堡</h2><p>请选择你习惯的打开方式。两种方式都会进入铁炉堡官方登录页面。</p></div>

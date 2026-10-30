@@ -1,9 +1,12 @@
-import { AlertTriangle, FolderOpen, FolderPlus, GitBranch, HardDrive, RefreshCw, Trash2 } from 'lucide-react'
+import { AlertTriangle, FolderKanban, FolderOpen, FolderPlus, GitBranch, HardDrive, RefreshCw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { RegisteredProject } from '../../data/repositoryContext'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { summarizeRepository } from '../../domain/repository'
+import { EmptyState } from '../../components/EmptyState'
+import { Notice } from '../../components/Notice'
+import { PageHeader } from '../../components/PageHeader'
 import { FieldHelp } from '../account/FieldHelp'
 import './tasks.css'
 import './projectCenter.css'
@@ -49,29 +52,34 @@ export function TaskHomePage({ projects, onSelect, onAdd, onRemove, onRefresh }:
   )
 
   return (
-    <div className={`task-page project-center${projects.length === 0 ? ' project-center--empty' : ''}`}>
-      <header className="project-center__header">
-        <div>
-          <span className="task-eyebrow">GitLab</span>
-          <h1>选择一个项目</h1>
-          <p>点击项目后，再选择上传、下载或查看历史。</p>
-        </div>
-        {projects.length > 0 ? <div className="project-center__commands"><button className="button button--secondary" disabled={refreshing} onClick={() => {
-          setRefreshing(true)
-          setRefreshError(null)
-          void (onRefresh?.() ?? Promise.resolve())
-            .catch((cause) => setRefreshError(cause instanceof Error ? cause.message : '刷新项目概况失败'))
-            .finally(() => setRefreshing(false))
-        }} type="button"><RefreshCw size={17} />{refreshing ? '正在刷新概况' : '刷新项目概况'}</button>{projectActions}</div> : null}
-      </header>
-      {refreshError ? <div className="workspace-feedback workspace-feedback--error">{refreshError}</div> : null}
+    <div className={`page-frame project-center${projects.length === 0 ? ' project-center--empty' : ''}`}>
+      <PageHeader
+        actions={projects.length > 0 ? (
+          <div className="project-center__commands">
+            <button className="button button--secondary" disabled={refreshing} onClick={() => {
+              setRefreshing(true)
+              setRefreshError(null)
+              void (onRefresh?.() ?? Promise.resolve())
+                .catch((cause) => setRefreshError(cause instanceof Error ? cause.message : '刷新项目概况失败'))
+                .finally(() => setRefreshing(false))
+            }} type="button"><RefreshCw size={17} />{refreshing ? '正在刷新概况' : '刷新项目概况'}</button>
+            {projectActions}
+          </div>
+        ) : null}
+        description="点击项目后，再选择上传、下载或查看历史。"
+        eyebrow="GitLab"
+        title="选择一个项目"
+      />
+      {refreshError ? <Notice tone="danger" title="刷新项目概况失败">{refreshError}</Notice> : null}
 
       {projects.length === 0 ? (
-        <section className="project-center__empty-actions">
-          <h2>这台电脑还没有项目</h2>
-          <p>选择一种方式，把第一个项目放进来。</p>
-          <div>{projectActions}</div>
-        </section>
+        <EmptyState
+          actions={projectActions}
+          className="project-center__empty-actions"
+          description="选择一种方式，把第一个项目放进来。"
+          icon={<FolderKanban size={22} />}
+          title="这台电脑还没有项目"
+        />
       ) : null}
 
       {showAdd ? (

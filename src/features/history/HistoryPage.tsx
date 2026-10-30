@@ -1,9 +1,9 @@
 import {
-  ArrowLeft,
   CheckCircle2,
   CloudUpload,
   GitCommitHorizontal,
   GitMerge,
+  History,
   PackageCheck,
   RefreshCw,
   Search,
@@ -12,6 +12,9 @@ import {
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { StatusBadge } from '../../components/StatusBadge'
+import { EmptyState } from '../../components/EmptyState'
+import { Notice } from '../../components/Notice'
+import { PageHeader } from '../../components/PageHeader'
 import { fetchGitLabHistory } from '../../data/historyClient'
 import type { HistoryEvent, RepositorySnapshot } from '../../domain/repository'
 import './history.css'
@@ -56,12 +59,12 @@ export function HistoryPage({ repository, projectId, onRefresh }: HistoryPagePro
     ].some((value) => value.toLocaleLowerCase('zh-CN').includes(normalizedQuery)))
     : history
 
-  function refreshHistory() {
+  function refreshHistory(options: { refresh?: boolean } = {}) {
     if (!projectId) return
     setLoading(true)
     setError(null)
     void Promise.all([
-      fetchGitLabHistory(projectId),
+      fetchGitLabHistory(projectId, options.refresh === true),
       onRefresh?.() ?? Promise.resolve(),
     ])
       .then(([events]) => setHistory(events))
@@ -75,24 +78,19 @@ export function HistoryPage({ repository, projectId, onRefresh }: HistoryPagePro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
   return (
-    <div className="page page--history">
-      <Link className="project-actions__back" to="/workspace/project">
-        <ArrowLeft size={17} />
-        返回项目操作
-      </Link>
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">项目记录</p>
-          <h1>项目操作记录</h1>
-          <p className="page-header__path">
-            每次保存、上传、审核和发布都会留下记录。
-          </p>
-        </div>
-        <div className="history-header-actions">
-          <StatusBadge tone="info">{loading ? '正在读取 GitLab' : `${history.length} 条记录`}</StatusBadge>
-          {projectId ? <button className="button button--secondary" disabled={loading} onClick={refreshHistory} type="button"><RefreshCw size={16} />{loading ? '正在刷新' : '刷新记录'}</button> : null}
-        </div>
-      </header>
+    <div className="page-frame page-frame--history">
+      <PageHeader
+        actions={(
+          <div className="history-header-actions">
+            <StatusBadge tone="info">{loading ? '正在读取 GitLab' : `${history.length} 条记录`}</StatusBadge>
+            {projectId ? <button className="button button--secondary" disabled={loading} onClick={() => refreshHistory({ refresh: true })} type="button"><RefreshCw size={16} />{loading ? '正在刷新' : '刷新记录'}</button> : null}
+          </div>
+        )}
+        back={{ to: '/workspace/project', label: '返回项目操作' }}
+        description="每次保存、上传、审核和发布都会留下记录。"
+        eyebrow="项目记录"
+        title="项目操作记录"
+      />
 
       <section className="history-summary">
         <div>
@@ -129,6 +127,20 @@ export function HistoryPage({ repository, projectId, onRefresh }: HistoryPagePro
         <Link className="button button--primary" to="/workspace/upload/gitlab">继续上传</Link>
       </section> : null}
 
+      {error ? <Notice tone="danger" title="读取历史失败">{error}</Notice> : null}
+      {!loading && !error && history.length === 0 ? (
+        <EmptyState
+          description="第一次上传成功后，这里会显示保存、审核和发布记录。"
+          icon={<History size={22} />}
+          title="GitLab 上还没有提交记录"
+        />
+      ) : null}
+      {!loading && !error && history.length > 0 && visibleHistory.length === 0 ? (
+        <Notice tone="info" title="没有找到符合条件的记录">
+          换一个关键词，或清空搜索框查看全部记录。
+        </Notice>
+      ) : null}
+
       <section className="history-section">
         <div className="history-toolbar">
           <div>
@@ -141,7 +153,7 @@ export function HistoryPage({ repository, projectId, onRefresh }: HistoryPagePro
               <input
                 aria-label="搜索历史"
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="搜索说明、人员、编号或工作版本"
+                placeholder="搜索说明、人员或编号"
                 value={query}
               />
             </label>
@@ -156,9 +168,6 @@ export function HistoryPage({ repository, projectId, onRefresh }: HistoryPagePro
             <span>时间</span>
             <span>引用</span>
           </div>
-          {error ? <div className="workspace-feedback workspace-feedback--error">{error}</div> : null}
-          {!loading && !error && history.length === 0 ? <div className="workspace-feedback">GitLab 上还没有提交记录。</div> : null}
-          {!loading && !error && history.length > 0 && visibleHistory.length === 0 ? <div className="workspace-feedback">没有找到符合条件的记录。</div> : null}
           {visibleHistory.map((event) => {
             const Icon = eventIcons[event.type]
             return (

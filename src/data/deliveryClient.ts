@@ -56,7 +56,12 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 
 export interface DeliveryApi {
   checkConnection: () => Promise<ConnectionCheckResult>
-  overview: () => Promise<DeliveryOverview>
+  /**
+   * `packages` skips the GitLab reviewer/visibility reads for screens that only
+   * need the delivery package list (the upload wizard). `full` is the default
+   * for the merge-review wizard, which needs reviewers.
+   */
+  overview: (scope?: 'packages' | 'full') => Promise<DeliveryOverview>
   preview: (draft: DeliveryDraft) => Promise<DeliveryPreview>
   execute: (draft: DeliveryDraft) => Promise<DeliveryExecutionResult>
   syncGitLab: (draft: GitLabSyncDraft) => Promise<GitLabSyncResult>
@@ -98,11 +103,22 @@ function projectPath(path: string, projectId?: string) {
     : path
 }
 
+function scopedPath(path: string, projectId: string | undefined, scope?: string) {
+  const params = new URLSearchParams()
+  if (projectId) params.set('projectId', projectId)
+  if (scope) params.set('scope', scope)
+  const query = params.size ? `?${params.toString()}` : ''
+  return `${path}${query}`
+}
+
 export function createDeliveryApi(projectId?: string): DeliveryApi {
   return {
   checkConnection: () =>
     requestJson(projectPath('/api/connection/check', projectId)),
-  overview: () => requestJson(projectPath('/api/delivery', projectId)),
+  overview: (scope) =>
+    requestJson(
+      scopedPath('/api/delivery', projectId, scope === 'packages' ? 'packages' : undefined),
+    ),
   preview: (draft) =>
     requestJson(projectPath('/api/delivery/preview', projectId), {
       method: 'POST',

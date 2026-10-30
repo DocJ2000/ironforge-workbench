@@ -1,0 +1,138 @@
+/**
+ * Guided wizard chrome (steps, panel, footer).
+ *
+ * These rules used to live in `tasks.css`, which only the project list
+ * imported, so opening a wizard directly showed a plain numbered list. The
+ * wizard owns its own stylesheet now.
+ */
+
+.wizard-steps {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(90px, 1fr);
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+}
+
+.wizard-steps__item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  min-width: 90px;
+  color: var(--subtle);
+  font-size: var(--font-xs);
+  text-align: center;
+}
+
+.wizard-steps__item::before {
+  position: absolute;
+  top: 14px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--line);
+  content: "";
+}
+
+.wizard-steps__item:first-child::before {
+  display: none;
+}
+
+.wizard-steps__item > span {
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  font-weight: 800;
+}
+
+.wizard-steps__item--current {
+  color: var(--ink);
+}
+
+.wizard-steps__item--current > span {
+  color: #fff;
+  border-color: var(--charcoal);
+  background: var(--charcoal);
+}
+
+.wizard-steps__item--done::before,
+.wizard-steps__item--done > span {
+  color: #fff;
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.wizard-panel {
+  min-height: 360px;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.wizard-panel h2 {
+  margin: 0 0 7px;
+  font-size: var(--font-xl);
+  letter-spacing: 0;
+}
+
+.wizard-panel__intro {
+  margin-bottom: var(--space-5);
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.page-frame--guided {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, 100%);
+  height: calc(100vh - var(--main-content-top) - var(--main-content-bottom));
+  min-height: 0;
+}
+
+.page-frame--guided .wizard-steps,
+.page-frame--guided .page-frame__header,
+.page-frame--guided .page-frame__back {
+  flex: 0 0 auto;
+}
+
+.page-frame--guided .wizard-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.page-frame--guided .wizard-actions {
+  flex: 0 0 auto;
+  padding-top: var(--space-3);
+}
+
+@media (max-width: 620px) {
+  .wizard-panel {
+    min-height: 320px;
+    padding: 17px 14px;
+  }
+
+  .wizard-steps {
+    justify-content: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .page-frame--guided {
+    height: auto;
+    min-height: calc(100vh - var(--main-content-top) - var(--main-content-bottom));
+  }
+}

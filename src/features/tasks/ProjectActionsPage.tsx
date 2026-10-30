@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   CloudDownload,
   ExternalLink,
   GitBranch,
@@ -12,6 +11,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
+import { PageHeader } from '../../components/PageHeader'
 import { CreateBranchDialog } from '../delivery/CreateBranchDialog'
 import '../delivery/delivery.css'
 import { mergeRequestReceiptClient } from '../../data/mergeRequestReceiptClient'
@@ -150,17 +150,16 @@ export function ProjectActionsPage({
   }
 
   return (
-    <div className="task-page project-actions-page">
-      <Link className="project-actions__back" to="/workspace">
-        <ArrowLeft size={17} />
-        返回项目列表
-      </Link>
-      <header>
-        <span className="task-eyebrow">已选择项目</span>
-        <h1>{repository.displayName}</h1>
-        <p>这次想做什么？请选择一项。</p>
-        {projectUrl ? <a className="project-actions__gitlab-link" href={projectUrl} rel="noreferrer" target="_blank"><ExternalLink size={16} />在 GitLab 查看本项目</a> : null}
-        </header>
+    <div className="page-frame page-frame--narrow project-actions-page">
+      <PageHeader
+        actions={projectUrl ? (
+          <a className="button button--secondary" href={projectUrl} rel="noreferrer" target="_blank"><ExternalLink size={16} />在 GitLab 查看本项目</a>
+        ) : null}
+        back={{ to: '/workspace', label: '返回项目列表' }}
+        description="这次想做什么？请选择一项。"
+        eyebrow="已选择项目"
+        title={repository.displayName}
+      />
       <section className={`project-branch-switcher${currentBranchIsCloudWork ? '' : ' project-branch-switcher--warning'}`}>
         <span className="project-branch-switcher__icon"><GitBranch size={22} /></span>
         <div>

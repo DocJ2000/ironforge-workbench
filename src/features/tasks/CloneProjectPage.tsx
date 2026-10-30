@@ -1,8 +1,9 @@
-import { ArrowLeft, CheckCircle2, FolderOpen } from 'lucide-react'
+import { CheckCircle2, FolderOpen } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deliveryApi, friendlyErrorFrom, type DeliveryApi } from '../../data/deliveryClient'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
+import { PageHeader } from '../../components/PageHeader'
 import type { FriendlyError } from '../../domain/connection'
 import { FieldHelp } from '../account/FieldHelp'
 import { FriendlyErrorNotice } from '../errors/FriendlyErrorNotice'
@@ -30,9 +31,13 @@ export function CloneProjectPage({ api = deliveryApi, onRefresh }: { api?: Deliv
   }
 
   return (
-    <div className="task-page clone-project-page">
-      <Link className="project-actions__back" to="/workspace"><ArrowLeft size={17} />返回项目列表</Link>
-      <header><span className="task-eyebrow">GitLab</span><h1>下载一个新项目</h1><p>适合新电脑，或者这台电脑上还没有这个项目。</p></header>
+    <div className="page-frame page-frame--narrow clone-project-page">
+      <PageHeader
+        back={{ to: '/workspace', label: '返回项目列表' }}
+        description="适合新电脑，或者这台电脑上还没有这个项目。"
+        eyebrow="GitLab"
+        title="下载一个新项目"
+      />
       <section className="clone-project-panel">
         {error ? <FriendlyErrorNotice error={error} /> : null}
         {result ? <div className="wizard-success"><CheckCircle2 size={42} /><h2>项目已经下载完成</h2><p>保存位置：{result}</p><Link className="button button--primary" to="/workspace">返回项目列表</Link></div> : null}

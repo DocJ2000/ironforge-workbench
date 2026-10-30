@@ -1,0 +1,279 @@
+/**
+ * Shared page skeleton.
+ *
+ * Every workbench page used to bring its own header, widths, spacing and error
+ * block, so moving between GitLab and the account page felt like moving between
+ * two products. These classes are the single source for page framing; feature
+ * CSS keeps only what is genuinely specific to that screen.
+ */
+
+.page-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(1180px, 100%);
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.page-frame__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  color: var(--muted);
+  font-size: var(--font-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.page-frame__back:hover {
+  color: var(--ink);
+}
+
+.page-frame__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3) var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.page-frame__heading {
+  min-width: 0;
+}
+
+.page-frame__eyebrow {
+  margin: 0;
+  color: var(--accent);
+  font-size: var(--font-xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.page-frame__title {
+  margin: 6px 0 0;
+  color: var(--ink);
+  font-size: var(--font-display);
+  line-height: 1.25;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Feature CSS from older pages still carries its own h1 sizes; the shared
+   header must win so every page shows the same title scale. */
+.page-frame .page-frame__title {
+  font-size: var(--font-display);
+}
+
+.page-frame__subtitle {
+  max-width: 74ch;
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--font-md);
+  line-height: 1.65;
+}
+
+.page-frame__meta {
+  display: block;
+  margin: var(--space-2) 0 0;
+  overflow-wrap: anywhere;
+  color: var(--subtle);
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: var(--font-xs);
+}
+
+.page-frame__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.page-frame__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.section-card {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+}
+
+.section-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--line);
+}
+
+.section-card__head h2 {
+  margin: 0;
+  font-size: var(--font-lg);
+  letter-spacing: 0;
+}
+
+.section-card__head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--font-sm);
+}
+
+.section-card__body {
+  padding: var(--space-4);
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink);
+  font-size: var(--font-sm);
+  line-height: 1.6;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--subtle);
+  border-radius: var(--radius-sm);
+}
+
+.notice__icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--muted);
+}
+
+.notice__body {
+  min-width: 0;
+}
+
+.notice__body p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.notice__body p:first-child {
+  margin-top: 0;
+}
+
+.notice__title {
+  display: block;
+  font-weight: 700;
+}
+
+.notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.notice--info {
+  border-left-color: var(--cyan);
+  background: var(--cyan-soft);
+}
+
+.notice--success {
+  border-left-color: var(--green);
+  background: var(--green-soft);
+}
+
+.notice--warning {
+  border-left-color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.notice--danger {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.notice--info .notice__icon {
+  color: var(--cyan);
+}
+
+.notice--success .notice__icon {
+  color: var(--green);
+}
+
+.notice--warning .notice__icon {
+  color: var(--amber);
+}
+
+.notice--danger .notice__icon {
+  color: var(--danger);
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+
+.empty-state__icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  border-radius: 50%;
+}
+
+.empty-state h2 {
+  margin: 0;
+  font-size: var(--font-lg);
+  letter-spacing: 0;
+}
+
+.empty-state p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--font-md);
+  line-height: 1.65;
+}
+
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.page-frame--narrow {
+  width: min(920px, 100%);
+  margin-inline: auto;
+}
+
+@media (max-width: 860px) {
+  .page-frame__header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page-frame__actions {
+    justify-content: flex-start;
+  }
+
+  .page-frame__title {
+    font-size: var(--font-xl);
+  }
+}

@@ -139,6 +139,263 @@ describe('createRepositoryMiddleware', () => {
     })
   })
 
+  it('reuses one snapshot for back-to-back reads of the same project', async () => {
+    const scan = vi.fn().mockResolvedValue(getDemoRepository())
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan,
+    })
+
+    for (let index = 0; index < 2; index += 1) {
+      await middleware(
+        { method: 'GET', url: '/api/repository' } as IncomingMessage,
+        responseDouble().response,
+        vi.fn(),
+      )
+    }
+
+    expect(scan).toHaveBeenCalledTimes(1)
+  })
+
+  it('fetches the remote at most once per freshness window', async () => {
+    const credentials = vi.fn().mockResolvedValue({
+      baseUrl: 'https://gitlfs.lab.tp',
+      token: 'stored-token',
+      sshKeyPath: 'C:\\keys\\id_ed25519',
+    })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn().mockResolvedValue(getDemoRepository()),
+      credentials,
+    })
+
+    for (let index = 0; index < 3; index += 1) {
+      await middleware(
+        { method: 'GET', url: '/api/repository' } as IncomingMessage,
+        responseDouble().response,
+        vi.fn(),
+      )
+    }
+
+    expect(credentials).toHaveBeenCalledTimes(1)
+  })
+
+  it('fetches the remote again when the user asks to refresh', async () => {
+    const credentials = vi.fn().mockResolvedValue({
+      baseUrl: 'https://gitlfs.lab.tp',
+      token: 'stored-token',
+      sshKeyPath: 'C:\\keys\\id_ed25519',
+    })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn().mockResolvedValue(getDemoRepository()),
+      credentials,
+    })
+
+    await middleware(
+      { method: 'GET', url: '/api/repository' } as IncomingMessage,
+      responseDouble().response,
+      vi.fn(),
+    )
+    await middleware(
+      { method: 'GET', url: '/api/repository?refresh=1' } as IncomingMessage,
+      responseDouble().response,
+      vi.fn(),
+    )
+
+    expect(credentials).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns packages without asking GitLab when the upload wizard scopes the overview', async () => {
+    const fetcher = vi.fn()
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn().mockResolvedValue(getDemoRepository()),
+      fetcher,
+      credentials: vi.fn().mockResolvedValue({
+        baseUrl: 'https://gitlfs.lab.tp',
+        token: 'stored-token',
+        sshKeyPath: 'C:\\keys\\id_ed25519',
+      }),
+    })
+    const result = responseDouble()
+
+    await middleware(
+      { method: 'GET', url: '/api/delivery?scope=packages' } as IncomingMessage,
+      result.response,
+      vi.fn(),
+    )
+
+    expect(result.response.statusCode).toBe(200)
+    expect(JSON.parse(result.body())).toMatchObject({
+      packages: [],
+      reviewers: [],
+      projectVisibility: 'unknown',
+    })
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  it('caches the GitLab timeline and bypasses it when the user refreshes', async () => {
+    const fetcher = vi.fn(async (input: string) => {
+      const body = String(input).includes('/repository/commits')
+        ? [{
+            id: 'abc123',
+            short_id: 'abc123',
+            title: '保存修改',
+            message: '保存修改',
+            author_name: '工程师',
+            committed_date: '2026-08-20T10:00:00Z',
+          }]
+        : []
+      return new Response(JSON.stringify(body), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn().mockResolvedValue(getDemoRepository()),
+      fetcher,
+      credentials: vi.fn().mockResolvedValue({
+        baseUrl: 'https://gitlfs.lab.tp',
+        token: 'stored-token',
+        sshKeyPath: 'C:\\keys\\id_ed25519',
+      }),
+    })
+    const read = async (url: string) => {
+      const result = responseDouble()
+      await middleware(
+        { method: 'GET', url } as IncomingMessage,
+        result.response,
+        vi.fn(),
+      )
+      return JSON.parse(result.body()) as { history: unknown[] }
+    }
+    const commitCalls = () =>
+      fetcher.mock.calls.filter(([input]) => String(input).includes('/repository/commits')).length
+
+    const first = await read('/api/gitlab/history?projectId=default')
+    const callsAfterFirst = commitCalls()
+    expect(first.history).toHaveLength(1)
+    expect(callsAfterFirst).toBe(3)
+
+    await read('/api/gitlab/history?projectId=default')
+    expect(commitCalls()).toBe(callsAfterFirst)
+
+    await read('/api/gitlab/history?projectId=default&refresh=1')
+    expect(commitCalls()).toBe(callsAfterFirst * 2)
+  })
+
+  it('registers a project folder through the projects endpoint', async () => {
+    const registry = {
+      list: vi.fn(),
+      add: vi.fn().mockResolvedValue({
+        id: 'project-x',
+        path: 'C:\\projects\\x',
+        name: 'x',
+        gitlabRemote: 'git@example.com:group/x.git',
+        addedAt: '2026-08-20T00:00:00Z',
+      }),
+      remove: vi.fn(),
+      resolve: vi.fn(),
+    }
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\default',
+      registry,
+      scan: vi.fn(),
+    })
+    const result = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/projects', { path: 'C:\\projects\\x' }),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(result.response.statusCode).toBe(201)
+    expect(registry.add).toHaveBeenCalledWith('C:\\projects\\x')
+    expect(JSON.parse(result.body()).project.id).toBe('project-x')
+  })
+
+  it('requires confirmation before pulling remote changes', async () => {
+    const pull = vi.fn()
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn(),
+      pull,
+    })
+    const result = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/gitlab/pull', { confirmed: false }),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(result.response.statusCode).toBe(400)
+    expect(pull).not.toHaveBeenCalled()
+  })
+
+  it('pulls the selected project after confirmation', async () => {
+    const pull = vi.fn().mockResolvedValue({
+      branch: 'dev/T2',
+      updated: true,
+      receivedCommits: 2,
+      commit: 'abc1234',
+    })
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn(),
+      pull,
+      credentials: vi.fn().mockResolvedValue({
+        baseUrl: 'https://gitlfs.lab.tp',
+        token: 'stored-token',
+        sshKeyPath: 'C:\\keys\\id_ed25519',
+      }),
+    })
+    const result = responseDouble()
+
+    await middleware(
+      jsonRequest('/api/gitlab/pull', { confirmed: true }),
+      result.response,
+      vi.fn(),
+    )
+
+    expect(pull).toHaveBeenCalledWith('C:\\repository')
+    expect(JSON.parse(result.body())).toMatchObject({ updated: true, receivedCommits: 2 })
+  })
+
+  it('reports the current merge request state', async () => {
+    const fetcher = vi.fn(async (input: string) => new Response(
+      JSON.stringify(String(input).includes('/approvals')
+        ? { approved: true }
+        : { iid: 7, state: 'merged', web_url: 'https://gitlfs.lab.tp/group/project/-/merge_requests/7' }),
+      { headers: { 'Content-Type': 'application/json' } },
+    ))
+    const middleware = createRepositoryMiddleware({
+      repositoryPath: 'C:\\repository',
+      scan: vi.fn().mockResolvedValue(getDemoRepository()),
+      fetcher,
+      credentials: vi.fn().mockResolvedValue({
+        baseUrl: 'https://gitlfs.lab.tp',
+        token: 'stored-token',
+        sshKeyPath: 'C:\\keys\\id_ed25519',
+      }),
+    })
+    const result = responseDouble()
+
+    await middleware(
+      { method: 'GET', url: '/api/gitlab/merge-request-status?iid=7' } as IncomingMessage,
+      result.response,
+      vi.fn(),
+    )
+
+    expect(result.response.statusCode).toBe(200)
+    expect(JSON.parse(result.body())).toEqual({
+      state: 'merged',
+      webUrl: 'https://gitlfs.lab.tp/group/project/-/merge_requests/7',
+    })
+  })
+
   it('still returns a live repository snapshot when remote pruning fails', async () => {
     const scan = vi.fn().mockResolvedValue(getDemoRepository())
     const credentials = vi.fn().mockResolvedValue({

@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { scanRepository } from './repositoryScanner'
+import { scanRepository, scanRepositorySummary } from './repositoryScanner'
 
 const temporaryRepositories: string[] = []
 
@@ -130,5 +130,19 @@ describe('scanRepository', () => {
     const snapshot = await scanRepository(repositoryPath)
 
     expect(snapshot.gitlabPath).toBe('rockteam/dragon/optics/lens-mechanics')
+  })
+
+  it('summarizes a project without listing branches or reading delivery packages', async () => {
+    const repositoryPath = await createRepository()
+
+    const summary = await scanRepositorySummary(repositoryPath)
+
+    expect(summary.branch).toBe('dev/T2')
+    expect(summary.latestCommitMessage).toBe('initial design')
+    expect(summary.changes.length).toBeGreaterThan(0)
+    expect(summary.branches).toEqual([])
+    expect(summary.deliveryPackages).toEqual([])
+    expect(summary.history).toEqual([])
+    expect(typeof summary.gitlabPath).toBe('string')
   })
 })

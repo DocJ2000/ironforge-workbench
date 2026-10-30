@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, Eye, EyeOff, FolderOpen, KeyRound, Server, ShieldCheck, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { PageHeader } from '../../components/PageHeader'
 import { credentialClient } from '../../data/credentialClient'
 import { desktopDialogClient } from '../../data/desktopDialogClient'
 import { ConnectionWizard } from './ConnectionWizard'
@@ -98,12 +99,12 @@ export function AccountPage({ checkProjectId }: { checkProjectId?: string }) {
   }
 
   return (
-    <div className="account-page">
-      <header className="account-header">
-        <span className="task-eyebrow">设置</span>
-        <h1>账户与连接</h1>
-        <p>管理公司项目服务器和铁炉堡的连接。密码与身份钥匙不会放进工程文件。</p>
-      </header>
+    <div className="page-frame account-page">
+      <PageHeader
+        description="管理公司项目服务器和铁炉堡的连接。密码与身份钥匙不会放进工程文件。"
+        eyebrow="设置"
+        title="账户与连接"
+      />
 
       {setupRequired && (!organizationSaved || !configured) ? (
         <section className="required-setup-notice" role="status">

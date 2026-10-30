@@ -4,6 +4,7 @@ import { basename, extname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { gitExecutable } from './gitExecutable.js'
 import { gitLabProjectPath } from './gitLabProjectPath.js'
+import { branchStage } from './branchSummary.js'
 import type {
   BranchSummary,
   ChangeKind,
@@ -174,12 +175,6 @@ async function deliveryPackages(repositoryPath: string): Promise<DeliveryPackage
   )
 }
 
-function branchStage(name: string) {
-  if (name === 'main' || name === 'master') return '正式主线'
-  const stage = name.match(/(?:^|\/)(T\d+)$/i)?.[1]
-  return stage ? `${stage.toUpperCase()} 设计` : '开发分支'
-}
-
 async function branches(repositoryPath: string, currentBranch: string): Promise<BranchSummary[]> {
   const output = await git(repositoryPath, [
     'for-each-ref',
@@ -244,7 +239,6 @@ export async function scanRepository(repositoryPath: string): Promise<Repository
   const latestCommitMessage = await git(root, ['log', '-1', '--pretty=%s'])
   const sync = await upstreamState(root)
   const packages = await deliveryPackages(root)
-
   return {
     id: name,
     name,
@@ -289,5 +283,59 @@ export async function scanRepository(repositoryPath: string): Promise<Repository
         tone: 'info',
       },
     ],
+  }
+}
+
+/**
+ * Cheap snapshot for the project list.
+ *
+ * It keeps everything the list row needs (branch, change count, ahead/behind,
+ * latest commit) and skips the two expensive parts of a full scan: listing every
+ * branch and walking every delivery package to stat its files. The selected
+ * project is hydrated with a full `scanRepository` right after selection.
+ */
+export async function scanRepositorySummary(
+  repositoryPath: string,
+): Promise<RepositorySnapshot> {
+  const root = resolve(await git(repositoryPath, ['rev-parse', '--show-toplevel']))
+  const name = basename(root)
+  const branch = await git(root, ['branch', '--show-current'])
+  const latestCommit = await git(root, ['rev-parse', '--short', 'HEAD'])
+  const latestCommitMessage = await git(root, ['log', '-1', '--pretty=%s'])
+  const sync = await upstreamState(root)
+
+  return {
+    id: name,
+    name,
+    displayName: name,
+    path: root,
+    gitlabPath: gitLabProjectPath(
+      await optionalGit(root, ['remote', 'get-url', 'origin']),
+    ),
+    branch,
+    upstream: sync.upstream,
+    stage: branchStage(branch),
+    ahead: sync.ahead,
+    behind: sync.behind,
+    latestCommit,
+    latestCommitMessage,
+    changes: await workingTreeChanges(root),
+    branches: [],
+    deliveryPackages: [],
+    mergeRequest: {
+      id: 0,
+      sourceBranch: branch,
+      targetBranch: 'main',
+      title: '尚未读取 GitLab MR',
+      status: 'draft',
+      reviewer: '待管理员审核',
+    },
+    publishJob: {
+      id: 'not-connected',
+      status: 'not_started',
+      commit: latestCommit,
+      packageCount: 0,
+    },
+    history: [],
   }
 }

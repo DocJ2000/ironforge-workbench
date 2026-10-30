@@ -12,7 +12,6 @@ import type { OutputPackageCandidate } from '../../domain/delivery'
 import type { RepositorySnapshot } from '../../domain/repository'
 import { PackageTree } from '../delivery/PackageTree'
 import { GuidedWorkflow } from './GuidedWorkflow'
-import './wizardForms.css'
 import './projectUpload.css'
 
 interface Props { repository: RepositorySnapshot; api?: DeliveryApi; onRefresh?: () => Promise<void> }
@@ -68,7 +67,7 @@ export function ProjectUploadPage({ repository, api = deliveryApi, onRefresh }: 
 
   useEffect(() => {
     let active = true
-    void api.overview().then((overview) => {
+    void api.overview('packages').then((overview) => {
       if (!active) return
       setPackages(overview.packages)
       setForgeRoots(overview.forgeRoots ?? [])

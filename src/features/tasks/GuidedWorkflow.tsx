@@ -1,6 +1,7 @@
-import { ArrowLeft, ArrowRight, House } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { PageHeader } from '../../components/PageHeader'
+import './guidedWorkflow.css'
 
 interface GuidedWorkflowProps {
   title: string
@@ -28,17 +29,12 @@ export function GuidedWorkflow({
   nextLabel = '下一步',
 }: GuidedWorkflowProps) {
   return (
-    <div className="task-page task-page--guided">
-      <header className="task-page__header">
-        <Link className="task-home-link" onClick={onExit} to="/workspace/project">
-          <House aria-hidden="true" size={17} />
-          返回项目操作
-        </Link>
-        <div>
-          <h1>{title}</h1>
-          <p>{description}</p>
-        </div>
-      </header>
+    <div className="page-frame page-frame--guided">
+      <PageHeader
+        back={{ to: '/workspace/project', label: '返回项目操作', onClick: onExit }}
+        description={description}
+        title={title}
+      />
       <ol aria-label="操作步骤" className="wizard-steps">
         {steps.map((step, index) => (
           <li
